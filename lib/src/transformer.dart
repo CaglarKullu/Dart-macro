@@ -39,7 +39,6 @@ class Transformer {
     //    Process in reverse order so earlier offsets stay valid after edits.
     final transformed = <String>[];
     var result = stripped;
-    int offset = 0; // tracks how much we've shifted the source
 
     // Collect all (bodyEnd, code) pairs in forward order, then apply in reverse.
     final insertions = <(int, String)>[];

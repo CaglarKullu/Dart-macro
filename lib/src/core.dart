@@ -50,7 +50,7 @@ Node expand(Node node) {
   if (node is! List || node.isEmpty) return node;
 
   final sym = node[0];
-  final args = (node as List<Node>).sublist(1);
+  final args = node.sublist(1);
 
   if (sym is String && _macros.containsKey(sym)) {
     // Call macro with raw (unevaluated) args, then re-expand the result.
@@ -89,10 +89,10 @@ String emit(Node node, [int indent = 0]) {
   if (node is int || node is double) return '$node';
   if (node is String)        return node; // identifier or raw source
 
-  if (node is! List || (node as List).isEmpty) return '';
+  if (node is! List || node.isEmpty) return '';
 
-  final sym  = node[0] as dynamic;
-  final args = (node as List<Node>).sublist(1);
+  final sym  = node[0];
+  final args = node.sublist(1);
 
   switch (sym as String) {
 
@@ -226,7 +226,7 @@ String emit(Node node, [int indent = 0]) {
       final isAsync = retType.startsWith('async ');
       if (isAsync) retType = retType.substring(6);
       final asyncKw = isAsync ? ' async' : '';
-      final rest = args.sublist(3) as List<Node>;
+      final rest = args.sublist(3);
       // Arrow body: ['defn', type, name, params, '__arrow__', expr]
       if (rest.isNotEmpty && rest[0] == '__arrow__') {
         return '$retType $name($params)$asyncKw => ${emit(rest[1], indent)};';

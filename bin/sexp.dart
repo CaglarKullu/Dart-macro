@@ -12,14 +12,14 @@
 ///   dart run bin/sexp.dart compile <dir> --check      — CI staleness check
 ///   dart run bin/sexp.dart watch <path>               — watch and recompile
 ///   dart run bin/sexp.dart repl                       — interactive REPL
+library;
+
 import 'dart:async';
 import 'dart:io';
 
-import '../lib/src/builtins.dart';
-import '../lib/src/schema_macros.dart';
-import '../lib/src/async_expand.dart';
-import '../lib/src/reader.dart';
-import '../lib/src/dart_parser.dart';
+import 'package:dart_macros/src/builtins.dart';
+import 'package:dart_macros/src/schema_macros.dart';
+import 'package:dart_macros/src/async_expand.dart';
 
 void main(List<String> args) async {
   registerBuiltins();
@@ -140,7 +140,7 @@ Future<bool> _compileSingle(String inputPath,
   if (outputPath != null) {
     await File(outFile).writeAsString(output);
     stderr.writeln('✓ $inputPath → $outFile');
-  } else if (outputPath == null && !File(inputPath).parent.path.isEmpty) {
+  } else if (outputPath == null && File(inputPath).parent.path.isNotEmpty) {
     // No explicit output — derive sibling .dart file and write it.
     await File(outFile).writeAsString(output);
     stderr.writeln('✓ $inputPath → $outFile');

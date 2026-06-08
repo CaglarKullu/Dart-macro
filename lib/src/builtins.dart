@@ -138,7 +138,7 @@ void _registerDataClass() {
   // Generates a sealed class hierarchy — like Freezed's union types.
   defmacro('defunion', (args) {
     final name     = args[0] as String;
-    final variants = args.sublist(1) as List<dynamic>;
+    final variants = args.sublist(1);
 
     final variantClasses = variants.map((v) {
       final variantName   = (v as List)[0] as String;

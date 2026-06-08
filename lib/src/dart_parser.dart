@@ -34,7 +34,7 @@ class DartLikeParser {
 
   List<Node> parseProgram() {
     final nodes = <Node>[];
-    while (!_atEnd()) nodes.add(_declaration());
+    while (!_atEnd()) { nodes.add(_declaration()); }
     return nodes;
   }
 
@@ -147,7 +147,7 @@ class DartLikeParser {
     if (_check(TK.lt)) {
       _advance();
       final inner = [_parseType()];
-      while (_match(TK.comma)) inner.add(_parseType());
+      while (_match(TK.comma)) { inner.add(_parseType()); }
       _expect(TK.gt);
       name = '$name<${inner.join(', ')}>';
     }
@@ -161,7 +161,7 @@ class DartLikeParser {
   List<Node> _blockStatements() {
     _expect(TK.lbrace);
     final stmts = <Node>[];
-    while (!_check(TK.rbrace)) stmts.add(_statement());
+    while (!_check(TK.rbrace)) { stmts.add(_statement()); }
     _expect(TK.rbrace);
     return stmts;
   }

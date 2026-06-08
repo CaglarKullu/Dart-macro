@@ -154,7 +154,7 @@ class Reader {
         _pos++;
       } else if (c == ';') {
         // Line comment — skip to end of line
-        while (_pos < source.length && source[_pos] != '\n') _pos++;
+        while (_pos < source.length && source[_pos] != '\n') { _pos++; }
       } else {
         break;
       }

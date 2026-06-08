@@ -65,10 +65,10 @@ Node $call(String name, List<Node> args) => [name, ...args];
 
 /// Method call: `receiver.method(arg1, arg2)`
 Node $method(Node receiver, String method, [List<Node> args = const []]) =>
-    ['.${method}', receiver, ...args];
+    ['.$method', receiver, ...args];
 
 /// Property access: `receiver.prop`
-Node $prop(Node receiver, String prop) => ['.-${prop}', receiver];
+Node $prop(Node receiver, String prop) => ['.-$prop', receiver];
 
 // ─── Declarations ─────────────────────────────────────────────────────────────
 

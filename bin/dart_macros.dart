@@ -4,9 +4,11 @@
 ///   dart run bin/dart_macros.dart build [path]     — apply macros in place
 ///   dart run bin/dart_macros.dart preview [path]   — show what would change
 ///   dart run bin/dart_macros.dart clean [path]     — strip all generated code
+library;
+
 import 'dart:io';
 
-import '../lib/src/transformer.dart';
+import 'package:dart_macros/src/transformer.dart';
 
 const _reset  = '\x1B[0m';
 const _green  = '\x1B[32m';

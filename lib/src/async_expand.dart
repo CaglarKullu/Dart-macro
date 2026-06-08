@@ -33,7 +33,7 @@ Future<Node> asyncExpand(Node node) async {
   if (node is! List || node.isEmpty) return node;
 
   final head = node[0];
-  final args = (node as List<Node>).sublist(1);
+  final args = node.sublist(1);
 
   if (head is String) {
     // Async macros take priority over sync ones.

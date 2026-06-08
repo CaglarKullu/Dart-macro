@@ -69,9 +69,9 @@ class Tokenizer {
     }
     // Extract the source line for the caret display.
     int start = offset;
-    while (start > 0 && source[start - 1] != '\n') start--;
+    while (start > 0 && source[start - 1] != '\n') { start--; }
     int end = offset;
-    while (end < source.length && source[end] != '\n') end++;
+    while (end < source.length && source[end] != '\n') { end++; }
     return (line, col, source.substring(start, end));
   }
 
@@ -196,7 +196,7 @@ class Tokenizer {
         _advance1();
       } else if (_pos + 1 < source.length &&
                  source[_pos] == '/' && source[_pos + 1] == '/') {
-        while (_pos < source.length && source[_pos] != '\n') _advance1();
+        while (_pos < source.length && source[_pos] != '\n') { _advance1(); }
       } else {
         break;
       }
