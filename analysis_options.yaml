@@ -1,0 +1,12 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  exclude:
+    - '*.dart'
+  errors:
+    missing_return: warning
+
+linter:
+  rules:
+    - prefer_single_quotes
+    - avoid_print: false

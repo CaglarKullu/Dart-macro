@@ -1,0 +1,79 @@
+// payment.dmacro
+// Compile with: dart run bin/sexp.dart compile payment.dmacro -o payment.dart
+//
+// Syntax looks like Dart. This IS the source — payment.dart is generated.
+// Custom macros (defrecord, unless, when, swap!, assertThat, withRetry)
+// feel identical to built-in language features.
+
+// ── Data model ─────────────────────────────────────────────────────────────
+// One declaration replaces ~40 lines of Dart boilerplate.
+// Generates: fields, constructor, copyWith, ==, hashCode, toString.
+
+defrecord Payment {
+  double  amount;
+  String  currency;
+  String? reference;
+}
+
+defrecord TransferRequest {
+  Payment payment;
+  String  fromAccount;
+  String  toAccount;
+}
+
+defunion PaymentState {
+  Idle {}
+  Loading {}
+  Success {
+    Payment payment;
+  }
+  Failure {
+    String error;
+  }
+}
+
+// ── Validation ─────────────────────────────────────────────────────────────
+// unless and assertThat are macros — they expand to plain Dart at compile time.
+// Zero runtime overhead. No function call overhead. No closure allocation.
+
+bool validatePayment(double amount, String currency) {
+  unless (amount > 0) {
+    throw Exception("Amount must be positive");
+  }
+  unless (currency != "") {
+    throw Exception("Currency must not be empty");
+  }
+  assertThat(amount <= 1000000);
+  return true;
+}
+
+// ── Processing with retry ──────────────────────────────────────────────────
+// withRetry generates a stateful for-loop with inline try/catch.
+// The _attempt variable is injected into the caller's scope —
+// impossible with a higher-order function.
+
+void processPayment(Payment payment, String endpoint) {
+  withRetry(3, sendToApi(endpoint, payment));
+}
+
+// ── Variable swap ──────────────────────────────────────────────────────────
+// swap! injects a temp variable directly into the caller's scope.
+// A function cannot do this — it only receives values, not variable names.
+
+void normalise(double a, double b) {
+  when (a > b) {
+    swap!(a, b);
+  }
+}
+
+// ── Standard Dart control flow — still works exactly as normal ─────────────
+
+String describeAmount(double amount) {
+  if (amount < 0) {
+    return "negative";
+  }
+  if (amount > 10000) {
+    return "large";
+  }
+  return "normal";
+}

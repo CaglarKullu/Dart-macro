@@ -1,0 +1,11 @@
+name: dart_macros
+description: A compile-time macro preprocessor for Dart. No build_runner, no Flutter constraints, no external dependencies — pure Dart SDK.
+version: 0.1.0
+repository: https://github.com/caglarkullu/dart-macro
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.0

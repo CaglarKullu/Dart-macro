@@ -1,0 +1,17 @@
+# Dart/Flutter generated files
+.dart_tool/
+.packages
+
+# Build output
+build/
+*.js
+*.js.map
+*.dart.js
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# macOS
+.DS_Store
