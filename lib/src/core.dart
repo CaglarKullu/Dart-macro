@@ -33,6 +33,9 @@ void defmacro(String name, MacroFn fn) => _macros[name] = fn;
 /// Returns true if [name] is a registered macro.
 bool isMacro(String name) => _macros.containsKey(name);
 
+/// Returns the macro function registered under [name], or null.
+MacroFn? getMacro(String name) => _macros[name];
+
 // ─── Expander ─────────────────────────────────────────────────────────────────
 
 /// Recursively expands all macros in [node].
@@ -93,14 +96,49 @@ String emit(Node node, [int indent = 0]) {
 
   switch (sym as String) {
 
-    // ── Arithmetic & logic (variadic)
+    // ── Unary operators (must precede binary to catch single-arg -)
+    case '!' when args.length == 1:
+      return '!${emit(args[0], indent)}';
+    case '-' when args.length == 1:
+      return '-${emit(args[0], indent)}';
+
+    // ── Arithmetic & logic (variadic / binary)
     case '+': case '-': case '*': case '/':
     case '==': case '!=': case '<': case '>': case '<=': case '>=':
-    case '&&': case '||':
+    case '&&': case '||': case '??':
       return '(${args.map((a) => emit(a, indent)).join(' $sym ')})';
 
-    case '!':
-      return '!${emit(args[0], indent)}';
+    case 'await':
+      return 'await ${emit(args[0], indent)}';
+
+    case '?:':
+      return '(${emit(args[0], indent)} ? ${emit(args[1], indent)} : ${emit(args[2], indent)})';
+
+    // Named argument: amount: 100
+    case 'named':
+      return '${args[0]}: ${emit(args[1], indent)}';
+
+    // List literal: [a, b, c]
+    case 'list':
+      return '[${args.map((a) => emit(a, indent)).join(', ')}]';
+
+    // Cascade: recv..method(args)..method2()
+    case 'cascade':
+      final recv = emit(args[0], indent);
+      final ops  = args.sublist(1).map((op) {
+        final opList = op as List;
+        final opSym  = opList[0] as String;
+        if (opSym.startsWith('..=')) {
+          // Cascade assignment: ..prop = val
+          return '..${opSym.substring(3)} = ${emit(opList[1], indent)}';
+        } else {
+          // Cascade call or bare access: ..method(args)
+          final method   = opSym.substring(2);
+          final callArgs = opList.sublist(1).map((a) => emit(a, indent)).join(', ');
+          return method.isEmpty ? '..' : '..$method($callArgs)';
+        }
+      }).join('');
+      return '$recv$ops';
 
     // ── Bindings
     case 'let':
@@ -179,15 +217,24 @@ String emit(Node node, [int indent = 0]) {
 
     // ── Function definition
     case 'defn':
-      final retType = args[0] as String;
+      var retType = args[0] as String;
       final name    = args[1] as String;
       final params  = (args[2] as List<dynamic>)
           .map((p) => '${(p as List)[0]} ${p[1]}')
           .join(', ');
-      final body = (args.sublist(3) as List<Node>)
+      // async modifier stored as 'async ReturnType'
+      final isAsync = retType.startsWith('async ');
+      if (isAsync) retType = retType.substring(6);
+      final asyncKw = isAsync ? ' async' : '';
+      final rest = args.sublist(3) as List<Node>;
+      // Arrow body: ['defn', type, name, params, '__arrow__', expr]
+      if (rest.isNotEmpty && rest[0] == '__arrow__') {
+        return '$retType $name($params)$asyncKw => ${emit(rest[1], indent)};';
+      }
+      final body = rest
           .map((s) => '${emit(s, indent + 1)};')
           .join('\n  ');
-      return '$retType $name($params) {\n  $body\n}';
+      return '$retType $name($params)$asyncKw {\n  $body\n}';
 
     // ── Class definition
     case 'defclass':
@@ -238,6 +285,17 @@ String emit(Node node, [int indent = 0]) {
           .map((f) => '${(f as List)[1]}: \$${f[1]}')
           .join(', ');
       return "@override\n  String toString() => '$name($props)';";
+
+    // ── Null-aware method call: ['?.method', receiver, arg1, ...]
+    case String s when s.startsWith('?.') && !s.startsWith('?.-'):
+      final recv     = emit(args[0], indent);
+      final method   = s.substring(1); // keep the leading ?
+      final callArgs = args.sublist(1).map((a) => emit(a, indent)).join(', ');
+      return '$recv$method($callArgs)';
+
+    // ── Null-aware property access: ['?.-prop', receiver]
+    case String s when s.startsWith('?.-'):
+      return '${emit(args[0], indent)}?.${s.substring(3)}';
 
     // ── Method call:  ['.method', receiver, arg1, ...]
     case String s when s.startsWith('.') && !s.startsWith('.-'):

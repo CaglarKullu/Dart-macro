@@ -1,0 +1,11 @@
+{
+  "title": "Payment",
+  "type": "object",
+  "properties": {
+    "amount":    { "type": "number" },
+    "currency":  { "type": "string" },
+    "reference": { "type": "string" },
+    "tags":      { "type": "array", "items": { "type": "string" } }
+  },
+  "required": ["amount", "currency"]
+}

@@ -1,0 +1,82 @@
+{
+  "name": "dart-sexp",
+  "displayName": "dart_sexp",
+  "description": "Lisp-style macros for Dart — compile .dmacro on save, syntax highlighting, diagnostics",
+  "version": "0.1.0",
+  "publisher": "dart-sexp",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Programming Languages", "Other"],
+  "keywords": ["dart", "macros", "dmacro", "sexp", "codegen"],
+  "repository": { "type": "git", "url": "https://github.com/caglarkullu/dart-macro" },
+  "activationEvents": [
+    "onLanguage:dmacro",
+    "workspaceContains:**/*.dmacro",
+    "workspaceContains:**/*.sexp"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "dmacro",
+        "aliases": ["Dart Macro", "dmacro"],
+        "extensions": [".dmacro"],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "sexp",
+        "aliases": ["S-Expression", "sexp"],
+        "extensions": [".sexp"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "dmacro",
+        "scopeName": "source.dmacro",
+        "path": "./syntaxes/dmacro.tmLanguage.json"
+      },
+      {
+        "language": "sexp",
+        "scopeName": "source.sexp",
+        "path": "./syntaxes/sexp.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "dart-sexp.compileFile",
+        "title": "dart_sexp: Compile File"
+      },
+      {
+        "command": "dart-sexp.compileWorkspace",
+        "title": "dart_sexp: Compile Workspace"
+      }
+    ],
+    "configuration": {
+      "title": "dart_sexp",
+      "properties": {
+        "dart-sexp.sexpPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the sexp CLI (leave empty to use `dart run bin/sexp.dart`)"
+        },
+        "dart-sexp.formatOnCompile": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run dart format on generated .dart files"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.0.0",
+    "@vscode/vsce": "^2.0.0"
+  }
+}

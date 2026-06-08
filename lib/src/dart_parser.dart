@@ -13,9 +13,15 @@ import 'tokenizer.dart';
 
 class ParseException implements Exception {
   final String message;
-  const ParseException(this.message);
+  final int line;
+  final int col;
+  const ParseException(this.message, {this.line = 0, this.col = 0});
+
   @override
-  String toString() => 'ParseException: $message';
+  String toString() {
+    final loc = line > 0 ? '$line:$col: ' : '';
+    return 'ParseException: $loc$message';
+  }
 }
 
 class DartLikeParser {
@@ -37,7 +43,22 @@ class DartLikeParser {
   Node _declaration() {
     if (_check(TK.ident, 'defrecord')) return _defrecord();
     if (_check(TK.ident, 'defunion'))  return _defunion();
+    // Top-level macro call: ident ( args... ) ;
+    // Distinguished from a function declaration (type name ( ) { }) by looking
+    // ahead: ident immediately followed by lparen → call, not declaration.
+    if (_check(TK.ident) && _peek2().kind == TK.lparen) {
+      return _topLevelCall();
+    }
     return _fnDecl();
+  }
+
+  Node _topLevelCall() {
+    final name = _advance().value as String;
+    _expect(TK.lparen);
+    final args = _argList();
+    _expect(TK.rparen);
+    _expect(TK.semi);
+    return [name, ...args];
   }
 
   Node _defrecord() {
@@ -80,22 +101,41 @@ class DartLikeParser {
   }
 
   Node _fnDecl() {
+    // Optional 'async' return-type prefix: "async Future<T> f() async { }"
+    // The 'async' keyword appears BEFORE the body open-brace (after the params).
     final returnType = _parseType();
     final name       = _expect(TK.ident).value as String;
     _expect(TK.lparen);
     final params = _parseParams();
     _expect(TK.rparen);
+    // async modifier comes between ) and { (or =>)
+    final isAsync = _match(TK.ident, 'async');
+    // Arrow body: Type name(params) => expr;
+    if (_check(TK.arrow)) {
+      _advance();
+      final expr = _expr();
+      _expect(TK.semi);
+      final tag = isAsync ? 'async $returnType' : returnType;
+      return ['defn', tag, name, params, '__arrow__', expr];
+    }
     final body = _blockStatements();
-    return ['defn', returnType, name, params, ...body];
+    final tag  = isAsync ? 'async $returnType' : returnType;
+    return ['defn', tag, name, params, ...body];
   }
 
   List<List<String>> _parseParams() {
     final params = <List<String>>[];
     while (!_check(TK.rparen)) {
+      // Named/optional params: { String? host, int port = 8080 }
+      // For simplicity, skip '{' / '}' wrappers and treat as regular params.
+      if (_check(TK.lbrace)) { _advance(); continue; }
+      if (_check(TK.rbrace)) { _advance(); continue; }
       final t = _parseType();
       final n = _expect(TK.ident).value as String;
+      // Skip default value if present
+      if (_match(TK.assign)) _expr();
       params.add([t, n]);
-      if (!_check(TK.rparen)) _expect(TK.comma);
+      if (!_check(TK.rparen)) _match(TK.comma);
     }
     return params;
   }
@@ -186,6 +226,25 @@ class DartLikeParser {
       _expect(TK.rparen);
       return ['while', cond, _blockAsNode()];
     }
+    // for (final x in iterable) { body }
+    if (_check(TK.ident, 'for')) {
+      _advance();
+      _expect(TK.lparen);
+      _match(TK.ident, 'final'); // consume optional 'final'
+      final varName = _expect(TK.ident).value as String;
+      _expect(TK.ident, 'in');
+      final iter = _expr();
+      _expect(TK.rparen);
+      final body = _blockAsNode();
+      return ['for-in', varName, iter, body];
+    }
+    // await expr; (as a statement)
+    if (_check(TK.ident, 'await')) {
+      _advance();
+      final val = _expr();
+      _expect(TK.semi);
+      return ['await', val];
+    }
     // ident-led: assignment, macro call, function call
     if (_check(TK.ident)) {
       // assignment: ident = expr;
@@ -207,12 +266,36 @@ class DartLikeParser {
       _expect(TK.semi);
       return expr;
     }
-    throw ParseException('Unexpected token: ${_peek()}');
+    final bad = _peek();
+    throw ParseException('Unexpected token: $bad', line: bad.line, col: bad.col);
   }
 
   // ─── Expressions (operator precedence) ───────────────────────────────────────
 
-  Node _expr()    => _or();
+  Node _expr() => _ternary();
+
+  // cond ? then : else
+  Node _ternary() {
+    final cond = _nullCoalesce();
+    if (_check(TK.question) && _peek2().kind != TK.question) {
+      _advance(); // consume ?
+      final then = _ternary();
+      _expect(TK.colon);
+      final els = _ternary();
+      return ['?:', cond, then, els];
+    }
+    return cond;
+  }
+
+  // a ?? b
+  Node _nullCoalesce() {
+    var left = _or();
+    while (_check(TK.nullCoalesce)) {
+      _advance();
+      left = ['??', left, _or()];
+    }
+    return left;
+  }
 
   Node _or() {
     var left = _and();
@@ -259,7 +342,8 @@ class DartLikeParser {
   }
 
   Node _unary() {
-    if (_check(TK.bang)) { _advance(); return ['!', _unary()]; }
+    if (_check(TK.bang))  { _advance(); return ['!', _unary()]; }
+    if (_check(TK.minus)) { _advance(); return ['-', _unary()]; }
     return _postfix();
   }
 
@@ -272,6 +356,39 @@ class DartLikeParser {
         final args = _argList();
         _expect(TK.rparen);
         expr = [expr, ...args];
+      } else if (_check(TK.cascade)) {
+        // Cascade chain: recv..method(args)..prop
+        _advance();
+        final ops = <Node>[];
+        final member = _expect(TK.ident).value as String;
+        if (_check(TK.lparen)) {
+          _advance();
+          final args = _argList();
+          _expect(TK.rparen);
+          ops.add(['..$member', ...args]);
+        } else if (_check(TK.assign)) {
+          _advance();
+          ops.add(['..=$member', _expr()]);
+        } else {
+          ops.add(['..$member']);
+        }
+        // Continue consuming cascade ops
+        while (_check(TK.cascade)) {
+          _advance();
+          final m2 = _expect(TK.ident).value as String;
+          if (_check(TK.lparen)) {
+            _advance();
+            final args2 = _argList();
+            _expect(TK.rparen);
+            ops.add(['..$m2', ...args2]);
+          } else if (_check(TK.assign)) {
+            _advance();
+            ops.add(['..=$m2', _expr()]);
+          } else {
+            ops.add(['..$m2']);
+          }
+        }
+        expr = ['cascade', expr, ...ops];
       } else if (_check(TK.dot)) {
         // member access or method call: expr.member or expr.method(args)
         _advance();
@@ -284,6 +401,19 @@ class DartLikeParser {
         } else {
           expr = ['.-$member', expr];
         }
+      } else if (_check(TK.question) && _peek2().kind == TK.dot) {
+        // Null-aware member access: expr?.member
+        _advance(); // consume ?
+        _advance(); // consume .
+        final member = _expect(TK.ident).value as String;
+        if (_check(TK.lparen)) {
+          _advance();
+          final args = _argList();
+          _expect(TK.rparen);
+          expr = ['?.$member', expr, ...args];
+        } else {
+          expr = ['?.-$member', expr];
+        }
       } else {
         break;
       }
@@ -293,11 +423,34 @@ class DartLikeParser {
 
   Node _primary() {
     final t = _peek();
+    // Parenthesised expression
     if (t.kind == TK.lparen) {
       _advance();
       final e = _expr();
       _expect(TK.rparen);
       return e;
+    }
+    // List literal: [item, item, ...]
+    if (t.kind == TK.lbracket) {
+      _advance();
+      final items = <Node>[];
+      while (!_check(TK.rbracket)) {
+        // spread: ...expr
+        if (_check(TK.dot)) {
+          _advance(); _advance(); _advance(); // consume three dots
+          items.add(['...', _expr()]);
+        } else {
+          items.add(_expr());
+        }
+        if (!_check(TK.rbracket)) _match(TK.comma);
+      }
+      _expect(TK.rbracket);
+      return ['list', ...items];
+    }
+    // await expr
+    if (t.kind == TK.ident && t.value == 'await') {
+      _advance();
+      return ['await', _expr()];
     }
     if (t.kind == TK.string ||
         t.kind == TK.integer ||
@@ -305,14 +458,21 @@ class DartLikeParser {
         t.kind == TK.ident) {
       return _advance().value!;
     }
-    throw ParseException('Unexpected token in expression: $t');
+    throw ParseException('Unexpected token in expression: $t', line: t.line, col: t.col);
   }
 
   List<Node> _argList() {
     final args = <Node>[];
     while (!_check(TK.rparen)) {
-      args.add(_expr());
-      if (!_check(TK.rparen)) _expect(TK.comma);
+      // Named arg: ident: expr
+      if (_check(TK.ident) && _peek2().kind == TK.colon) {
+        final key = _advance().value as String;
+        _advance(); // consume ':'
+        args.add(['named', key, _expr()]);
+      } else {
+        args.add(_expr());
+      }
+      if (!_check(TK.rparen)) _match(TK.comma);
     }
     return args;
   }
@@ -340,9 +500,11 @@ class DartLikeParser {
 
   Token _expect(TK kind, [Object? value]) {
     if (!_check(kind, value)) {
+      final t = _peek();
       throw ParseException(
         'Expected ${kind.name}${value != null ? "($value)" : ""}, '
-        'got ${_peek()}',
+        'got $t',
+        line: t.line, col: t.col,
       );
     }
     return _advance();

@@ -11,3 +11,5 @@ export 'src/tokenizer.dart';
 export 'src/dart_parser.dart';
 export 'src/gensym.dart';
 export 'src/splice.dart' show $splice;
+export 'src/async_expand.dart';
+export 'src/schema_macros.dart';
