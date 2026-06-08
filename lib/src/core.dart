@@ -14,6 +14,15 @@ typedef Node = dynamic;
 /// A macro function: receives unevaluated argument nodes, returns a new node.
 typedef MacroFn = Node Function(List<Node> args);
 
+/// Marks a sequence of nodes to be spliced (inlined) into the parent list.
+///
+/// Produced by [$splice] and consumed by [expand], which flattens any [Splice]
+/// children into the parent list. No [Splice] should ever reach [emit].
+class Splice {
+  final List<Node> nodes;
+  const Splice(this.nodes);
+}
+
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
 final _macros = <String, MacroFn>{};
@@ -31,6 +40,9 @@ bool isMacro(String name) => _macros.containsKey(name);
 /// Like Lisp's macroexpand — if the head of a list is a known macro,
 /// the macro is called with the UNEVALUATED arguments, then the result
 /// is expanded again (allowing macros to produce other macros).
+///
+/// After expanding children, any [Splice] children are flattened (inlined)
+/// into the parent list. This allows macros to inject multiple statements.
 Node expand(Node node) {
   if (node is! List || node.isEmpty) return node;
 
@@ -43,8 +55,16 @@ Node expand(Node node) {
     return expand(_macros[sym]!(args));
   }
 
-  // Not a macro — expand subforms recursively.
-  return [sym, ...args.map(expand)];
+  // Not a macro — expand subforms recursively, then flatten any Splice.
+  final out = <Node>[sym];
+  for (final child in args.map(expand)) {
+    if (child is Splice) {
+      out.addAll(child.nodes);
+    } else {
+      out.add(child);
+    }
+  }
+  return out;
 }
 
 // ─── Emitter ──────────────────────────────────────────────────────────────────
@@ -52,6 +72,14 @@ Node expand(Node node) {
 /// Converts an expanded [Node] AST to a Dart source string.
 String emit(Node node, [int indent = 0]) {
   final pad = '  ' * indent;
+
+  // Splice must be flattened by expand() — it must never reach emit().
+  if (node is Splice) {
+    throw StateError(
+      'Splice reached emit() — expand() did not flatten it. '
+      'Ensure expand() is called before emit().',
+    );
+  }
 
   if (node == null)          return 'null';
   if (node is bool)          return '$node';

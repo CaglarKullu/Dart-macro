@@ -9,3 +9,5 @@ export 'src/builtins.dart';
 export 'src/reader.dart';
 export 'src/tokenizer.dart';
 export 'src/dart_parser.dart';
+export 'src/gensym.dart';
+export 'src/splice.dart' show $splice;

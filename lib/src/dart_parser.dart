@@ -8,6 +8,7 @@
 library;
 
 import 'core.dart';
+import 'gensym.dart';
 import 'tokenizer.dart';
 
 class ParseException implements Exception {
@@ -355,7 +356,9 @@ class DartLikeParser {
 /// Compiles Dart-like (.dmacro) source to Dart.
 /// Full pipeline: tokenize → parse → expand macros → emit Dart.
 /// Macros must be registered before calling this.
+/// Calls [resetGensym] first for deterministic output.
 String compileDartLike(String source) {
+  resetGensym();
   final tokens = Tokenizer(source).tokenize();
   final forms  = DartLikeParser(tokens).parseProgram();
   return forms.map((f) => emit(expand(f))).join('\n\n');
