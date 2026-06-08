@@ -124,7 +124,7 @@ it did not).
 ## Phase 1 definition of done
 
 - `lib/src/gensym.dart` and `lib/src/splice.dart` exist and are exported from
-  `lib/dart_sexp.dart`.
+  `lib/dmacro.dart`.
 - All builtins that introduce temporaries use `gensym`.
 - `swap!` uses `$splice` and works in all three contexts above.
 - `test/gensym_test.dart` and `test/splice_test.dart` pass.

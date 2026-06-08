@@ -15,7 +15,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked/needs dec
 - [x] `dart_parser.dart` — `.dmacro` parser
 - [x] `nodes.dart` — typed constructors (`$if`, `$not`, …)
 - [x] `builtins.dart` — `unless`, `when`, `swap!`, `assertThat`, `withRetry`, `defrecord`, `defunion`
-- [x] `bin/sexp.dart` — `compile` + `repl`
+- [x] `bin/dmacro.dart` — `compile` + `repl`
 - [x] Validated end-to-end (see `docs/VALIDATED_LOGIC.md`)
 
 > Port note: Phase 0 logic is validated. First implementation task is to ensure the Dart

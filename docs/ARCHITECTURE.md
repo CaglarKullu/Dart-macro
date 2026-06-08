@@ -2,7 +2,7 @@
 
 ## Design philosophy
 
-`dart_sexp` is a **preprocessor**, not a compiler integration. This single decision
+`dmacro` is a **preprocessor**, not a compiler integration. This single decision
 shapes everything and is the source of the project's main advantage. Do not revisit it
 without understanding why it was made (see "The preprocessor advantage" below).
 
@@ -102,7 +102,7 @@ Macros that run arbitrary code make incremental compilation intractable, and hot
 needs millisecond incremental recompiles. The two could not be reconciled inside the
 compiler.
 
-`dart_sexp` is not inside the compiler. It transforms `.dmacro`/`.sexp` files into
+`dmacro` is not inside the compiler. It transforms `.dmacro`/`.sexp` files into
 `.dart` files as a separate step. It therefore has **no incrementality obligation** — it
 just regenerates output. This is why it can offer the one thing the official system could
 not: **arbitrary code execution at expansion time, including I/O** (Phase 2).

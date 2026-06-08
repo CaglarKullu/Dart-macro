@@ -31,7 +31,7 @@ defFromJsonSchema("example/schema_demo/schemas/payment.json");
 ## Command
 
 ```bash
-dart run bin/sexp.dart compile example/schema_demo/models.dmacro
+dart run bin/dmacro.dart compile example/schema_demo/models.dmacro
 ```
 
 ## Output (`models.dart`)

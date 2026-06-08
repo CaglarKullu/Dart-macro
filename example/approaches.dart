@@ -51,7 +51,7 @@ void _approach1_Sexpressions() {
     print('    $line');
   }
   print('');
-  print('  dart run bin/sexp.dart compile payment.sexp -o payment.dart');
+  print('  dart run bin/dmacro.dart compile payment.sexp -o payment.dart');
   print('');
   print('  Verdict: powerful, but foreign syntax. Needs tooling support.');
 }

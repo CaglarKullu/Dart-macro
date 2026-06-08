@@ -1,4 +1,4 @@
-/// dart_sexp example — Lisp-style macros in Dart.
+/// dmacro example — Lisp-style macros in Dart.
 ///
 /// Run:  dart run example/main.dart
 ///

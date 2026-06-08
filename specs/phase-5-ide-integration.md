@@ -23,7 +23,7 @@ CLI (`compile <file>`) on save, writing the sibling `.dart`.
 
 ### Approach
 - VS Code extension (TypeScript) using the `onDidSaveTextDocument` event.
-- Shell out to the project's `sexp` CLI (resolve via `dart run bin/sexp.dart` or a
+- Shell out to the project's `sexp` CLI (resolve via `dart run bin/dmacro.dart` or a
   compiled `sexp` executable on PATH).
 - Surface CLI stderr as VS Code diagnostics (see 5.3).
 
@@ -70,7 +70,7 @@ using the located errors from Phase 4.
 
 ## Task 5.4 — Niceties (stretch within stretch)
 
-- Command palette: "dart_sexp: Compile File", "dart_sexp: Compile Workspace".
+- Command palette: "dmacro: Compile File", "dmacro: Compile Workspace".
 - Status-bar item showing last compile result.
 - Go-to-definition from a macro use to its `defmacro` (requires a macro index; nontrivial
   — defer unless clearly valuable).

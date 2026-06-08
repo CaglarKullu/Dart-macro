@@ -8,7 +8,7 @@ This project implements the same idea as a standalone CLI preprocessor.
 
 ---
 
-## System 1 — `dart_sexp`: Lisp-style macros
+## System 1 — `dmacro`: Lisp-style macros
 
 The closest you can get to Lisp macros in Dart.
 Code is data. Macros are functions. Full Dart emitted.
@@ -91,7 +91,7 @@ This generates the class itself from a compact spec:
 
 ### Comparison
 
-| | Lisp macros | dart_sexp | macro_kit | build_runner |
+| | Lisp macros | dmacro | macro_kit | build_runner |
 |---|---|---|---|---|
 | Code is data | ✅ | ✅ Lists = code | ❌ Text | ❌ Text |
 | Macro is same language | ✅ | ✅ Dart fn | ✅ Dart fn | ✅ Dart fn |
@@ -105,9 +105,9 @@ This generates the class itself from a compact spec:
 ### Usage
 
 ```bash
-dart run bin/sexp.dart compile example/payment.sexp    # S-expression syntax
-dart run bin/sexp.dart compile example/payment.dmacro  # Dart-like syntax
-dart run bin/sexp.dart repl                            # interactive REPL
+dart run bin/dmacro.dart compile example/payment.sexp    # S-expression syntax
+dart run bin/dmacro.dart compile example/payment.dmacro  # Dart-like syntax
+dart run bin/dmacro.dart repl                            # interactive REPL
 ```
 
 ### The honest trade-off
@@ -211,10 +211,10 @@ lib/src/
   generator.dart          Annotation macro generators
   transformer.dart        Applies generators, manages markers
 bin/
-  sexp.dart               dart_sexp CLI (compile / repl)
+  sexp.dart               dmacro CLI (compile / repl)
   dart_macros.dart        dart_macros CLI (build / preview / clean)
 example/
-  main.dart               dart_sexp demo
+  main.dart               dmacro demo
   approaches.dart         Three ways to write macro code compared
   payment.sexp            Payment record in S-expression syntax
   payment.dmacro          Payment record in Dart-like syntax

@@ -1,5 +1,5 @@
 /**
- * dart_sexp VS Code Extension
+ * dmacro VS Code Extension
  *
  * Compiles .dmacro and .sexp files on save, shows diagnostics at the correct
  * source location, and provides syntax highlighting.
@@ -8,14 +8,14 @@ import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as path from 'path';
 
-const DIAGNOSTIC_SOURCE = 'dart_sexp';
+const DIAGNOSTIC_SOURCE = 'dmacro';
 const diagnostics = vscode.languages.createDiagnosticCollection(DIAGNOSTIC_SOURCE);
 
 export function activate(context: vscode.ExtensionContext): void {
   // 5.1 — Compile on save
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument(doc => {
-      if (isSexpFile(doc.fileName)) {
+      if (isDmacroFile(doc.fileName)) {
         compileFile(doc.fileName);
       }
     }),
@@ -23,16 +23,16 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // 5.4 — Command palette commands
   context.subscriptions.push(
-    vscode.commands.registerCommand('dart-sexp.compileFile', () => {
+    vscode.commands.registerCommand('dmacro.compileFile', () => {
       const editor = vscode.window.activeTextEditor;
-      if (editor && isSexpFile(editor.document.fileName)) {
+      if (editor && isDmacroFile(editor.document.fileName)) {
         compileFile(editor.document.fileName);
       }
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('dart-sexp.compileWorkspace', () => {
+    vscode.commands.registerCommand('dmacro.compileWorkspace', () => {
       const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
       if (folder) compileDir(folder);
     }),
@@ -47,25 +47,25 @@ export function deactivate(): void {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function isSexpFile(filePath: string): boolean {
+function isDmacroFile(filePath: string): boolean {
   return filePath.endsWith('.dmacro') || filePath.endsWith('.sexp');
 }
 
-/** Resolves the sexp CLI command. Prefer an explicit path from settings;
- *  fall back to `dart run bin/sexp.dart` relative to the workspace. */
-function sexpCmd(workDir: string): { cmd: string; args: string[] } {
-  const cfg = vscode.workspace.getConfiguration('dart-sexp');
-  const explicit: string = cfg.get('sexpPath') ?? '';
+/** Resolves the dmacro CLI command. Prefer an explicit path from settings;
+ *  fall back to `dart run bin/dmacro.dart` relative to the workspace. */
+function dmacroCmd(workDir: string): { cmd: string; args: string[] } {
+  const cfg = vscode.workspace.getConfiguration('dmacro');
+  const explicit: string = cfg.get('cliPath') ?? '';
   if (explicit) return { cmd: explicit, args: [] };
 
-  // Use dart run bin/sexp.dart from the workspace root.
-  return { cmd: 'dart', args: ['run', path.join(workDir, 'bin', 'sexp.dart')] };
+  // Use dart run bin/dmacro.dart from the workspace root.
+  return { cmd: 'dart', args: ['run', path.join(workDir, 'bin', 'dmacro.dart')] };
 }
 
 function compileFile(filePath: string): void {
   const workDir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? path.dirname(filePath);
-  const { cmd, args } = sexpCmd(workDir);
-  const cfg = vscode.workspace.getConfiguration('dart-sexp');
+  const { cmd, args } = dmacroCmd(workDir);
+  const cfg = vscode.workspace.getConfiguration('dmacro');
   const doFormat: boolean = cfg.get('formatOnCompile') ?? true;
 
   const cliArgs = [
@@ -79,20 +79,20 @@ function compileFile(filePath: string): void {
     if (err) {
       const diag = parseDiagnostics(filePath, stderr || err.message);
       diagnostics.set(vscode.Uri.file(filePath), diag);
-      updateStatusBar('✗ dart_sexp error');
+      updateStatusBar('✗ dmacro error');
     } else {
-      updateStatusBar('✓ dart_sexp compiled');
+      updateStatusBar('✓ dmacro compiled');
     }
   });
 }
 
 function compileDir(dir: string): void {
-  const { cmd, args } = sexpCmd(dir);
+  const { cmd, args } = dmacroCmd(dir);
   cp.execFile(cmd, [...args, 'compile', dir], { cwd: dir }, (err, _stdout, stderr) => {
     if (err) {
-      vscode.window.showErrorMessage(`dart_sexp: ${stderr || err.message}`);
+      vscode.window.showErrorMessage(`dmacro: ${stderr || err.message}`);
     } else {
-      vscode.window.showInformationMessage('dart_sexp: workspace compiled successfully');
+      vscode.window.showInformationMessage('dmacro: workspace compiled successfully');
     }
   });
 }
@@ -143,6 +143,6 @@ function updateStatusBar(text: string): void {
   statusItem.text = text;
   // Auto-clear success message after 3 s.
   if (text.startsWith('✓')) {
-    setTimeout(() => { if (statusItem) statusItem.text = 'dart_sexp'; }, 3000);
+    setTimeout(() => { if (statusItem) statusItem.text = 'dmacro'; }, 3000);
   }
 }

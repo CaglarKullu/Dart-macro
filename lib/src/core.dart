@@ -1,4 +1,4 @@
-/// dart_sexp — Lisp-style macros for Dart.
+/// dmacro — Lisp-style macros for Dart.
 ///
 /// Code is represented as [Node] — either an atom (String, int, double, bool,
 /// null) or a [List<Node>]. This mirrors Lisp's S-expressions exactly.

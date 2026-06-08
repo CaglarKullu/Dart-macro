@@ -76,7 +76,7 @@ void main() {
     late Directory tmpDir;
 
     setUp(() {
-      tmpDir = Directory.systemTemp.createTempSync('sexp_test_');
+      tmpDir = Directory.systemTemp.createTempSync('dmacro_test_');
     });
 
     tearDown(() {
@@ -88,7 +88,7 @@ void main() {
       final src = File('${tmpDir.path}/test.dmacro')
           ..writeAsStringSync('void foo() { return 1; }');
       final result = await Process.run(
-        'dart', ['run', 'bin/sexp.dart', 'compile', src.path, '--check'],
+        'dart', ['run', 'bin/dmacro.dart', 'compile', src.path, '--check'],
         workingDirectory: Directory.current.path,
       );
       expect(result.exitCode, isNot(0));
@@ -102,14 +102,14 @@ void main() {
       // First compile to create the .dart (no-format for determinism in CI)
       await Process.run(
         'dart',
-        ['run', 'bin/sexp.dart', 'compile', srcPath, '-o', outPath, '--no-format'],
+        ['run', 'bin/dmacro.dart', 'compile', srcPath, '-o', outPath, '--no-format'],
         workingDirectory: Directory.current.path,
       );
 
       // Now check with same flags — should be up to date
       final result = await Process.run(
         'dart',
-        ['run', 'bin/sexp.dart', 'compile', srcPath, '--check', '--no-format'],
+        ['run', 'bin/dmacro.dart', 'compile', srcPath, '--check', '--no-format'],
         workingDirectory: Directory.current.path,
       );
       expect(result.exitCode, equals(0));
