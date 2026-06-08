@@ -22,31 +22,31 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked/needs dec
 > port reproduces `docs/VALIDATED_LOGIC.md` exactly, then write `test/` coverage for it
 > before starting Phase 1.
 
-- [ ] `test/core_test.dart` — expand/emit regression against VALIDATED_LOGIC
-- [ ] `test/reader_test.dart` — S-expression parsing
-- [ ] `test/dart_parser_test.dart` — `.dmacro` parsing
-- [ ] `test/builtins_test.dart` — each builtin's documented output
+- [x] `test/core_test.dart` — expand/emit regression against VALIDATED_LOGIC
+- [x] `test/reader_test.dart` — S-expression parsing
+- [x] `test/dart_parser_test.dart` — `.dmacro` parsing
+- [x] `test/builtins_test.dart` — each builtin's documented output
 
 ---
 
 ## Phase 1 — Correctness
 
 ### 1.1 gensym
-- [ ] `lib/src/gensym.dart` with `gensym([prefix])` and `resetGensym()`
-- [ ] `compile`/`compileDartLike` call `resetGensym()` first
-- [ ] `swap!`, `withRetry` use `gensym`
-- [ ] Determinism: same input → byte-identical output
-- [ ] `test/gensym_test.dart`: collision case `swap!(a, __swap_0)` is safe
-- [ ] Update VALIDATED_LOGIC regression expectations for new temp names
+- [x] `lib/src/gensym.dart` with `gensym([prefix])` and `resetGensym()`
+- [x] `compile`/`compileDartLike` call `resetGensym()` first
+- [x] `swap!`, `withRetry` use `gensym`
+- [x] Determinism: same input → byte-identical output
+- [x] `test/gensym_test.dart`: collision case `swap!(a, __swap_0)` is safe
+- [x] Update VALIDATED_LOGIC regression expectations for new temp names
 
 ### 1.2 $splice
-- [ ] `lib/src/splice.dart` with `Splice` + `$splice`
-- [ ] `expand` flattens `Splice` children in every context
-- [ ] `swap!` rewritten to use `$splice`
-- [ ] Works inside `when`, inside `while`, and nested in another macro
-- [ ] No `Splice` ever reaches emitted output (guard/assert)
-- [ ] `test/splice_test.dart`
-- [ ] Exports added to `lib/dart_sexp.dart`
+- [x] `lib/src/splice.dart` with `Splice` + `$splice` (`Splice` class lives in `core.dart`)
+- [x] `expand` flattens `Splice` children in every context
+- [x] `swap!` rewritten to use `$splice`
+- [x] Works inside `when`, inside `while`, and nested in another macro
+- [x] No `Splice` ever reaches emitted output (guard/assert)
+- [x] `test/splice_test.dart`
+- [x] Exports added to `lib/dart_macros.dart`
 
 ---
 

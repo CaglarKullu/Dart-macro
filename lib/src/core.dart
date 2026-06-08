@@ -113,17 +113,55 @@ String emit(Node node, [int indent = 0]) {
     // ── Control flow
     case 'if':
       final cond = emit(args[0], indent);
-      final then = emit(args[1], indent + 1);
-      if (args.length == 2) {
+      // args[1..] are the body statements (Splice may have added more than one).
+      // Distinguish: if there is NO else, all remaining args are the then-body.
+      // If there IS an else, it's the last arg when arg count would be ambiguous.
+      // By convention: if the last arg is a list starting with 'if' or 'do' or
+      // any non-statement, it could be an else. But we can't distinguish reliably
+      // after splicing. Instead, use a simpler heuristic: if args.length > 2 AND
+      // the last arg LOOKS like an else (is a list that could be a statement block),
+      // we can't tell. The safe approach for Splice: treat args[1..] as then-stmts,
+      // no else. Else is not commonly combined with spliced bodies. If an explicit
+      // else was passed (args.length == 3, single then + single else), use normal path.
+      if (args.length <= 2) {
+        // Normal path: [if, cond] or [if, cond, then]
+        if (args.length < 2) return 'if ($cond) {}';
+        final then = emit(args[1], indent + 1);
         return 'if ($cond) {\n$pad  $then\n$pad}';
       }
-      final else_ = emit(args[2], indent + 1);
-      return 'if ($cond) {\n$pad  $then\n$pad} else {\n$pad  $else_\n$pad}';
+      if (args.length == 3) {
+        // Could be [if, cond, then, else] — the standard form
+        final then  = emit(args[1], indent + 1);
+        final else_ = emit(args[2], indent + 1);
+        return 'if ($cond) {\n$pad  $then\n$pad} else {\n$pad  $else_\n$pad}';
+      }
+      // More than 3 args: splice injected multiple then-statements.
+      // Emit all as block statements.
+      {
+        final stmts = args.sublist(1)
+            .map((s) => '$pad  ${emit(s, indent + 1)};')
+            .join('\n');
+        return 'if ($cond) {\n$stmts\n$pad}';
+      }
 
     case 'while':
+      if (args.length > 2) {
+        // Splice injected multiple body statements
+        final stmts = args.sublist(1)
+            .map((s) => '$pad  ${emit(s, indent + 1)};')
+            .join('\n');
+        return 'while (${emit(args[0], indent)}) {\n$stmts\n$pad}';
+      }
       return 'while (${emit(args[0], indent)}) {\n$pad  ${emit(args[1], indent + 1)}\n$pad}';
 
     case 'for-in':
+      if (args.length > 3) {
+        // Splice injected multiple body statements
+        final stmts = args.sublist(2)
+            .map((s) => '$pad  ${emit(s, indent + 1)};')
+            .join('\n');
+        return 'for (final ${args[0]} in ${emit(args[1], indent)}) {\n$stmts\n$pad}';
+      }
       return 'for (final ${args[0]} in ${emit(args[1], indent)}) '
              '{\n$pad  ${emit(args[2], indent + 1)}\n$pad}';
 
