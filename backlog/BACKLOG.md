@@ -80,8 +80,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked/needs dec
       No build_runner, no annotations, no code to maintain.
 
 ### Stretch (only after 2.1–2.3 committed)
-- [ ] `defFromOpenApi(path, "SchemaName")`
-- [ ] `defAllFromJsonSchema("dir/")`
+- [x] `defFromOpenApi(path, "SchemaName")` — extracts a named schema from `components/schemas`; handles `$ref` fields; JSON-format only (no YAML dep)
+- [x] `defAllFromJsonSchema("dir/")` — scans directory, generates one `defrecord` per `.json` file, wraps in `do`; alphabetical order for determinism
 
 ---
 

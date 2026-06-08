@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:test/test.dart';
@@ -167,6 +168,222 @@ void main() {
       final dart = await asyncCompileDartLike(src);
       File('example/schema_demo/models.dart').writeAsStringSync(dart);
       expect(dart, contains('class Payment'));
+    });
+  });
+
+  // ─── defAllFromJsonSchema ─────────────────────────────────────────────────────
+
+  group('defAllFromJsonSchema', () {
+    late Directory tmpDir;
+
+    setUp(() {
+      tmpDir = Directory.systemTemp.createTempSync('dmacro_schema_test_');
+    });
+    tearDown(() => tmpDir.deleteSync(recursive: true));
+
+    test('generates a do-form with one record per file', () async {
+      File('${tmpDir.path}/user.json').writeAsStringSync(jsonEncode({
+        'title': 'User',
+        'type': 'object',
+        'required': ['id', 'name'],
+        'properties': {
+          'id':   {'type': 'integer'},
+          'name': {'type': 'string'},
+        },
+      }));
+      File('${tmpDir.path}/address.json').writeAsStringSync(jsonEncode({
+        'title': 'Address',
+        'type': 'object',
+        'required': ['street'],
+        'properties': {
+          'street': {'type': 'string'},
+          'city':   {'type': 'string'},
+        },
+      }));
+
+      final result = await asyncExpand(
+        ['defAllFromJsonSchema', '"${tmpDir.path}"'],
+      ) as List;
+
+      // Top-level 'do' node expanded — we get a defclass for each schema
+      final out = emit(result);
+      expect(out, contains('class User'));
+      expect(out, contains('class Address'));
+      expect(out, contains('final int id;'));
+      expect(out, contains('final String street;'));
+    });
+
+    test('files are processed in alphabetical order (deterministic)', () async {
+      File('${tmpDir.path}/b_schema.json').writeAsStringSync(jsonEncode({
+        'title': 'BSchema',
+        'type': 'object',
+        'required': ['x'],
+        'properties': {'x': {'type': 'integer'}},
+      }));
+      File('${tmpDir.path}/a_schema.json').writeAsStringSync(jsonEncode({
+        'title': 'ASchema',
+        'type': 'object',
+        'required': ['y'],
+        'properties': {'y': {'type': 'string'}},
+      }));
+
+      final result = await asyncExpand(
+        ['defAllFromJsonSchema', '"${tmpDir.path}"'],
+      ) as List;
+      final out = emit(result);
+      // Both classes present regardless of creation order
+      expect(out, contains('class ASchema'));
+      expect(out, contains('class BSchema'));
+    });
+
+    test('output is deterministic', () async {
+      File('${tmpDir.path}/item.json').writeAsStringSync(jsonEncode({
+        'title': 'Item',
+        'type': 'object',
+        'required': ['id'],
+        'properties': {'id': {'type': 'integer'}},
+      }));
+
+      resetGensym();
+      final a = emit(await asyncExpand(['defAllFromJsonSchema', '"${tmpDir.path}"']));
+      resetGensym();
+      final b = emit(await asyncExpand(['defAllFromJsonSchema', '"${tmpDir.path}"']));
+      expect(a, equals(b));
+    });
+
+    test('missing directory throws StateError with path', () async {
+      await expectLater(
+        asyncExpand(['defAllFromJsonSchema', '"no/such/dir"']),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message, 'message', contains('no/such/dir'),
+          ),
+        ),
+      );
+    });
+
+    test('empty directory throws StateError', () async {
+      await expectLater(
+        asyncExpand(['defAllFromJsonSchema', '"${tmpDir.path}"']),
+        throwsA(isA<StateError>()),
+      );
+    });
+  });
+
+  // ─── defFromOpenApi ───────────────────────────────────────────────────────────
+
+  group('defFromOpenApi', () {
+    test('extracts a named schema from components/schemas', () async {
+      final result = await asyncExpand([
+        'defFromOpenApi',
+        '"example/openapi_demo/petstore.json"',
+        '"Pet"',
+      ]) as List;
+      final out = emit(result);
+      expect(out, contains('class Pet'));
+      expect(out, contains('final int id;'));
+      expect(out, contains('final String name;'));
+    });
+
+    test('required fields are non-nullable', () async {
+      final result = await asyncExpand([
+        'defFromOpenApi',
+        '"example/openapi_demo/petstore.json"',
+        '"Pet"',
+      ]) as List;
+      final out = emit(result);
+      expect(out, contains('final int id;'));
+      expect(out, contains('final String name;'));
+    });
+
+    test('optional fields are nullable', () async {
+      final result = await asyncExpand([
+        'defFromOpenApi',
+        '"example/openapi_demo/petstore.json"',
+        '"Pet"',
+      ]) as List;
+      final out = emit(result);
+      expect(out, contains('final String? tag;'));
+    });
+
+    test('\$ref fields map to the referenced type name', () async {
+      final result = await asyncExpand([
+        'defFromOpenApi',
+        '"example/openapi_demo/petstore.json"',
+        '"Pet"',
+      ]) as List;
+      final out = emit(result);
+      // category is a $ref to Category — should map to the type name
+      expect(out, contains('Category?'));
+    });
+
+    test('can extract a different schema from the same file', () async {
+      final result = await asyncExpand([
+        'defFromOpenApi',
+        '"example/openapi_demo/petstore.json"',
+        '"Category"',
+      ]) as List;
+      final out = emit(result);
+      expect(out, contains('class Category'));
+      expect(out, contains('final String name;'));
+      expect(out, contains('final int? id;'));
+    });
+
+    test('missing file throws StateError with path', () async {
+      await expectLater(
+        asyncExpand([
+          'defFromOpenApi',
+          '"no/such/spec.json"',
+          '"Pet"',
+        ]),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message, 'message', contains('no/such/spec.json'),
+          ),
+        ),
+      );
+    });
+
+    test('unknown schema name throws StateError listing available schemas', () async {
+      await expectLater(
+        asyncExpand([
+          'defFromOpenApi',
+          '"example/openapi_demo/petstore.json"',
+          '"NoSuchSchema"',
+        ]),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message, 'message',
+            allOf(contains('NoSuchSchema'), contains('Pet')),
+          ),
+        ),
+      );
+    });
+
+    test('missing components/schemas throws StateError', () async {
+      late Directory tmpDir;
+      tmpDir = Directory.systemTemp.createTempSync('dmacro_openapi_test_');
+      addTearDown(() => tmpDir.deleteSync(recursive: true));
+
+      File('${tmpDir.path}/empty.json')
+          .writeAsStringSync(jsonEncode({'openapi': '3.0.0'}));
+
+      await expectLater(
+        asyncExpand([
+          'defFromOpenApi',
+          '"${tmpDir.path}/empty.json"',
+          '"Thing"',
+        ]),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('compiles through asyncCompileDartLike', () async {
+      const src =
+          'defFromOpenApi("example/openapi_demo/petstore.json", "Category");';
+      final out = await asyncCompileDartLike(src);
+      expect(out, contains('class Category'));
+      expect(out, contains('final String name;'));
     });
   });
 }
