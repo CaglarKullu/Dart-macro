@@ -1,0 +1,11 @@
+# VS Code extension — not part of the Dart package
+vscode-ext/
+
+# Internal project management (not useful to pub.dev consumers)
+CLAUDE.md
+backlog/
+specs/
+
+# CI / environment config
+.claude/
+.editorconfig
