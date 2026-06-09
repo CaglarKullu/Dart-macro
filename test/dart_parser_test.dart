@@ -32,12 +32,15 @@ void main() {
       final tokens = Tokenizer(src).tokenize();
       final forms = DartLikeParser(tokens).parseProgram();
       final form = forms[0] as List;
-      // ['defrecord', 'Payment', ['double','amount'], ['String','currency']]
+      // ['defrecord', 'Payment', ['double','amount', lineNum], ['String','currency', lineNum]]
       expect(form.length, equals(4));
       final f1 = form[2] as List;
       final f2 = form[3] as List;
-      expect(f1, equals(['double', 'amount']));
-      expect(f2, equals(['String', 'currency']));
+      // Fields now carry a source line number as a third element.
+      expect(f1.sublist(0, 2), equals(['double', 'amount']));
+      expect(f1[2], isA<int>()); // line number
+      expect(f2.sublist(0, 2), equals(['String', 'currency']));
+      expect(f2[2], isA<int>()); // line number
     });
 
     test('defrecord with nullable field', () {

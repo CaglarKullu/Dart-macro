@@ -18,6 +18,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dmacro/src/builtins.dart';
+import 'package:dmacro/src/core.dart' show MacroExpansionError;
 import 'package:dmacro/src/schema_macros.dart';
 import 'package:dmacro/src/async_expand.dart';
 import 'dart:convert' show jsonDecode;
@@ -120,7 +121,15 @@ Future<bool> _compileSingle(String inputPath,
         ? await asyncCompileDartLikeWithOrigins(source, inputPath)
         : await asyncCompileWithOrigins(source, inputPath);
   } catch (e) {
-    stderr.writeln('$inputPath: $e'); exit(1);
+    // MacroExpansionError already contains "file:line: message" — print as-is.
+    // Other exceptions (ParseException, TokenizerException) need the input path
+    // prepended, and we strip their verbose class-name prefix.
+    if (e is MacroExpansionError) {
+      stderr.writeln(e);
+    } else {
+      stderr.writeln('$inputPath: ${_stripExceptionPrefix(e)}');
+    }
+    exit(1);
   }
 
   if (doFormat) dart = _format(dart);
@@ -305,6 +314,23 @@ String _format(String code) {
     try { tmp?.deleteSync(); } catch (_) {}
   }
   return code;
+}
+
+// ─── Error formatting ────────────────────────────────────────────────────────
+
+/// Strips verbose class-name prefixes (e.g. `ParseException: `) so the CLI
+/// outputs the standard `file:line:col: message` format that IDEs understand.
+String _stripExceptionPrefix(Object e) {
+  final s = '$e';
+  for (final prefix in const [
+    'ParseException: ',
+    'TokenizerException: ',
+    'FormatException: ',
+    'StateError: ',
+  ]) {
+    if (s.startsWith(prefix)) return s.substring(prefix.length);
+  }
+  return s;
 }
 
 // ─── help ────────────────────────────────────────────────────────────────────

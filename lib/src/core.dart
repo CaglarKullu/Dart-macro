@@ -23,6 +23,32 @@ class Splice {
   const Splice(this.nodes);
 }
 
+// ─── MacroExpansionError ─────────────────────────────────────────────────────
+
+/// Thrown when a macro expansion fails, with the source file and line baked in.
+/// The [message] already contains a `file:line: description` prefix so callers
+/// can print it directly without adding extra path context.
+class MacroExpansionError implements Exception {
+  final String message;
+  const MacroExpansionError(this.message);
+  @override
+  String toString() => message;
+}
+
+// ─── Emitter source path ─────────────────────────────────────────────────────
+
+// Set by asyncCompile*WithOrigins before emitting each form. Macros read this
+// via [getEmitterSourcePath] to decide whether to embed per-element
+// `@dmacro-origin` markers in generated code.
+String? _emitterSourcePath;
+
+/// Sets the source file path used by `__origin__` nodes inside [emit].
+/// Call before [emit] in origin-tracking compile functions; clear afterwards.
+void setEmitterSourcePath(String? path) => _emitterSourcePath = path;
+
+/// Returns the active source path, or null when not in a WithOrigins compile.
+String? getEmitterSourcePath() => _emitterSourcePath;
+
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
 final _macros = <String, MacroFn>{};
@@ -277,11 +303,21 @@ String emit(Node node, [int indent = 0]) {
           '  factory $name.fromJson(String s) => $name.values.byName(s);\n'
           '  String toJson() => name;\n}';
 
+    // ── Per-element origin marker (emitted as an inline comment)
+    case '__origin__':
+      final line = args[0] as int;
+      final path = _emitterSourcePath;
+      return path == null ? '' : '// @dmacro-origin: $path:$line';
+
     // ── Class definition
     case 'defclass':
       final name = args[0] as String;
       final members = args.sublist(1);
-      final body = members.map((m) => emit(m, indent + 1)).join('\n  ');
+      // Filter empties so a null-path __origin__ node doesn't leave a blank line.
+      final parts = members
+          .map((m) => emit(m, indent + 1))
+          .where((s) => s.isNotEmpty);
+      final body = parts.join('\n  ');
       return 'class $name {\n  $body\n}';
 
     case 'field':
@@ -409,6 +445,7 @@ const _blockHeads = <String>{
   'defclass',
   'do',
   'defenum',
+  '__origin__', // inline comment — no trailing ; when used as a statement
 };
 
 /// True if [node] emits a block or declaration (so it should not be terminated

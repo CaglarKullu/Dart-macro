@@ -161,6 +161,8 @@ void _registerDataClass() {
       final fList = f as List;
       var type = fList[0] as String;
       final fname = fList[1] as String;
+      // Optional source line number — present when parsed from .dmacro source.
+      final fieldLine = fList.length > 2 ? fList[2] as int? : null;
       // If the field type is a defenum-registered name, add the enum: signal
       // so the emitter generates values.byName / .name serialization.
       final nullable = type.endsWith('?');
@@ -168,11 +170,20 @@ void _registerDataClass() {
       if (isRegisteredEnum(base)) {
         type = nullable ? 'enum:$base?' : 'enum:$base';
       }
-      return Field(type, fname);
+      return Field(type, fname, line: fieldLine);
     }).toList();
 
+    // Insert per-field origin markers when source line info is available AND
+    // we are inside a WithOrigins compile (emitter source path is set).
+    // This gives dart analyze errors on generated field declarations the
+    // correct source line (e.g. a typo in a type name).
+    final trackOrigins = getEmitterSourcePath() != null;
+
     return $class(name, [
-      ...fields.map((f) => $field(f.type, f.name)),
+      ...fields.expand((f) => [
+        if (trackOrigins && f.line != null) $origin(f.line!),
+        $field(f.type, f.name),
+      ]),
       $ctor(name, fields.map((f) => [f.type, f.name]).toList()),
       $copyWith(name, fields),
       $equality(name, fields),

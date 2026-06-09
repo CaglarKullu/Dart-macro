@@ -153,5 +153,13 @@ class Param {
 class Field {
   final String type;
   final String name;
-  const Field(this.type, this.name);
+  /// Source line in the `.dmacro` file (1-based), if known. Present when the
+  /// field was parsed from `.dmacro` source; absent for programmatic/sexp usage.
+  final int? line;
+  const Field(this.type, this.name, {this.line});
 }
+
+/// Embeds a `// @dmacro-origin: path:line` comment at this position in the
+/// generated class body. Only emits content when a source path is set via
+/// [setEmitterSourcePath] (i.e., inside a `WithOrigins` compile).
+Node $origin(int line) => ['__origin__', line];

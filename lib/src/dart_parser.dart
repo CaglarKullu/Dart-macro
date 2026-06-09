@@ -93,12 +93,13 @@ class DartLikeParser {
     _expect(TK.ident, 'defrecord');
     final name = _expect(TK.ident).value as String;
     _expect(TK.lbrace);
-    final fields = <List<String>>[];
+    final fields = <List<dynamic>>[];
     while (!_check(TK.rbrace)) {
+      final fieldLine = _peek().line; // capture source line before consuming type
       final t = _parseType();
       final n = _expect(TK.ident).value as String;
       _expect(TK.semi);
-      fields.add([t, n]);
+      fields.add([t, n, fieldLine]);
     }
     _expect(TK.rbrace);
     return ['defrecord', name, ...fields];

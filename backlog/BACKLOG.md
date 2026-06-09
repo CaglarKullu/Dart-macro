@@ -225,6 +225,31 @@ Resolved in the session following the Phase 5 review. Items 5.5–5.7 above cove
 details. Remaining adoption gap: the VS Code extension is not yet on the marketplace
 — surfacing it there is part of 7.1.
 
+### 7.5 Error message quality / statement-level source attribution (DONE)
+
+- [x] `MacroExpansionError` exception class in `core.dart` — wraps any crash during
+      macro expansion with the source file and line number baked in. CLI outputs
+      `file:line: message` directly, without redundant path prefix.
+- [x] `asyncCompileDartLikeWithOrigins` / `asyncCompileWithOrigins`: wrap each form
+      expansion in try/catch → `MacroExpansionError` with the form's source location
+- [x] Per-field `@dmacro-origin` markers inside generated `defrecord` class bodies:
+      - `DartLikeParser._defrecord()` captures each field's source line number
+      - `Field` class gains optional `int? line` attribute
+      - `defrecord` macro inserts `['__origin__', line]` nodes before each field
+        declaration when inside a `WithOrigins` compile (checked via `getEmitterSourcePath()`)
+      - `emit` handles `__origin__` case: emits `// @dmacro-origin: path:line` comment
+      - Result: `dart analyze` errors on field types (e.g. typos) are now attributed
+        to the specific field's source line, not just the defrecord's start line
+- [x] CLI error output stripped of verbose exception-class prefixes (`ParseException: ` →
+      just `line:col: message`, standard IDE-readable format)
+- [x] `.gitattributes` for GitHub Linguist (`.dmacro` → Dart, `.sexp` → Lisp)
+- [x] `.editorconfig` for consistent 2-space indentation across editors
+- [x] VS Code extension grammar updated: `defenum`, `defFromOpenApi`, `defAllFromJsonSchema`
+- [x] VS Code extension packaged to `dmacro-0.1.0.vsix`; install with
+      `cd vscode-ext && npm install && npm run package`
+- [x] Tests: `test/phase4_test.dart` — per-field origin markers, `MacroExpansionError`
+      wrapping, clean-path output; `test/dart_parser_test.dart` — field line numbers
+
 ---
 
 ## Cross-cutting (apply throughout)

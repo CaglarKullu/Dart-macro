@@ -5,6 +5,9 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:dmacro/dmacro.dart';
+import 'package:dmacro/src/async_expand.dart'
+    show asyncCompileDartLike, asyncCompileDartLikeWithOrigins, asyncCompileWithOrigins;
+import 'package:dmacro/src/core.dart' show MacroExpansionError, defmacro;
 
 void main() {
   setUpAll(registerBuiltins);
@@ -131,6 +134,56 @@ void main() {
         workingDirectory: Directory.current.path,
       );
       expect(result.exitCode, equals(0));
+    });
+  });
+
+  // ─── Per-field origin markers (statement-level attribution) ─────────────────
+
+  group('per-field origin markers', () {
+    test('asyncCompileDartLikeWithOrigins embeds per-field @dmacro-origin', () async {
+      const src = '''
+defrecord Payment {
+  double amount;
+  String currency;
+}
+''';
+      final out = await asyncCompileDartLikeWithOrigins(src, 'models.dmacro');
+      // The origin for the defrecord form
+      expect(out, contains('// @dmacro-origin: models.dmacro:'));
+      // Per-field markers inside the class body (fields start at line 2 and 3)
+      expect(out, contains('// @dmacro-origin: models.dmacro:2'));
+      expect(out, contains('// @dmacro-origin: models.dmacro:3'));
+      // The markers appear before the generated field declarations
+      final origin2 = out.indexOf('// @dmacro-origin: models.dmacro:2');
+      final finalAmount = out.indexOf('final double amount;');
+      expect(origin2, lessThan(finalAmount),
+          reason: 'origin marker should appear before the field declaration');
+    });
+
+    test('asyncCompileDartLike (no origin tracking) has no per-field markers', () async {
+      const src = 'defrecord Point { double x; double y; }';
+      final out = await asyncCompileDartLike(src);
+      // No @dmacro-origin comments when not using WithOrigins
+      expect(out, isNot(contains('@dmacro-origin')));
+    });
+
+    test('MacroExpansionError wraps crash with file:line context', () async {
+      // Register a macro that throws during expansion to exercise the wrapping.
+      defmacro('_throwForTest', (_) => throw StateError('boom'));
+      await expectLater(
+        asyncCompileDartLikeWithOrigins('_throwForTest();', 'crash.dmacro'),
+        throwsA(isA<MacroExpansionError>()),
+      );
+    });
+
+    test('MacroExpansionError message includes source path and line', () async {
+      defmacro('_throwForTest', (_) => throw StateError('boom'));
+      try {
+        await asyncCompileDartLikeWithOrigins('_throwForTest();', 'crash.dmacro');
+        fail('Expected MacroExpansionError');
+      } on MacroExpansionError catch (e) {
+        expect(e.toString(), contains('crash.dmacro:1:'));
+      }
     });
   });
 

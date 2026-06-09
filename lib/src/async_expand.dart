@@ -95,6 +95,10 @@ Future<String> asyncCompileDartLike(String source) async {
 
 /// Like [asyncCompileDartLike] but prefixes each emitted form with an origin
 /// comment: `// @dmacro-origin: <sourcePath>:<line>`.
+///
+/// Also sets the emitter source path so macros can embed per-element origin
+/// markers (e.g. per-field markers inside a `defrecord` generated class).
+/// Wraps expansion errors as [MacroExpansionError] with the source location.
 Future<String> asyncCompileDartLikeWithOrigins(
     String source, String sourcePath) async {
   resetGensym();
@@ -103,14 +107,26 @@ Future<String> asyncCompileDartLikeWithOrigins(
   final spanned = DartLikeParser(tokens).parseProgramSpanned();
   final results = <String>[];
   for (final (form, line) in spanned) {
-    final emitted = emit(await asyncExpand(form));
-    results.add('// @dmacro-origin: $sourcePath:$line\n$emitted');
+    setEmitterSourcePath(sourcePath);
+    try {
+      final emitted = emit(await asyncExpand(form));
+      results.add('// @dmacro-origin: $sourcePath:$line\n$emitted');
+    } on MacroExpansionError {
+      rethrow;
+    } catch (e) {
+      throw MacroExpansionError('$sourcePath:$line: $e');
+    } finally {
+      setEmitterSourcePath(null);
+    }
   }
   return assembleOutput(results);
 }
 
 /// Like [asyncCompile] (.sexp) but prefixes each emitted form with an origin
 /// comment: `// @dmacro-origin: <sourcePath>:<line>`.
+///
+/// Also sets the emitter source path and wraps expansion errors as
+/// [MacroExpansionError] with the source location.
 Future<String> asyncCompileWithOrigins(
     String source, String sourcePath) async {
   resetGensym();
@@ -118,8 +134,17 @@ Future<String> asyncCompileWithOrigins(
   final spanned = Reader(source).readAllSpanned();
   final results = <String>[];
   for (final (form, line) in spanned) {
-    final emitted = emit(await asyncExpand(form));
-    results.add('// @dmacro-origin: $sourcePath:$line\n$emitted');
+    setEmitterSourcePath(sourcePath);
+    try {
+      final emitted = emit(await asyncExpand(form));
+      results.add('// @dmacro-origin: $sourcePath:$line\n$emitted');
+    } on MacroExpansionError {
+      rethrow;
+    } catch (e) {
+      throw MacroExpansionError('$sourcePath:$line: $e');
+    } finally {
+      setEmitterSourcePath(null);
+    }
   }
   return assembleOutput(results);
 }
