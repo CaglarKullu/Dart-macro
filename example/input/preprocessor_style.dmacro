@@ -1,0 +1,16 @@
+// preprocessor_style.dmacro
+//
+// The same Payment model as annotation_style.dart, written the way this project
+// actually works. Compile it:
+//
+//   dart run bin/dmacro.dart compile example/input/preprocessor_style.dmacro
+//
+// One declaration regenerates a COMPLETE .dart file: fields, const constructor,
+// copyWith (with explicit-null support), structural ==/hashCode, toString, and
+// fromJson/toJson — none of which the annotation approach could produce.
+
+defrecord Payment {
+  double  amount;
+  String  currency;
+  String? reference;
+}

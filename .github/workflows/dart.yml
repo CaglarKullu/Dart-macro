@@ -18,11 +18,8 @@ jobs:
       - name: Install dependencies
         run: dart pub get
 
-      # Analyze only lib/ and test/ — example/ contains intentional demo stubs
-      # (e.g. example/input/ uses placeholder annotations) and generated output
-      # files that are not subject to lint rules.
       - name: Analyze project source
-        run: dart analyze lib/ test/
+        run: dart analyze
 
       - name: Run tests
         run: dart test

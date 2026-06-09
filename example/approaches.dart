@@ -9,7 +9,6 @@ library;
 import '../lib/src/core.dart';
 import '../lib/src/nodes.dart';
 import '../lib/src/builtins.dart';
-import '../lib/src/reader.dart';
 
 void main() {
   registerBuiltins();
@@ -69,14 +68,6 @@ void _approach2_TypedBuilder() {
 
   // You write normal Dart to build and emit code.
   // No S-expressions visible. Just Dart function calls.
-  final paymentRecord = [
-    'defrecord',
-    'Payment',
-    ['double', 'amount'],
-    ['String', 'currency'],
-    ['String?', 'reference'],
-  ];
-
   final validateFn = $defn(
     returns: 'bool',
     name: 'validatePayment',
@@ -191,13 +182,16 @@ void _macroDefinitionComparison() {
   │  Macro USE (who uses them: application developers)        │
   │  ⚠️  Three options — each with a tradeoff                 │
   │                                                           │
-  │  A. S-expression files: cleanest syntax, foreign feel     │
+  │  A. S-expression files (.sexp): cleanest, foreign feel    │
   │  B. Typed builder API: 100% Dart, verbose                 │
   │  C. Hybrid: S-expressions for codegen, Dart elsewhere     │
+  │  D. Dart-like files (.dmacro): looks like Dart  ◀ BUILT   │
   │                                                           │
-  │  The "inline Dart syntax" option requires building a      │
-  │  Dart expression parser (~300 more lines). Possible but   │
-  │  it's the next layer after this one.                      │
+  │  Option D — the "inline Dart syntax" that earlier looked  │
+  │  like a future layer — now EXISTS. The .dmacro tokenizer  │
+  │  + parser (Phase 3) accept Dart-like syntax and produce   │
+  │  the same AST as the reader, so it is the recommended     │
+  │  path today. See example/payment.dmacro.                  │
   │                                                           │
   └───────────────────────────────────────────────────────────┘
   ''');
@@ -205,19 +199,18 @@ void _macroDefinitionComparison() {
   print('▸ PRACTICAL RECOMMENDATION\n');
   print('''
   For a Dart package today:
-  
+
   1. Define macros in Dart using the typed node API (\$if, \$not, etc.)
   2. Publish them as a normal pub.dev package
-  3. Users call compile() with S-expression strings OR use the builder API
-  4. Generated Dart gets written to a .g.dart file (like build_runner)
+  3. Users write .dmacro files (Dart-like) or .sexp files (S-expression)
+  4. `dmacro compile` regenerates a complete .dart file (committed, like build_runner output)
 
   This gives you:
   - Macro DEFINITIONS in pure Dart ✅
   - Real expression-level transforms (unlike macro_kit) ✅
   - Full Dart language power inside macros ✅
+  - Compile-time I/O — read JSON schemas / OpenAPI specs at build time ✅
   - No build_runner, no WebSocket, no daemon process ✅
-
-  What it does NOT give you:
-  - Inline syntax that looks like Dart (that needs the parser layer)
+  - Inline syntax that looks like Dart (.dmacro) ✅  ← the parser layer is built
   ''');
 }
