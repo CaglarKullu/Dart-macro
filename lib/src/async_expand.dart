@@ -127,8 +127,7 @@ Future<String> asyncCompileDartLikeWithOrigins(
 ///
 /// Also sets the emitter source path and wraps expansion errors as
 /// [MacroExpansionError] with the source location.
-Future<String> asyncCompileWithOrigins(
-    String source, String sourcePath) async {
+Future<String> asyncCompileWithOrigins(String source, String sourcePath) async {
   resetGensym();
   resetEnumRegistry();
   final spanned = Reader(source).readAllSpanned();
@@ -161,13 +160,13 @@ Future<Node> _asyncExpandWithTrace(
 
   if (head is String) {
     final asyncFn = _asyncMacros[head];
-    final syncFn  = getMacro(head);
+    final syncFn = getMacro(head);
 
     if (asyncFn != null || syncFn != null) {
       counter.value++;
       final pad = '  ' * depth;
       sink.writeln('$pad[${counter.value}] ${_abbrev(_nodeStr(node))}');
-      final raw    = asyncFn != null ? await asyncFn(args) : syncFn!(args);
+      final raw = asyncFn != null ? await asyncFn(args) : syncFn!(args);
       final result = await _asyncExpandWithTrace(raw, sink, depth + 1, counter);
       sink.writeln('$pad        → ${_abbrev(_nodeStr(result))}');
       return result;
@@ -186,12 +185,16 @@ Future<Node> _asyncExpandWithTrace(
   return out;
 }
 
-class _TraceRef { int value = 0; }
+class _TraceRef {
+  int value = 0;
+}
 
 String _nodeStr(Node node) {
   if (node == null) return 'null';
   if (node is Splice) return '~@(${node.nodes.map(_nodeStr).join(' ')})';
-  if (node is List) return node.isEmpty ? '()' : '(${node.map(_nodeStr).join(' ')})';
+  if (node is List) {
+    return node.isEmpty ? '()' : '(${node.map(_nodeStr).join(' ')})';
+  }
   return '$node';
 }
 
@@ -203,7 +206,7 @@ Future<String> asyncCompileDartLikeWithTrace(
     String source, String sourcePath, StringSink sink) async {
   resetGensym();
   resetEnumRegistry();
-  final tokens  = Tokenizer(source).tokenize();
+  final tokens = Tokenizer(source).tokenize();
   final spanned = DartLikeParser(tokens).parseProgramSpanned();
   final results = <String>[];
   final counter = _TraceRef();

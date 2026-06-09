@@ -11,19 +11,21 @@ void main() {
       expect(a, isNot(equals(b)));
     });
 
-    test('names use __ prefix and supplied prefix', () {
+    test('names use dm prefix with capitalised prefix and no leading underscore',
+        () {
       final name = gensym('swap');
-      expect(name, startsWith('__swap_'));
+      expect(name, startsWith('dmSwap_'));
+      expect(name, isNot(startsWith('_')));
     });
 
     test('default prefix is g', () {
       final name = gensym();
-      expect(name, startsWith('__g_'));
+      expect(name, startsWith('dmG_'));
     });
 
     test('counter increments across different prefixes', () {
-      final a = gensym('foo'); // __foo_0
-      final b = gensym('bar'); // __bar_1
+      final a = gensym('foo'); // dmFoo_0
+      final b = gensym('bar'); // dmBar_1
       expect(a, contains('0'));
       expect(b, contains('1'));
     });
@@ -35,7 +37,7 @@ void main() {
       gensym();
       gensym();
       resetGensym();
-      expect(gensym('x'), equals('__x_0'));
+      expect(gensym('x'), equals('dmX_0'));
     });
 
     test('same source compiles to identical output after reset', () {
@@ -50,10 +52,10 @@ void main() {
   });
 
   group('gensym — collision safety', () {
-    test('swap! temp does not collide with user variable __swap_0', () {
+    test('swap! temp does not collide with a pre-burned dmSwap_0', () {
       registerBuiltins();
-      // Burn __swap_0 so the macro must use a later name
-      gensym('swap'); // __swap_0 taken
+      // Burn dmSwap_0 so the macro must use a later name
+      gensym('swap'); // dmSwap_0 taken
 
       final parent = expand([
         'do',
@@ -61,8 +63,8 @@ void main() {
       ]) as List;
       final letStmt = parent[1] as List;
       final tmp = letStmt[1] as String;
-      expect(tmp, isNot(equals('__swap_0')));
-      expect(tmp, startsWith('__swap_'));
+      expect(tmp, isNot(equals('dmSwap_0')));
+      expect(tmp, startsWith('dmSwap_'));
     });
 
     test('compile() calls resetGensym() — repeated calls are deterministic',

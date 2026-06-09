@@ -98,7 +98,8 @@ class DartLikeParser {
     _expect(TK.lbrace);
     final fields = <List<dynamic>>[];
     while (!_check(TK.rbrace)) {
-      final fieldLine = _peek().line; // capture source line before consuming type
+      final fieldLine =
+          _peek().line; // capture source line before consuming type
       final t = _parseType();
       final n = _expect(TK.ident).value as String;
       _expect(TK.semi);
@@ -510,11 +511,10 @@ class DartLikeParser {
       _advance();
       final items = <Node>[];
       while (!_check(TK.rbracket)) {
-        // spread: ...expr
-        if (_check(TK.dot)) {
-          _advance();
-          _advance();
-          _advance(); // consume three dots
+        // spread: ...expr  (tokenizer emits ".." as TK.cascade then "." as TK.dot)
+        if (_check(TK.cascade) && _peek2().kind == TK.dot) {
+          _advance(); // consume ".." cascade
+          _advance(); // consume "." dot
           items.add(['...', _expr()]);
         } else {
           items.add(_expr());

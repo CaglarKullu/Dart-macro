@@ -162,6 +162,16 @@ void main() {
       final out = compileDartLike(src);
       expect(out, contains('[]'));
     });
+
+    test('spread operator in list literal', () {
+      const src = '''
+        List<int> combined(List<int> a, List<int> b) {
+          return [...a, ...b];
+        }
+      ''';
+      final out = compileDartLike(src);
+      expect(out, contains('[...a, ...b]'));
+    });
   });
 
   // ─── 3.5 Real-world snippets ─────────────────────────────────────────────────
@@ -192,7 +202,7 @@ void main() {
       ''';
       final out = compileDartLike(src);
       expect(out, contains('if'));
-      expect(out, contains('__swap_'));
+      expect(out, contains('dmSwap_'));
     });
 
     test('snippet 3: defrecord with full class', () {

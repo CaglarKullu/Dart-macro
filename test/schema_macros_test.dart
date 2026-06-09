@@ -496,7 +496,11 @@ void main() {
     });
 
     test('defenum node emits valid Dart enum with fromJson/toJson', () {
-      final out = emit(['defenum', 'Status', ['active', 'inactive']]);
+      final out = emit([
+        'defenum',
+        'Status',
+        ['active', 'inactive']
+      ]);
       expect(out, contains('enum Status'));
       expect(out, contains('active'));
       expect(out, contains('inactive'));
@@ -611,8 +615,7 @@ void main() {
       final code = await asyncCompileDartLike(
         'defFromJsonSchema("${tmpDir.path}/order.json");',
       );
-      final prog = File('${tmpDir.path}/prog.dart')
-        ..writeAsStringSync('''
+      final prog = File('${tmpDir.path}/prog.dart')..writeAsStringSync('''
 $code
 
 void main() {
@@ -636,7 +639,8 @@ void main() {
     setUp(() => tmpDir = Directory.systemTemp.createTempSync('dmacro_defs_'));
     tearDown(() => tmpDir.deleteSync(recursive: true));
 
-    test(r'schema with $defs enum generates the enum before the record', () async {
+    test(r'schema with $defs enum generates the enum before the record',
+        () async {
       File('${tmpDir.path}/order.json').writeAsStringSync(jsonEncode({
         'title': 'Order',
         'type': 'object',
@@ -646,7 +650,9 @@ void main() {
           'status': {r'$ref': r'#/$defs/Status'},
         },
         r'$defs': {
-          'Status': {'enum': ['pending', 'shipped', 'delivered']},
+          'Status': {
+            'enum': ['pending', 'shipped', 'delivered']
+          },
         },
       }));
       final code = await asyncCompileDartLike(
@@ -667,7 +673,9 @@ void main() {
           'status': {r'$ref': r'#/$defs/Status'},
         },
         r'$defs': {
-          'Status': {'enum': ['pending', 'shipped']},
+          'Status': {
+            'enum': ['pending', 'shipped']
+          },
         },
       }));
       final code = await asyncCompileDartLike(
@@ -718,7 +726,9 @@ void main() {
           'kind': {r'$ref': '#/definitions/Kind'},
         },
         'definitions': {
-          'Kind': {'enum': ['physical', 'digital']},
+          'Kind': {
+            'enum': ['physical', 'digital']
+          },
         },
       }));
       final code = await asyncCompileDartLike(

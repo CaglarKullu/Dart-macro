@@ -5,9 +5,6 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:dmacro/dmacro.dart';
-import 'package:dmacro/src/async_expand.dart'
-    show asyncCompileDartLike, asyncCompileDartLikeWithOrigins, asyncCompileWithOrigins;
-import 'package:dmacro/src/core.dart' show MacroExpansionError, defmacro;
 
 void main() {
   setUpAll(registerBuiltins);
@@ -140,7 +137,8 @@ void main() {
   // ─── Per-field origin markers (statement-level attribution) ─────────────────
 
   group('per-field origin markers', () {
-    test('asyncCompileDartLikeWithOrigins embeds per-field @dmacro-origin', () async {
+    test('asyncCompileDartLikeWithOrigins embeds per-field @dmacro-origin',
+        () async {
       const src = '''
 defrecord Payment {
   double amount;
@@ -160,7 +158,8 @@ defrecord Payment {
           reason: 'origin marker should appear before the field declaration');
     });
 
-    test('asyncCompileDartLike (no origin tracking) has no per-field markers', () async {
+    test('asyncCompileDartLike (no origin tracking) has no per-field markers',
+        () async {
       const src = 'defrecord Point { double x; double y; }';
       final out = await asyncCompileDartLike(src);
       // No @dmacro-origin comments when not using WithOrigins
@@ -179,7 +178,8 @@ defrecord Payment {
     test('MacroExpansionError message includes source path and line', () async {
       defmacro('_throwForTest', (_) => throw StateError('boom'));
       try {
-        await asyncCompileDartLikeWithOrigins('_throwForTest();', 'crash.dmacro');
+        await asyncCompileDartLikeWithOrigins(
+            '_throwForTest();', 'crash.dmacro');
         fail('Expected MacroExpansionError');
       } on MacroExpansionError catch (e) {
         expect(e.toString(), contains('crash.dmacro:1:'));

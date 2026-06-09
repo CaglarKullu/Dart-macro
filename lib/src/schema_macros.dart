@@ -54,8 +54,11 @@ void registerSchemaMacros() {
     for (final file in files) {
       final json =
           jsonDecode(await file.readAsString()) as Map<String, dynamic>;
-      final title = json['title'] as String?;
-      if (title != null && json['enum'] != null) {
+      if (json['enum'] != null) {
+        // Register by title if present, fall back to the stem of the filename
+        // so $ref: '#/.../Status' resolves even when the schema has no title.
+        final title = (json['title'] as String?) ??
+            file.uri.pathSegments.last.replaceAll('.json', '');
         _knownEnumNames.add(title);
       }
       _prescannDefs(json);
@@ -143,7 +146,8 @@ final _knownEnumNames = <String>{};
 /// enum type names in [_knownEnumNames]. Must be called before generating
 /// types so that `$ref` fields resolve correctly.
 void _prescannDefs(Map<String, dynamic> schema) {
-  final defs = (schema[r'$defs'] ?? schema['definitions']) as Map<String, dynamic>?;
+  final defs =
+      (schema[r'$defs'] ?? schema['definitions']) as Map<String, dynamic>?;
   if (defs == null) return;
   for (final entry in defs.entries) {
     final defSchema = entry.value as Map<String, dynamic>;
@@ -157,7 +161,8 @@ void _prescannDefs(Map<String, dynamic> schema) {
 /// Generates type nodes for all entries in the `$defs` / `definitions` block
 /// of [schema]. Returns an empty list when no such block exists.
 List<Node> _generateDefNodes(Map<String, dynamic> schema) {
-  final defs = (schema[r'$defs'] ?? schema['definitions']) as Map<String, dynamic>?;
+  final defs =
+      (schema[r'$defs'] ?? schema['definitions']) as Map<String, dynamic>?;
   if (defs == null) return const [];
 
   final nodes = <Node>[];
@@ -167,8 +172,10 @@ List<Node> _generateDefNodes(Map<String, dynamic> schema) {
     final enumValues = defSchema['enum'] as List?;
 
     if (enumValues != null) {
-      nodes.add(['defenum', defName, enumValues.map((v) => v.toString()).toList()]);
-    } else if (defSchema['type'] == 'object' || defSchema['properties'] != null) {
+      nodes.add(
+          ['defenum', defName, enumValues.map((v) => v.toString()).toList()]);
+    } else if (defSchema['type'] == 'object' ||
+        defSchema['properties'] != null) {
       nodes.add(_defrecordFromSchema(defName, defSchema));
     }
   }
@@ -189,7 +196,10 @@ Future<Node> _defrecordFromSchemaFile(
 
   final json = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
   if (json['title'] == null) {
-    throw StateError('$callerMacro: schema at $path missing "title"');
+    final hint = json['oneOf'] != null
+        ? ' (for oneOf schemas, add a "title" to name the sealed parent class)'
+        : '';
+    throw StateError('$callerMacro: schema at $path missing "title"$hint');
   }
 
   final title = json['title'] as String;
@@ -236,8 +246,8 @@ Node _defrecordFromSchema(String name, Map<String, dynamic> schema) {
       // separate enum declaration alongside the record.
       final enumName = _toPascalCase(entry.key);
       _knownEnumNames.add(enumName);
-      inlineEnums
-          .add(['defenum', enumName, enumValues.map((v) => v.toString()).toList()]);
+      inlineEnums.add(
+          ['defenum', enumName, enumValues.map((v) => v.toString()).toList()]);
       var type = 'enum:$enumName';
       if (!required.contains(entry.key)) type = '$type?';
       fields.add([type, entry.key]);
@@ -270,10 +280,9 @@ Node _defunionFromOneOf(
       continue; // skip nameless variants
     }
 
-    final props =
-        (vs['properties'] as Map<String, dynamic>? ?? const {}).cast<String, dynamic>();
-    final required =
-        ((vs['required'] as List?) ?? const []).cast<String>();
+    final props = (vs['properties'] as Map<String, dynamic>? ?? const {})
+        .cast<String, dynamic>();
+    final required = ((vs['required'] as List?) ?? const []).cast<String>();
     final fields = <List<String>>[];
 
     for (final entry in props.entries) {
@@ -284,6 +293,12 @@ Node _defunionFromOneOf(
     }
 
     variants.add([variantName, ...fields]);
+  }
+  if (variants.isEmpty) {
+    throw StateError(
+      'defFromJsonSchema/defFromOpenApi: oneOf schema "$name" has no named '
+      'variants. Each oneOf entry needs a "title" or a "\$ref".',
+    );
   }
   return ['defunion', name, ...variants];
 }
@@ -326,8 +341,8 @@ String _dartType(Map<String, dynamic> schema) {
 /// PascalCase: `status` → `Status`, `order_status` → `OrderStatus`.
 String _toPascalCase(String s) => s
     .split('_')
-    .map((part) =>
-        part.isEmpty ? '' : part[0].toUpperCase() + part.substring(1))
+    .map(
+        (part) => part.isEmpty ? '' : part[0].toUpperCase() + part.substring(1))
     .join('');
 
 String _unquote(String s) =>

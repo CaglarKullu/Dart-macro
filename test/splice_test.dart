@@ -152,9 +152,9 @@ void main() {
         ['swap!', 'a', 'b']
       ]);
       final out = emit(expanded);
-      expect(out, contains('final __swap_0 = a'));
+      expect(out, contains('final dmSwap_0 = a'));
       expect(out, contains('a = b'));
-      expect(out, contains('b = __swap_0'));
+      expect(out, contains('b = dmSwap_0'));
     });
 
     test('emitting when with swap! produces valid Dart if-statement', () {
@@ -166,9 +166,9 @@ void main() {
       ]);
       final out = emit(expanded);
       expect(out, contains('if'));
-      expect(out, contains('__swap_0'));
+      expect(out, contains('dmSwap_0'));
       expect(out, contains('a = b'));
-      expect(out, contains('b = __swap_0'));
+      expect(out, contains('b = dmSwap_0'));
     });
 
     test('compileDartLike swap! in function body produces valid Dart', () {
@@ -180,7 +180,7 @@ void main() {
         }
       ''';
       final out = compileDartLike(src);
-      expect(out, contains('__swap_0'));
+      expect(out, contains('dmSwap_0'));
       expect(out, contains('a = b'));
     });
   });
@@ -238,7 +238,9 @@ void main() {
       void checkNoSplice(dynamic node) {
         expect(node, isNot(isA<Splice>()));
         if (node is List) {
-          for (final child in node) { checkNoSplice(child); }
+          for (final child in node) {
+            checkNoSplice(child);
+          }
         }
       }
 

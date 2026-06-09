@@ -34,6 +34,8 @@ class _L {
 List<_L> _scan(String input) {
   final out = <_L>[];
   for (var line in input.split('\n')) {
+    // Normalise Windows line endings.
+    if (line.endsWith('\r')) line = line.substring(0, line.length - 1);
     line = _dropComment(line);
     final trimmed = line.trim();
     if (trimmed.isEmpty || trimmed == '---' || trimmed == '...') continue;
@@ -118,7 +120,7 @@ class _Ctx {
       final ln = _cur;
       pos++;
       final ci = _colonAt(ln.raw);
-      final key = _scalar(ln.raw.substring(0, ci)) as String;
+      final key = (_scalar(ln.raw.substring(0, ci)) ?? '').toString();
       final rest = ln.raw.substring(ci + 1).trim();
 
       dynamic val;
@@ -158,7 +160,7 @@ class _Ctx {
       } else if (_colonAt(rest) >= 0) {
         // Inline first key-value pair; further entries may follow on next lines.
         final ci = _colonAt(rest);
-        final key = _scalar(rest.substring(0, ci)) as String;
+        final key = (_scalar(rest.substring(0, ci)) ?? '').toString();
         final v = rest.substring(ci + 1).trim();
         final Map<String, dynamic> item = {};
         if (v.isEmpty) {
@@ -205,7 +207,7 @@ class _Ctx {
       final t = entry.trim();
       final ci = _colonAt(t);
       if (ci < 0) continue;
-      final key = _scalar(t.substring(0, ci)) as String;
+      final key = (_scalar(t.substring(0, ci)) ?? '').toString();
       map[key] = _scalarOrFlow(t.substring(ci + 1).trim());
     }
     return map;
@@ -237,9 +239,11 @@ class _Ctx {
       } else if (c == '"' && !inS) {
         inD = !inD;
       } else if (!inS && !inD) {
-        if (c == '{' || c == '[') depth++;
-        else if (c == '}' || c == ']') depth--;
-        else if (c == ',' && depth == 0) {
+        if (c == '{' || c == '[') {
+          depth++;
+        } else if (c == '}' || c == ']') {
+          depth--;
+        } else if (c == ',' && depth == 0) {
           items.add(s.substring(start, i));
           start = i + 1;
         }

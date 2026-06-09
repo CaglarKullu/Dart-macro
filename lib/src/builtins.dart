@@ -52,7 +52,7 @@ void _registerControlFlow() {
         err,
         $if(
           $eq(attempt, $sub(n, 1)),
-          $throw(err),
+          'rethrow',
           $call('print', [$str('Retrying...')]),
         ),
       ),
@@ -68,12 +68,14 @@ void _registerControlFlow() {
   // Registered under both the kebab-case (.sexp) and camelCase (.dmacro) names.
   Node assertThat(List<Node> args) {
     // Escape \ and " so the emitted expression is safe inside a double-quoted string.
-    final exprStr = emit(args[0]).replaceAll(r'\', r'\\').replaceAll('"', r'\"');
+    final exprStr =
+        emit(args[0]).replaceAll(r'\', r'\\').replaceAll('"', r'\"');
     return $if(
       $not(args[0]),
       $throw('AssertionError("Expected: $exprStr, got false")'),
     );
   }
+
   defmacro('assert-that', assertThat);
   defmacro('assertThat', assertThat);
 }
@@ -182,9 +184,9 @@ void _registerDataClass() {
 
     return $class(name, [
       ...fields.expand((f) => [
-        if (trackOrigins && f.line != null) $origin(f.line!),
-        $field(f.type, f.name),
-      ]),
+            if (trackOrigins && f.line != null) $origin(f.line!),
+            $field(f.type, f.name),
+          ]),
       $ctor(name, fields.map((f) => [f.type, f.name]).toList()),
       $copyWith(name, fields),
       $equality(name, fields),

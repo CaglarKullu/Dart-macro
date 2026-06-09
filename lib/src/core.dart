@@ -310,9 +310,8 @@ String emit(Node node, [int indent = 0]) {
       final name = args[0] as String;
       final members = args.sublist(1);
       // Filter empties so a null-path __origin__ node doesn't leave a blank line.
-      final parts = members
-          .map((m) => emit(m, indent + 1))
-          .where((s) => s.isNotEmpty);
+      final parts =
+          members.map((m) => emit(m, indent + 1)).where((s) => s.isNotEmpty);
       final body = parts.join('\n  ');
       return 'class $name {\n  $body\n}';
 
@@ -414,6 +413,10 @@ String emit(Node node, [int indent = 0]) {
     // ── Null-aware property access: ['?.-prop', receiver]
     case String s when s.startsWith('?.-'):
       return '${emit(args[0], indent)}?.${s.substring(3)}';
+
+    // ── Spread element in list:  ['...', expr]
+    case '...':
+      return '...${emit(args[0], indent)}';
 
     // ── Method call:  ['.method', receiver, arg1, ...]
     case String s when s.startsWith('.') && !s.startsWith('.-'):
@@ -551,7 +554,7 @@ String _toJsonExpr(String type, String fname) {
 }
 
 /// Sentinel marking an omitted `copyWith` argument (distinct from `null`).
-const _dmUndefinedSrc = 'const Object? _dmUndefined = Object();';
+const _dmUndefinedSrc = 'const Object _dmUndefined = Object();';
 
 /// Self-contained structural equality used by generated `==`. Zero non-SDK deps.
 const _dmEqSrc = '''

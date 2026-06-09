@@ -281,7 +281,8 @@ defrecord User { String id; Addr addr; }
       expect(out.trim(), 'ok');
     });
 
-    test('copyWith() with no args returns equivalent (but not identical) object',
+    test(
+        'copyWith() with no args returns equivalent (but not identical) object',
         () async {
       const model = 'defrecord Num { int value; }';
       final out = await _runGenerated(model, '''
@@ -329,7 +330,8 @@ defrecord Order {
       expect(code, contains("json['status'] as String"));
     });
 
-    test('defrecord with string field holding enum value round-trips', () async {
+    test('defrecord with string field holding enum value round-trips',
+        () async {
       const model = 'defrecord Ticket { String id; String state; }';
       final out = await _runGenerated(model, '''
   final t = Ticket(id: '1', state: 'open');

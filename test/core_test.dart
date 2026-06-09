@@ -483,7 +483,11 @@ void main() {
     });
 
     test('nested ?? chains', () {
-      final out = emit(['??', ['??', 'a', 'b'], 'c']);
+      final out = emit([
+        '??',
+        ['??', 'a', 'b'],
+        'c'
+      ]);
       expect(out, equals('((a ?? b) ?? c)'));
     });
   });
@@ -496,11 +500,23 @@ void main() {
     });
 
     test('await on a call expression', () {
-      expect(emit(['await', ['fetchData', 'url']]), equals('await fetchData(url)'));
+      expect(
+          emit([
+            'await',
+            ['fetchData', 'url']
+          ]),
+          equals('await fetchData(url)'));
     });
 
     test('await nested in let binding', () {
-      final out = emit(['let', 'result', ['await', ['load', '"path"']]]);
+      final out = emit([
+        'let',
+        'result',
+        [
+          'await',
+          ['load', '"path"']
+        ]
+      ]);
       expect(out, equals('final result = await load("path")'));
     });
   });
@@ -513,12 +529,22 @@ void main() {
     });
 
     test('ternary with comparison condition', () {
-      final out = emit(['?:', ['>', 'x', 0], '"pos"', '"neg"']);
+      final out = emit([
+        '?:',
+        ['>', 'x', 0],
+        '"pos"',
+        '"neg"'
+      ]);
       expect(out, equals('((x > 0) ? "pos" : "neg")'));
     });
 
     test('nested ternaries', () {
-      final out = emit(['?:', 'a', ['?:', 'b', 1, 2], 3]);
+      final out = emit([
+        '?:',
+        'a',
+        ['?:', 'b', 1, 2],
+        3
+      ]);
       expect(out, equals('(a ? (b ? 1 : 2) : 3)'));
     });
   });
@@ -535,7 +561,11 @@ void main() {
     });
 
     test('named arg inside function call', () {
-      final out = emit(['foo', ['named', 'x', 1], ['named', 'y', 2]]);
+      final out = emit([
+        'foo',
+        ['named', 'x', 1],
+        ['named', 'y', 2]
+      ]);
       expect(out, equals('foo(x: 1, y: 2)'));
     });
   });
@@ -556,7 +586,11 @@ void main() {
     });
 
     test('emits list with expression elements', () {
-      final out = emit(['list', ['+', 'x', 1], ['-', 'y', 2]]);
+      final out = emit([
+        'list',
+        ['+', 'x', 1],
+        ['-', 'y', 2]
+      ]);
       expect(out, equals('[(x + 1), (y - 2)]'));
     });
   });
@@ -565,12 +599,20 @@ void main() {
 
   group('emit — cascade', () {
     test('emits cascade with method call', () {
-      final out = emit(['cascade', 'sb', ['..write', '"hello"']]);
+      final out = emit([
+        'cascade',
+        'sb',
+        ['..write', '"hello"']
+      ]);
       expect(out, equals('sb..write("hello")'));
     });
 
     test('emits cascade with assignment', () {
-      final out = emit(['cascade', 'obj', ['..=name', '"Alice"']]);
+      final out = emit([
+        'cascade',
+        'obj',
+        ['..=name', '"Alice"']
+      ]);
       expect(out, equals('obj..name = "Alice"'));
     });
 
@@ -619,7 +661,10 @@ void main() {
     });
 
     test('emits ?.property with nested receiver', () {
-      final out = emit(['?.-name', ['.-user', 'ctx']]);
+      final out = emit([
+        '?.-name',
+        ['.-user', 'ctx']
+      ]);
       expect(out, equals('ctx.user?.name'));
     });
   });
@@ -628,14 +673,22 @@ void main() {
 
   group('emit — defenum', () {
     test('emits enum with values', () {
-      final out = emit(['defenum', 'Status', ['active', 'inactive']]);
+      final out = emit([
+        'defenum',
+        'Status',
+        ['active', 'inactive']
+      ]);
       expect(out, contains('enum Status'));
       expect(out, contains('active'));
       expect(out, contains('inactive'));
     });
 
     test('enum values separated by commas', () {
-      final out = emit(['defenum', 'Dir', ['north', 'south', 'east', 'west']]);
+      final out = emit([
+        'defenum',
+        'Dir',
+        ['north', 'south', 'east', 'west']
+      ]);
       expect(out, contains('north'));
       expect(out, contains('south'));
       expect(out, contains('east'));
@@ -643,13 +696,21 @@ void main() {
     });
 
     test('emits fromJson factory using values.byName', () {
-      final out = emit(['defenum', 'Status', ['a', 'b']]);
+      final out = emit([
+        'defenum',
+        'Status',
+        ['a', 'b']
+      ]);
       expect(out, contains('factory Status.fromJson(String s)'));
       expect(out, contains('Status.values.byName(s)'));
     });
 
     test('emits toJson returning name', () {
-      final out = emit(['defenum', 'Status', ['a', 'b']]);
+      final out = emit([
+        'defenum',
+        'Status',
+        ['a', 'b']
+      ]);
       expect(out, contains('String toJson() => name'));
     });
 
@@ -659,7 +720,11 @@ void main() {
     });
 
     test('single-value enum', () {
-      final out = emit(['defenum', 'Singleton', ['only']]);
+      final out = emit([
+        'defenum',
+        'Singleton',
+        ['only']
+      ]);
       expect(out, contains('enum Singleton'));
       expect(out, contains('only'));
     });
@@ -667,7 +732,11 @@ void main() {
     test('defenum is treated as a block (no trailing semicolon in do)', () {
       final out = emit([
         'do',
-        ['defenum', 'S', ['a']],
+        [
+          'defenum',
+          'S',
+          ['a']
+        ],
         ['let', 'x', 1],
       ]);
       expect(out, isNot(contains('};')));
@@ -781,7 +850,8 @@ void main() {
           ['Author', 'author']
         ],
       ]);
-      expect(out, contains("Author.fromJson(json['author'] as Map<String, dynamic>)"));
+      expect(out,
+          contains("Author.fromJson(json['author'] as Map<String, dynamic>)"));
     });
   });
 
@@ -943,7 +1013,11 @@ void main() {
           ['int', 'a'],
           ['int', 'b']
         ],
-        ['let', 'sum', ['+', 'a', 'b']],
+        [
+          'let',
+          'sum',
+          ['+', 'a', 'b']
+        ],
         ['return', 'sum'],
       ]);
       expect(out, contains('final sum = (a + b);'));

@@ -81,7 +81,9 @@ void main() {
       expect(msg, contains('1000000'));
     });
 
-    test('string literal in expression produces valid Dart (no unescaped quotes)', () {
+    test(
+        'string literal in expression produces valid Dart (no unescaped quotes)',
+        () {
       // email.contains("@") — the " inside must be escaped in the error string
       final out = emit(expand([
         'assert-that',
@@ -134,6 +136,12 @@ void main() {
       expect(breakIdx, lessThan(catchIdx));
     });
 
+    test('last attempt uses rethrow not throw', () {
+      final out = emit(expand(['with-retry', 2, 'body']));
+      expect(out, contains('rethrow'));
+      expect(out, isNot(contains('throw dm')));
+    });
+
     test('iterable uses Iterable.generate with n', () {
       final result = expand(['with-retry', 5, 'body']) as List;
       final iterable = result[2] as String;
@@ -146,7 +154,7 @@ void main() {
       final result = expand(['with-retry', 3, 'body']) as List;
       final loopVar = result[1] as String;
       // gensym names start with __
-      expect(loopVar, startsWith('__'));
+      expect(loopVar, startsWith('dm'));
     });
   });
 
@@ -357,7 +365,7 @@ void main() {
       ]) as List;
       final stmt1 = result[1] as List;
       final tmp = stmt1[1] as String;
-      expect(tmp, startsWith('__swap_'));
+      expect(tmp, startsWith('dmSwap_'));
     });
 
     test('swap! works inside when (if branch context)', () {
@@ -434,7 +442,7 @@ void main() {
       final result = expand(['once', 'x', 'expr']) as List;
       final letNode = result[1] as List;
       final tmpName = letNode[1] as String;
-      expect(tmpName, startsWith('__'));
+      expect(tmpName, startsWith('dm'));
     });
 
     test('two once macros use different tmp vars (no collision)', () {
@@ -451,7 +459,10 @@ void main() {
 
   group('macro aliases', () {
     test('assertThat (camelCase) is registered and works', () {
-      final result = expand(['assertThat', ['>', 'x', 0]]) as List;
+      final result = expand([
+        'assertThat',
+        ['>', 'x', 0]
+      ]) as List;
       expect(result[0], equals('if'));
       final cond = result[1] as List;
       expect(cond[0], equals('!'));
@@ -501,7 +512,11 @@ void main() {
     });
 
     test('defrecord with single field', () {
-      final node = expand(['defrecord', 'Wrapper', ['String', 'value']]);
+      final node = expand([
+        'defrecord',
+        'Wrapper',
+        ['String', 'value']
+      ]);
       final out = emit(node);
       expect(out, contains('class Wrapper'));
       expect(out, contains('final String value;'));
@@ -509,8 +524,12 @@ void main() {
     });
 
     test('defrecord with nullable field has no required keyword in ctor', () {
-      final node =
-          expand(['defrecord', 'Box', ['String', 'id'], ['String?', 'label']]);
+      final node = expand([
+        'defrecord',
+        'Box',
+        ['String', 'id'],
+        ['String?', 'label']
+      ]);
       final out = emit(node);
       expect(out, contains('required this.id'));
       expect(out, isNot(contains('required this.label')));
@@ -518,28 +537,43 @@ void main() {
     });
 
     test('defrecord emits fromJson and toJson', () {
-      final node = expand(['defrecord', 'Item', ['int', 'n']]);
+      final node = expand([
+        'defrecord',
+        'Item',
+        ['int', 'n']
+      ]);
       final out = emit(node);
       expect(out, contains('factory Item.fromJson'));
       expect(out, contains('Map<String, dynamic> toJson()'));
     });
 
     test('defrecord copyWith non-nullable uses ?? this.field', () {
-      final node = expand(['defrecord', 'Pt', ['double', 'x']]);
+      final node = expand([
+        'defrecord',
+        'Pt',
+        ['double', 'x']
+      ]);
       final out = emit(node);
       expect(out, contains('x ?? this.x'));
     });
 
     test('defrecord copyWith nullable uses _dmUndefined sentinel', () {
-      final node = expand(['defrecord', 'Pt', ['double?', 'z']]);
+      final node = expand([
+        'defrecord',
+        'Pt',
+        ['double?', 'z']
+      ]);
       final out = emit(node);
       expect(out, contains('_dmUndefined'));
       expect(out, contains('identical(z, _dmUndefined)'));
     });
 
     test('defrecord with List field uses _dmEq in ==', () {
-      final node =
-          expand(['defrecord', 'Foo', ['List<String>', 'items']]);
+      final node = expand([
+        'defrecord',
+        'Foo',
+        ['List<String>', 'items']
+      ]);
       final out = emit(node);
       expect(out, contains('_dmEq(other.items, items)'));
     });
@@ -552,7 +586,10 @@ void main() {
       final result = expand([
         'defunion',
         'Expr',
-        ['Num', ['int', 'value']],
+        [
+          'Num',
+          ['int', 'value']
+        ],
       ]) as List;
       final sealedDecl = result[1] as String;
       expect(sealedDecl, contains('const Expr()'));
@@ -562,7 +599,10 @@ void main() {
       final node = expand([
         'defunion',
         'Result',
-        ['Ok', ['String', 'value']],
+        [
+          'Ok',
+          ['String', 'value']
+        ],
       ]);
       final out = emit(node);
       expect(out, contains('sealed class Result'));
@@ -573,8 +613,14 @@ void main() {
       final result = expand([
         'defunion',
         'Shape',
-        ['Circle', ['double', 'r']],
-        ['Square', ['double', 's']],
+        [
+          'Circle',
+          ['double', 'r']
+        ],
+        [
+          'Square',
+          ['double', 's']
+        ],
       ]) as List;
       final circle = result[2] as List;
       expect((circle[1] as String), contains('extends Shape'));
@@ -594,9 +640,15 @@ void main() {
       final node = expand([
         'defunion',
         'Msg',
-        ['Start', ['String', 'id']],
+        [
+          'Start',
+          ['String', 'id']
+        ],
         ['Stop'],
-        ['Error', ['String', 'msg']],
+        [
+          'Error',
+          ['String', 'msg']
+        ],
       ]);
       final out = emit(node);
       expect(out, contains('sealed class Msg'));
@@ -613,7 +665,10 @@ void main() {
       final out = emit(expand([
         'defunion',
         'Shape',
-        ['Circle', ['double', 'radius']],
+        [
+          'Circle',
+          ['double', 'radius']
+        ],
       ]));
       expect(out, contains('copyWith'));
     });
@@ -622,7 +677,10 @@ void main() {
       final out = emit(expand([
         'defunion',
         'Shape',
-        ['Circle', ['double', 'radius']],
+        [
+          'Circle',
+          ['double', 'radius']
+        ],
       ]));
       expect(out, contains('operator =='));
     });
@@ -631,7 +689,10 @@ void main() {
       final out = emit(expand([
         'defunion',
         'Shape',
-        ['Circle', ['double', 'radius']],
+        [
+          'Circle',
+          ['double', 'radius']
+        ],
       ]));
       expect(out, contains('hashCode'));
     });
@@ -640,7 +701,10 @@ void main() {
       final out = emit(expand([
         'defunion',
         'Shape',
-        ['Circle', ['double', 'radius']],
+        [
+          'Circle',
+          ['double', 'radius']
+        ],
       ]));
       expect(out, contains('toString()'));
     });
@@ -649,7 +713,10 @@ void main() {
       final out = emit(expand([
         'defunion',
         'Shape',
-        ['Circle', ['double', 'radius']],
+        [
+          'Circle',
+          ['double', 'radius']
+        ],
       ]));
       expect(out, contains('other is Circle'));
       expect(out, isNot(contains('other is Shape')));
@@ -683,7 +750,11 @@ void main() {
     test('message contains the emitted expression source', () {
       final result = expand([
         'assert-that',
-        ['&&', ['>', 'x', 0], ['<', 'x', 100]]
+        [
+          '&&',
+          ['>', 'x', 0],
+          ['<', 'x', 100]
+        ]
       ]) as List;
       final body = result[2] as List;
       final msg = body[1] as String;

@@ -40,7 +40,11 @@ void main() {
 
   group(r'defenum emitter node ($defEnum)', () {
     test('emits Dart enum with fromJson/toJson', () {
-      final code = emit(['defenum', 'Status', ['active', 'inactive', 'pending']]);
+      final code = emit([
+        'defenum',
+        'Status',
+        ['active', 'inactive', 'pending']
+      ]);
       expect(code, contains('enum Status {'));
       expect(code, contains('active,'));
       expect(code, contains('inactive,'));
@@ -51,7 +55,11 @@ void main() {
     });
 
     test('emits single-value enum', () {
-      final code = emit(['defenum', 'Singleton', ['only']]);
+      final code = emit([
+        'defenum',
+        'Singleton',
+        ['only']
+      ]);
       expect(code, contains('enum Singleton {'));
       expect(code, contains('only;'));
     });
@@ -61,8 +69,8 @@ void main() {
 
   group('defenum parser (.dmacro syntax)', () {
     test('parses block syntax into flat node', () {
-      final tokens = Tokenizer('defenum Status { active, inactive, pending }')
-          .tokenize();
+      final tokens =
+          Tokenizer('defenum Status { active, inactive, pending }').tokenize();
       final nodes = DartLikeParser(tokens).parseProgram();
       expect(nodes.length, equals(1));
       final node = nodes[0] as List;

@@ -273,7 +273,8 @@ void main() {
       expect(forms[0], equals(0));
     });
 
-    test('reads negative integer as integer (reader handles leading minus)', () {
+    test('reads negative integer as integer (reader handles leading minus)',
+        () {
       // -5 is read as the integer -5 (the reader handles negative number literals)
       final forms = Reader('-5').readAll();
       expect(forms[0], equals(-5));

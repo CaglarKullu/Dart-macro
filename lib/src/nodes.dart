@@ -153,6 +153,7 @@ class Param {
 class Field {
   final String type;
   final String name;
+
   /// Source line in the `.dmacro` file (1-based), if known. Present when the
   /// field was parsed from `.dmacro` source; absent for programmatic/sexp usage.
   final int? line;
