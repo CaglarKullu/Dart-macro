@@ -8,7 +8,7 @@ class Payment {
   @override
   bool operator ==(Object other) => identical(this, other) || other is Payment && other.amount == amount && other.currency == currency && other.reference == reference && _dmEq(other.tags, tags);
   @override
-  int get hashCode => Object.hash(amount, currency, reference, _dmHash(tags));
+  int get hashCode => Object.hashAll([amount, currency, reference, _dmHash(tags)]);
   @override
   String toString() => 'Payment(amount: $amount, currency: $currency, reference: $reference, tags: $tags)';
   factory Payment.fromJson(Map<String, dynamic> json) => Payment(amount: (json['amount'] as num).toDouble(), currency: json['currency'] as String, reference: json['reference'] as String?, tags: json['tags'] == null ? null : (json['tags'] as List).map((e) => e as String).toList());

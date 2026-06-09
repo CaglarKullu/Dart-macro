@@ -317,12 +317,15 @@ String emit(Node node, [int indent = 0]) {
 
     case 'hashop':
       final fields = args[1] as List<dynamic>;
-      final names = fields.map((f) {
+      final parts = fields.map((f) {
         final type = (f as List)[0] as String;
         final fname = f[1] as String;
         return _isCollection(type) ? '_dmHash($fname)' : fname;
-      }).join(', ');
-      return '@override\n  int get hashCode => Object.hash($names);';
+      }).toList();
+      // Object.hash requires ≥2 positional args; Object.hashAll works for any
+      // count including 0 and 1, and is equivalent for ≥2.
+      return '@override\n  int get hashCode => '
+          'Object.hashAll([${parts.join(', ')}]);';
 
     // ── JSON serialization ──────────────────────────────────────────────────
     case 'fromjson':
@@ -355,9 +358,8 @@ String emit(Node node, [int indent = 0]) {
     // ── Null-aware method call: ['?.method', receiver, arg1, ...]
     case String s when s.startsWith('?.') && !s.startsWith('?.-'):
       final recv = emit(args[0], indent);
-      final method = s.substring(1); // keep the leading ?
       final callArgs = args.sublist(1).map((a) => emit(a, indent)).join(', ');
-      return '$recv$method($callArgs)';
+      return '$recv$s($callArgs)';
 
     // ── Null-aware property access: ['?.-prop', receiver]
     case String s when s.startsWith('?.-'):
