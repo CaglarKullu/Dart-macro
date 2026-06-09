@@ -31,11 +31,13 @@ void registerSchemaMacros() {
       );
     }
 
-    final files = dir.listSync()
+    final files = dir
+        .listSync()
         .whereType<File>()
         .where((f) => f.path.endsWith('.json'))
         .toList()
-        ..sort((a, b) => a.path.compareTo(b.path)); // alphabetical = deterministic
+      ..sort(
+          (a, b) => a.path.compareTo(b.path)); // alphabetical = deterministic
 
     if (files.isEmpty) {
       throw StateError(
@@ -58,7 +60,7 @@ void registerSchemaMacros() {
   // ─── defFromOpenApi ─────────────────────────────────────────────────────────
 
   defAsyncMacro('defFromOpenApi', (args) async {
-    final path       = _unquote(args[0] as String);
+    final path = _unquote(args[0] as String);
     final schemaName = _unquote(args[1] as String);
 
     final file = File(path);
@@ -124,9 +126,8 @@ Future<Node> _defrecordFromSchemaFile(
 }
 
 Node _defrecordFromSchema(String name, Map<String, dynamic> schema) {
-  final props =
-      (schema['properties'] as Map<String, dynamic>? ?? const {})
-          .cast<String, dynamic>();
+  final props = (schema['properties'] as Map<String, dynamic>? ?? const {})
+      .cast<String, dynamic>();
   final required =
       ((schema['required'] as List<dynamic>?) ?? const []).cast<String>();
 
@@ -148,10 +149,19 @@ String _dartType(Map<String, dynamic> schema) {
   if (ref != null) return ref.split('/').last;
 
   switch (schema['type'] as String?) {
-    case 'number':  return 'double';
-    case 'integer': return 'int';
-    case 'string':  return 'String';
-    case 'boolean': return 'bool';
+    case 'number':
+      return 'double';
+    case 'integer':
+      return 'int';
+    case 'string':
+      // JSON Schema `format` for temporal strings maps to DateTime; the
+      // generated fromJson/toJson handle parse/ISO-8601 automatically.
+      final format = schema['format'] as String?;
+      return (format == 'date-time' || format == 'date')
+          ? 'DateTime'
+          : 'String';
+    case 'boolean':
+      return 'bool';
     case 'array':
       final items = (schema['items'] as Map<String, dynamic>?) ?? const {};
       return 'List<${_dartType(items)}>';

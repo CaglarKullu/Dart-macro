@@ -92,11 +92,11 @@ class Reader {
         _pos++;
         if (_pos >= source.length) break;
         buf.write(switch (source[_pos]) {
-          'n'  => '\n',
-          't'  => '\t',
-          '"'  => '"',
+          'n' => '\n',
+          't' => '\t',
+          '"' => '"',
           '\\' => '\\',
-          _    => source[_pos],
+          _ => source[_pos],
         });
       } else {
         buf.write(source[_pos]);
@@ -118,9 +118,9 @@ class Reader {
   Node _readAtom() {
     final start = _pos;
     while (_pos < source.length &&
-           !_isWhitespace(source[_pos]) &&
-           source[_pos] != '(' &&
-           source[_pos] != ')') {
+        !_isWhitespace(source[_pos]) &&
+        source[_pos] != '(' &&
+        source[_pos] != ')') {
       _pos++;
     }
 
@@ -133,9 +133,9 @@ class Reader {
   }
 
   Node _parseAtom(String token) {
-    if (token == 'true')  return true;
+    if (token == 'true') return true;
     if (token == 'false') return false;
-    if (token == 'null')  return null;
+    if (token == 'null') return null;
 
     final asInt = int.tryParse(token);
     if (asInt != null) return asInt;
@@ -154,7 +154,9 @@ class Reader {
         _pos++;
       } else if (c == ';') {
         // Line comment — skip to end of line
-        while (_pos < source.length && source[_pos] != '\n') { _pos++; }
+        while (_pos < source.length && source[_pos] != '\n') {
+          _pos++;
+        }
       } else {
         break;
       }
@@ -175,7 +177,5 @@ class Reader {
 String compile(String source) {
   resetGensym();
   final forms = Reader(source).readAll();
-  return forms
-      .map((f) => emit(expand(f)))
-      .join('\n\n');
+  return assembleOutput(forms.map((f) => emit(expand(f))));
 }

@@ -3,12 +3,38 @@
 library;
 
 enum TK {
-  lparen, rparen, lbrace, rbrace, lbracket, rbracket,
-  semi, comma, dot, cascade, question, colon, arrow,
-  plus, minus, star, slash,
-  eq, neq, lt, gt, lte, gte, and, or,
-  bang, assign, nullCoalesce,
-  ident, integer, float, string,
+  lparen,
+  rparen,
+  lbrace,
+  rbrace,
+  lbracket,
+  rbracket,
+  semi,
+  comma,
+  dot,
+  cascade,
+  question,
+  colon,
+  arrow,
+  plus,
+  minus,
+  star,
+  slash,
+  eq,
+  neq,
+  lt,
+  gt,
+  lte,
+  gte,
+  and,
+  or,
+  bang,
+  assign,
+  nullCoalesce,
+  ident,
+  integer,
+  float,
+  string,
   eof,
 }
 
@@ -43,9 +69,9 @@ class TokenizerException implements Exception {
 
 class Tokenizer {
   final String source;
-  int _pos  = 0;
+  int _pos = 0;
   int _line = 1;
-  int _col  = 1;
+  int _col = 1;
 
   Tokenizer(this.source);
 
@@ -65,56 +91,122 @@ class Tokenizer {
   (int, int, String) _locAt(int offset) {
     int line = 1, col = 1;
     for (int i = 0; i < offset && i < source.length; i++) {
-      if (source[i] == '\n') { line++; col = 1; } else { col++; }
+      if (source[i] == '\n') {
+        line++;
+        col = 1;
+      } else {
+        col++;
+      }
     }
     // Extract the source line for the caret display.
     int start = offset;
-    while (start > 0 && source[start - 1] != '\n') { start--; }
+    while (start > 0 && source[start - 1] != '\n') {
+      start--;
+    }
     int end = offset;
-    while (end < source.length && source[end] != '\n') { end++; }
+    while (end < source.length && source[end] != '\n') {
+      end++;
+    }
     return (line, col, source.substring(start, end));
   }
 
   Token? _nextToken() {
     final startLine = _line;
-    final startCol  = _col;
+    final startCol = _col;
     final c = source[_pos];
 
     // Two-character operators — check first (order matters: .. before ., ?? before ?, => before =)
-    final two = _pos + 1 < source.length ? source.substring(_pos, _pos + 2) : '';
+    final two =
+        _pos + 1 < source.length ? source.substring(_pos, _pos + 2) : '';
     switch (two) {
-      case '==': _advance2(); return Token(TK.eq,           '==', startLine, startCol);
-      case '!=': _advance2(); return Token(TK.neq,          '!=', startLine, startCol);
-      case '<=': _advance2(); return Token(TK.lte,          '<=', startLine, startCol);
-      case '>=': _advance2(); return Token(TK.gte,          '>=', startLine, startCol);
-      case '&&': _advance2(); return Token(TK.and,          '&&', startLine, startCol);
-      case '||': _advance2(); return Token(TK.or,           '||', startLine, startCol);
-      case '..': _advance2(); return Token(TK.cascade,      '..', startLine, startCol);
-      case '??': _advance2(); return Token(TK.nullCoalesce, '??', startLine, startCol);
-      case '=>': _advance2(); return Token(TK.arrow,        '=>', startLine, startCol);
+      case '==':
+        _advance2();
+        return Token(TK.eq, '==', startLine, startCol);
+      case '!=':
+        _advance2();
+        return Token(TK.neq, '!=', startLine, startCol);
+      case '<=':
+        _advance2();
+        return Token(TK.lte, '<=', startLine, startCol);
+      case '>=':
+        _advance2();
+        return Token(TK.gte, '>=', startLine, startCol);
+      case '&&':
+        _advance2();
+        return Token(TK.and, '&&', startLine, startCol);
+      case '||':
+        _advance2();
+        return Token(TK.or, '||', startLine, startCol);
+      case '..':
+        _advance2();
+        return Token(TK.cascade, '..', startLine, startCol);
+      case '??':
+        _advance2();
+        return Token(TK.nullCoalesce, '??', startLine, startCol);
+      case '=>':
+        _advance2();
+        return Token(TK.arrow, '=>', startLine, startCol);
     }
 
     // Single-character tokens
     switch (c) {
-      case '(': _advance1(); return Token(TK.lparen,   '(', startLine, startCol);
-      case ')': _advance1(); return Token(TK.rparen,   ')', startLine, startCol);
-      case '{': _advance1(); return Token(TK.lbrace,   '{', startLine, startCol);
-      case '}': _advance1(); return Token(TK.rbrace,   '}', startLine, startCol);
-      case '[': _advance1(); return Token(TK.lbracket, '[', startLine, startCol);
-      case ']': _advance1(); return Token(TK.rbracket, ']', startLine, startCol);
-      case ';': _advance1(); return Token(TK.semi,     ';', startLine, startCol);
-      case ',': _advance1(); return Token(TK.comma,    ',', startLine, startCol);
-      case '.': _advance1(); return Token(TK.dot,      '.', startLine, startCol);
-      case '?': _advance1(); return Token(TK.question, '?', startLine, startCol);
-      case ':': _advance1(); return Token(TK.colon,    ':', startLine, startCol);
-      case '+': _advance1(); return Token(TK.plus,     '+', startLine, startCol);
-      case '-': _advance1(); return Token(TK.minus,    '-', startLine, startCol);
-      case '*': _advance1(); return Token(TK.star,     '*', startLine, startCol);
-      case '/': _advance1(); return Token(TK.slash,    '/', startLine, startCol);
-      case '<': _advance1(); return Token(TK.lt,       '<', startLine, startCol);
-      case '>': _advance1(); return Token(TK.gt,       '>', startLine, startCol);
-      case '!': _advance1(); return Token(TK.bang,     '!', startLine, startCol);
-      case '=': _advance1(); return Token(TK.assign,   '=', startLine, startCol);
+      case '(':
+        _advance1();
+        return Token(TK.lparen, '(', startLine, startCol);
+      case ')':
+        _advance1();
+        return Token(TK.rparen, ')', startLine, startCol);
+      case '{':
+        _advance1();
+        return Token(TK.lbrace, '{', startLine, startCol);
+      case '}':
+        _advance1();
+        return Token(TK.rbrace, '}', startLine, startCol);
+      case '[':
+        _advance1();
+        return Token(TK.lbracket, '[', startLine, startCol);
+      case ']':
+        _advance1();
+        return Token(TK.rbracket, ']', startLine, startCol);
+      case ';':
+        _advance1();
+        return Token(TK.semi, ';', startLine, startCol);
+      case ',':
+        _advance1();
+        return Token(TK.comma, ',', startLine, startCol);
+      case '.':
+        _advance1();
+        return Token(TK.dot, '.', startLine, startCol);
+      case '?':
+        _advance1();
+        return Token(TK.question, '?', startLine, startCol);
+      case ':':
+        _advance1();
+        return Token(TK.colon, ':', startLine, startCol);
+      case '+':
+        _advance1();
+        return Token(TK.plus, '+', startLine, startCol);
+      case '-':
+        _advance1();
+        return Token(TK.minus, '-', startLine, startCol);
+      case '*':
+        _advance1();
+        return Token(TK.star, '*', startLine, startCol);
+      case '/':
+        _advance1();
+        return Token(TK.slash, '/', startLine, startCol);
+      case '<':
+        _advance1();
+        return Token(TK.lt, '<', startLine, startCol);
+      case '>':
+        _advance1();
+        return Token(TK.gt, '>', startLine, startCol);
+      case '!':
+        _advance1();
+        return Token(TK.bang, '!', startLine, startCol);
+      case '=':
+        _advance1();
+        return Token(TK.assign, '=', startLine, startCol);
     }
 
     // String literal
@@ -139,11 +231,11 @@ class Tokenizer {
         _advance1();
         if (_pos >= source.length) break;
         buf.write(switch (source[_pos]) {
-          'n'  => '\n',
-          't'  => '\t',
-          '"'  => '"',
+          'n' => '\n',
+          't' => '\t',
+          '"' => '"',
           '\\' => '\\',
-          _    => source[_pos],
+          _ => source[_pos],
         });
       } else {
         buf.write(source[_pos]);
@@ -161,7 +253,8 @@ class Tokenizer {
 
   Token _readNumber(int line, int col) {
     final buf = StringBuffer();
-    while (_pos < source.length && (_isDigit(source[_pos]) || source[_pos] == '.')) {
+    while (_pos < source.length &&
+        (_isDigit(source[_pos]) || source[_pos] == '.')) {
       buf.write(source[_pos]);
       _advance1();
     }
@@ -174,7 +267,8 @@ class Tokenizer {
 
   Token _readIdent(int line, int col) {
     final buf = StringBuffer();
-    while (_pos < source.length && (_isAlphaNum(source[_pos]) || source[_pos] == '_')) {
+    while (_pos < source.length &&
+        (_isAlphaNum(source[_pos]) || source[_pos] == '_')) {
       buf.write(source[_pos]);
       _advance1();
     }
@@ -195,8 +289,11 @@ class Tokenizer {
       if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
         _advance1();
       } else if (_pos + 1 < source.length &&
-                 source[_pos] == '/' && source[_pos + 1] == '/') {
-        while (_pos < source.length && source[_pos] != '\n') { _advance1(); }
+          source[_pos] == '/' &&
+          source[_pos + 1] == '/') {
+        while (_pos < source.length && source[_pos] != '\n') {
+          _advance1();
+        }
       } else {
         break;
       }
@@ -205,19 +302,27 @@ class Tokenizer {
 
   void _advance1() {
     if (_pos < source.length && source[_pos] == '\n') {
-      _line++; _col = 1;
+      _line++;
+      _col = 1;
     } else {
       _col++;
     }
     _pos++;
   }
 
-  void _advance2() { _advance1(); _advance1(); }
+  void _advance2() {
+    _advance1();
+    _advance1();
+  }
 
-  static bool _isDigit(String c) => c.codeUnitAt(0) >= 48 && c.codeUnitAt(0) <= 57;
+  static bool _isDigit(String c) =>
+      c.codeUnitAt(0) >= 48 && c.codeUnitAt(0) <= 57;
   static bool _isAlpha(String c) {
     final code = c.codeUnitAt(0);
-    return (code >= 65 && code <= 90) || (code >= 97 && code <= 122) || c == '_';
+    return (code >= 65 && code <= 90) ||
+        (code >= 97 && code <= 122) ||
+        c == '_';
   }
+
   static bool _isAlphaNum(String c) => _isAlpha(c) || _isDigit(c);
 }

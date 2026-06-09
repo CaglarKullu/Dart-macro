@@ -15,7 +15,7 @@ void main() {
         }
       ''';
       final tokens = Tokenizer(src).tokenize();
-      final forms  = DartLikeParser(tokens).parseProgram();
+      final forms = DartLikeParser(tokens).parseProgram();
       expect(forms.length, equals(1));
       final form = forms[0] as List;
       expect(form[0], equals('defrecord'));
@@ -30,8 +30,8 @@ void main() {
         }
       ''';
       final tokens = Tokenizer(src).tokenize();
-      final forms  = DartLikeParser(tokens).parseProgram();
-      final form   = forms[0] as List;
+      final forms = DartLikeParser(tokens).parseProgram();
+      final form = forms[0] as List;
       // ['defrecord', 'Payment', ['double','amount'], ['String','currency']]
       expect(form.length, equals(4));
       final f1 = form[2] as List;
@@ -47,9 +47,9 @@ void main() {
         }
       ''';
       final tokens = Tokenizer(src).tokenize();
-      final forms  = DartLikeParser(tokens).parseProgram();
-      final form   = forms[0] as List;
-      final field  = form[2] as List;
+      final forms = DartLikeParser(tokens).parseProgram();
+      final form = forms[0] as List;
+      final field = form[2] as List;
       expect(field[0], equals('String?'));
       expect(field[1], equals('ref'));
     });
@@ -78,8 +78,8 @@ void main() {
     test('parses simple void function', () {
       const src = 'void hello() {}';
       final tokens = Tokenizer(src).tokenize();
-      final forms  = DartLikeParser(tokens).parseProgram();
-      final form   = forms[0] as List;
+      final forms = DartLikeParser(tokens).parseProgram();
+      final form = forms[0] as List;
       expect(form[0], equals('defn'));
       expect(form[1], equals('void'));
       expect(form[2], equals('hello'));
@@ -88,8 +88,8 @@ void main() {
     test('parses function with parameters', () {
       const src = 'int add(int a, int b) { return a; }';
       final tokens = Tokenizer(src).tokenize();
-      final forms  = DartLikeParser(tokens).parseProgram();
-      final form   = forms[0] as List;
+      final forms = DartLikeParser(tokens).parseProgram();
+      final form = forms[0] as List;
       expect(form[0], equals('defn'));
       final params = form[3] as List;
       expect(params.length, equals(2));
@@ -100,9 +100,9 @@ void main() {
     test('parses return statement', () {
       const src = 'int foo() { return 42; }';
       final tokens = Tokenizer(src).tokenize();
-      final forms  = DartLikeParser(tokens).parseProgram();
-      final form   = forms[0] as List;
-      final body   = form[4] as List;
+      final forms = DartLikeParser(tokens).parseProgram();
+      final form = forms[0] as List;
+      final body = form[4] as List;
       expect(body[0], equals('return'));
       expect(body[1], equals(42));
     });
@@ -110,9 +110,9 @@ void main() {
     test('parses throw statement', () {
       const src = 'void foo() { throw Exception("e"); }';
       final tokens = Tokenizer(src).tokenize();
-      final forms  = DartLikeParser(tokens).parseProgram();
-      final form   = forms[0] as List;
-      final body   = form[4] as List;
+      final forms = DartLikeParser(tokens).parseProgram();
+      final form = forms[0] as List;
+      final body = form[4] as List;
       expect(body[0], equals('throw'));
     });
   });
@@ -153,40 +153,40 @@ void main() {
     test('parses binary arithmetic', () {
       const src = 'int foo() { return a + b; }';
       final tokens = Tokenizer(src).tokenize();
-      final forms  = DartLikeParser(tokens).parseProgram();
-      final form   = forms[0] as List;
-      final ret    = form[4] as List;
+      final forms = DartLikeParser(tokens).parseProgram();
+      final form = forms[0] as List;
+      final ret = form[4] as List;
       expect(ret[0], equals('return'));
-      final expr   = ret[1] as List;
+      final expr = ret[1] as List;
       expect(expr[0], equals('+'));
     });
 
     test('parses comparison operator', () {
       const src = 'bool foo() { return a > b; }';
       final tokens = Tokenizer(src).tokenize();
-      final forms  = DartLikeParser(tokens).parseProgram();
-      final form   = forms[0] as List;
-      final ret    = form[4] as List;
-      final expr   = ret[1] as List;
+      final forms = DartLikeParser(tokens).parseProgram();
+      final form = forms[0] as List;
+      final ret = form[4] as List;
+      final expr = ret[1] as List;
       expect(expr[0], equals('>'));
     });
 
     test('parses method call with dot notation', () {
       const src = 'void foo() { list.add(x); }';
       final tokens = Tokenizer(src).tokenize();
-      final forms  = DartLikeParser(tokens).parseProgram();
-      final form   = forms[0] as List;
-      final call   = form[4] as List;
+      final forms = DartLikeParser(tokens).parseProgram();
+      final form = forms[0] as List;
+      final call = form[4] as List;
       expect(call[0], equals('.add'));
     });
 
     test('parses property access', () {
       const src = 'void foo() { return list.length; }';
       final tokens = Tokenizer(src).tokenize();
-      final forms  = DartLikeParser(tokens).parseProgram();
-      final form   = forms[0] as List;
-      final ret    = form[4] as List;
-      final prop   = ret[1] as List;
+      final forms = DartLikeParser(tokens).parseProgram();
+      final form = forms[0] as List;
+      final ret = form[4] as List;
+      final prop = ret[1] as List;
       expect(prop[0], equals('.-length'));
     });
   });
@@ -197,9 +197,9 @@ void main() {
     test('parses final binding', () {
       const src = 'void foo() { final x = 1; }';
       final tokens = Tokenizer(src).tokenize();
-      final forms  = DartLikeParser(tokens).parseProgram();
-      final form   = forms[0] as List;
-      final stmt   = form[4] as List;
+      final forms = DartLikeParser(tokens).parseProgram();
+      final form = forms[0] as List;
+      final stmt = form[4] as List;
       expect(stmt[0], equals('let'));
       expect(stmt[1], equals('x'));
       expect(stmt[2], equals(1));
@@ -208,9 +208,9 @@ void main() {
     test('parses var binding', () {
       const src = 'void foo() { var x = 2; }';
       final tokens = Tokenizer(src).tokenize();
-      final forms  = DartLikeParser(tokens).parseProgram();
-      final form   = forms[0] as List;
-      final stmt   = form[4] as List;
+      final forms = DartLikeParser(tokens).parseProgram();
+      final form = forms[0] as List;
+      final stmt = form[4] as List;
       expect(stmt[0], equals('var'));
       expect(stmt[1], equals('x'));
     });
@@ -218,9 +218,9 @@ void main() {
     test('parses assignment (set!)', () {
       const src = 'void foo() { x = 99; }';
       final tokens = Tokenizer(src).tokenize();
-      final forms  = DartLikeParser(tokens).parseProgram();
-      final form   = forms[0] as List;
-      final stmt   = form[4] as List;
+      final forms = DartLikeParser(tokens).parseProgram();
+      final form = forms[0] as List;
+      final stmt = form[4] as List;
       expect(stmt[0], equals('set!'));
       expect(stmt[1], equals('x'));
       expect(stmt[2], equals(99));

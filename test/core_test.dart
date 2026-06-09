@@ -40,7 +40,17 @@ void main() {
     });
 
     test('nested lists are recursed into', () {
-      final input = ['defn', 'void', 'foo', [], ['unless', ['>', 'x', 0], 'y']];
+      final input = [
+        'defn',
+        'void',
+        'foo',
+        [],
+        [
+          'unless',
+          ['>', 'x', 0],
+          'y'
+        ]
+      ];
       final result = expand(input) as List;
       // The inner 'unless' should be expanded
       final bodyStmt = result[4] as List;
@@ -50,7 +60,11 @@ void main() {
 
   group('expand — macro dispatch', () {
     test('unless expands to if with negated condition', () {
-      final input = ['unless', ['>', 'balance', 0], ['print', '"negative"']];
+      final input = [
+        'unless',
+        ['>', 'balance', 0],
+        ['print', '"negative"']
+      ];
       final result = expand(input) as List;
       expect(result[0], equals('if'));
       // condition should be negated: ['!', ['>', 'balance', 0]]
@@ -60,7 +74,11 @@ void main() {
     });
 
     test('when expands to if without negation', () {
-      final input = ['when', ['>', 'x', 0], ['print', '"positive"']];
+      final input = [
+        'when',
+        ['>', 'x', 0],
+        ['print', '"positive"']
+      ];
       final result = expand(input) as List;
       expect(result[0], equals('if'));
       expect(result[1], equals(['>', 'x', 0]));
@@ -68,7 +86,11 @@ void main() {
 
     test('macro result is re-expanded (macros can expand to macros)', () {
       // unless → if, and the if is itself expanded recursively
-      final input = ['unless', ['>', 'x', 0], ['when', 'y', 'z']];
+      final input = [
+        'unless',
+        ['>', 'x', 0],
+        ['when', 'y', 'z']
+      ];
       final result = expand(input) as List;
       expect(result[0], equals('if'));
       // the body is the expanded `when` → `if`
@@ -89,12 +111,20 @@ void main() {
     });
 
     test('expand(expand(x)) == expand(x) for macros', () {
-      final input = ['unless', ['>', 'x', 0], 'y'];
+      final input = [
+        'unless',
+        ['>', 'x', 0],
+        'y'
+      ];
       expect(expand(expand(input)), equals(expand(input)));
     });
 
     test('expand(expand(x)) == expand(x) for nested macros', () {
-      final input = ['when', 'c', ['unless', 'x', 'y']];
+      final input = [
+        'when',
+        'c',
+        ['unless', 'x', 'y']
+      ];
       expect(expand(expand(input)), equals(expand(input)));
     });
   });
@@ -217,7 +247,11 @@ void main() {
     });
 
     test('emits while', () {
-      final out = emit(['while', ['<', 'i', 10], 'body']);
+      final out = emit([
+        'while',
+        ['<', 'i', 10],
+        'body'
+      ]);
       expect(out, contains('while ('));
       expect(out, contains('(i < 10)'));
       expect(out, contains('body'));
@@ -239,7 +273,11 @@ void main() {
 
   group('emit — do (sequence)', () {
     test('emits do as semicolon-separated statements', () {
-      final out = emit(['do', ['let', 'a', 1], ['let', 'b', 2]]);
+      final out = emit([
+        'do',
+        ['let', 'a', 1],
+        ['let', 'b', 2]
+      ]);
       expect(out, contains('final a = 1;'));
       expect(out, contains('final b = 2;'));
     });
@@ -248,9 +286,17 @@ void main() {
   group('emit — defn', () {
     test('emits function definition', () {
       final out = emit([
-        'defn', 'int', 'add',
-        [['int', 'a'], ['int', 'b']],
-        ['return', ['+', 'a', 'b']],
+        'defn',
+        'int',
+        'add',
+        [
+          ['int', 'a'],
+          ['int', 'b']
+        ],
+        [
+          'return',
+          ['+', 'a', 'b']
+        ],
       ]);
       expect(out, contains('int add(int a, int b)'));
       expect(out, contains('return (a + b)'));
@@ -260,7 +306,8 @@ void main() {
   group('emit — defclass', () {
     test('emits class definition', () {
       final out = emit([
-        'defclass', 'Point',
+        'defclass',
+        'Point',
         ['field', 'double', 'x'],
         ['field', 'double', 'y'],
       ]);
@@ -278,14 +325,28 @@ void main() {
 
   group('emit — ctor', () {
     test('emits const constructor with required named params', () {
-      final out = emit(['ctor', 'Point', [['int', 'x'], ['int', 'y']]]);
+      final out = emit([
+        'ctor',
+        'Point',
+        [
+          ['int', 'x'],
+          ['int', 'y']
+        ]
+      ]);
       expect(out, contains('const Point('));
       expect(out, contains('required this.x'));
       expect(out, contains('required this.y'));
     });
 
     test('nullable fields are optional (no required keyword)', () {
-      final out = emit(['ctor', 'Box', [['String', 'id'], ['String?', 'label']]]);
+      final out = emit([
+        'ctor',
+        'Box',
+        [
+          ['String', 'id'],
+          ['String?', 'label']
+        ]
+      ]);
       expect(out, contains('required this.id'));
       expect(out, isNot(contains('required this.label')));
       expect(out, contains('this.label'));
@@ -295,8 +356,12 @@ void main() {
   group('emit — copywith', () {
     test('emits copyWith method', () {
       final out = emit([
-        'copywith', 'Point',
-        [['double', 'x'], ['double', 'y']],
+        'copywith',
+        'Point',
+        [
+          ['double', 'x'],
+          ['double', 'y']
+        ],
       ]);
       expect(out, contains('copyWith('));
       expect(out, contains('double? x'));
@@ -308,8 +373,12 @@ void main() {
   group('emit — equalop', () {
     test('emits == override', () {
       final out = emit([
-        'equalop', 'Point',
-        [['double', 'x'], ['double', 'y']],
+        'equalop',
+        'Point',
+        [
+          ['double', 'x'],
+          ['double', 'y']
+        ],
       ]);
       expect(out, contains('@override'));
       expect(out, contains('operator =='));
@@ -321,8 +390,12 @@ void main() {
   group('emit — hashop', () {
     test('emits hashCode override', () {
       final out = emit([
-        'hashop', null,
-        [['double', 'x'], ['double', 'y']],
+        'hashop',
+        null,
+        [
+          ['double', 'x'],
+          ['double', 'y']
+        ],
       ]);
       expect(out, contains('@override'));
       expect(out, contains('int get hashCode'));
@@ -333,8 +406,12 @@ void main() {
   group('emit — tostringop', () {
     test('emits toString override', () {
       final out = emit([
-        'tostringop', 'Point',
-        [['double', 'x'], ['double', 'y']],
+        'tostringop',
+        'Point',
+        [
+          ['double', 'x'],
+          ['double', 'y']
+        ],
       ]);
       expect(out, contains('@override'));
       expect(out, contains("String toString()"));
@@ -371,7 +448,9 @@ void main() {
 
   group('emit — Splice guard', () {
     test('Splice reaching emit throws StateError', () {
-      final splice = Splice([['let', 'a', 1]]);
+      final splice = Splice([
+        ['let', 'a', 1]
+      ]);
       expect(() => emit(splice), throwsA(isA<StateError>()));
     });
   });

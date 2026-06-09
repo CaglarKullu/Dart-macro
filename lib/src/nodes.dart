@@ -14,31 +14,31 @@ import 'core.dart';
 
 // ─── Arithmetic ───────────────────────────────────────────────────────────────
 
-Node $add(Node a, Node b)  => ['+', a, b];
-Node $sub(Node a, Node b)  => ['-', a, b];
-Node $mul(Node a, Node b)  => ['*', a, b];
-Node $div(Node a, Node b)  => ['/', a, b];
+Node $add(Node a, Node b) => ['+', a, b];
+Node $sub(Node a, Node b) => ['-', a, b];
+Node $mul(Node a, Node b) => ['*', a, b];
+Node $div(Node a, Node b) => ['/', a, b];
 
 // ─── Comparison ───────────────────────────────────────────────────────────────
 
-Node $eq(Node a, Node b)   => ['==', a, b];
-Node $neq(Node a, Node b)  => ['!=', a, b];
-Node $lt(Node a, Node b)   => ['<', a, b];
-Node $gt(Node a, Node b)   => ['>', a, b];
-Node $lte(Node a, Node b)  => ['<=', a, b];
-Node $gte(Node a, Node b)  => ['>=', a, b];
+Node $eq(Node a, Node b) => ['==', a, b];
+Node $neq(Node a, Node b) => ['!=', a, b];
+Node $lt(Node a, Node b) => ['<', a, b];
+Node $gt(Node a, Node b) => ['>', a, b];
+Node $lte(Node a, Node b) => ['<=', a, b];
+Node $gte(Node a, Node b) => ['>=', a, b];
 
 // ─── Logic ────────────────────────────────────────────────────────────────────
 
-Node $and(Node a, Node b)  => ['&&', a, b];
-Node $or(Node a, Node b)   => ['||', a, b];
-Node $not(Node expr)       => ['!', expr];
+Node $and(Node a, Node b) => ['&&', a, b];
+Node $or(Node a, Node b) => ['||', a, b];
+Node $not(Node expr) => ['!', expr];
 
 // ─── Bindings ─────────────────────────────────────────────────────────────────
 
-Node $let(String name, Node value)  => ['let', name, value];
-Node $var(String name, Node value)  => ['var', name, value];
-Node $set(String name, Node value)  => ['set!', name, value];
+Node $let(String name, Node value) => ['let', name, value];
+Node $var(String name, Node value) => ['var', name, value];
+Node $set(String name, Node value) => ['set!', name, value];
 
 // ─── Control flow ─────────────────────────────────────────────────────────────
 
@@ -50,13 +50,13 @@ Node $while(Node cond, Node body) => ['while', cond, body];
 Node $forIn(String variable, Node iterable, Node body) =>
     ['for-in', variable, iterable, body];
 
-Node $return(Node value)          => ['return', value];
-Node $throw(Node value)           => ['throw', value];
+Node $return(Node value) => ['return', value];
+Node $throw(Node value) => ['throw', value];
 Node $try(Node body, String catchVar, Node catchBody) =>
     ['try', body, catchVar, catchBody];
 
 /// Sequence of statements — spliced into parent function body automatically.
-Node $do(List<Node> stmts)        => ['do', ...stmts];
+Node $do(List<Node> stmts) => ['do', ...stmts];
 
 // ─── Calls ────────────────────────────────────────────────────────────────────
 
@@ -78,25 +78,56 @@ Node $defn({
   required String name,
   required List<Param> params,
   required List<Node> body,
-}) => ['defn', returns, name, params.map((p) => [p.type, p.name]).toList(), ...body];
+}) =>
+    [
+      'defn',
+      returns,
+      name,
+      params.map((p) => [p.type, p.name]).toList(),
+      ...body
+    ];
 
 // ─── Class building ───────────────────────────────────────────────────────────
 
-Node $field(String type, String name)     => ['field', type, name];
+Node $field(String type, String name) => ['field', type, name];
 Node $ctor(String name, List<List<String>> params) => ['ctor', name, params];
 Node $class(String name, List<Node> members) => ['defclass', name, ...members];
 
-Node $copyWith(String name, List<Field> fields) =>
-    ['copywith', name, fields.map((f) => [f.type, f.name]).toList()];
+Node $copyWith(String name, List<Field> fields) => [
+      'copywith',
+      name,
+      fields.map((f) => [f.type, f.name]).toList()
+    ];
 
-Node $equality(String name, List<Field> fields) =>
-    ['equalop', name, fields.map((f) => [f.type, f.name]).toList()];
+Node $equality(String name, List<Field> fields) => [
+      'equalop',
+      name,
+      fields.map((f) => [f.type, f.name]).toList()
+    ];
 
-Node $hashCode(List<Field> fields) =>
-    ['hashop', null, fields.map((f) => [f.type, f.name]).toList()];
+Node $hashCode(List<Field> fields) => [
+      'hashop',
+      null,
+      fields.map((f) => [f.type, f.name]).toList()
+    ];
 
-Node $toString(String name, List<Field> fields) =>
-    ['tostringop', name, fields.map((f) => [f.type, f.name]).toList()];
+Node $toString(String name, List<Field> fields) => [
+      'tostringop',
+      name,
+      fields.map((f) => [f.type, f.name]).toList()
+    ];
+
+Node $fromJson(String name, List<Field> fields) => [
+      'fromjson',
+      name,
+      fields.map((f) => [f.type, f.name]).toList()
+    ];
+
+Node $toJson(List<Field> fields) => [
+      'tojson',
+      null,
+      fields.map((f) => [f.type, f.name]).toList()
+    ];
 
 // ─── Value helpers ────────────────────────────────────────────────────────────
 
@@ -104,7 +135,7 @@ Node $toString(String name, List<Field> fields) =>
 String $str(String value) => '"$value"';
 
 /// An identifier node — emitted as-is.
-String $id(String name)   => name;
+String $id(String name) => name;
 
 // ─── Helper types ─────────────────────────────────────────────────────────────
 

@@ -3,7 +3,6 @@ library;
 
 import 'models.dart';
 
-
 abstract class MacroGenerator {
   /// Returns generated Dart code for the class body.
   /// Do NOT include GEN_START/GEN_END — the transformer wraps them.
@@ -143,5 +142,5 @@ class LoggedGenerator extends MacroGenerator {
 final Map<String, MacroGenerator> macroRegistry = {
   'DataClass': DataClassGenerator(),
   'Singleton': SingletonGenerator(),
-  'Logged':    LoggedGenerator(),
+  'Logged': LoggedGenerator(),
 };

@@ -69,7 +69,7 @@ Future<String> asyncCompile(String source) async {
   for (final f in forms) {
     results.add(emit(await asyncExpand(f)));
   }
-  return results.join('\n\n');
+  return assembleOutput(results);
 }
 
 /// Compiles Dart-like (.dmacro) [source] to Dart via the async expander.
@@ -77,10 +77,10 @@ Future<String> asyncCompile(String source) async {
 Future<String> asyncCompileDartLike(String source) async {
   resetGensym();
   final tokens = Tokenizer(source).tokenize();
-  final forms  = DartLikeParser(tokens).parseProgram();
+  final forms = DartLikeParser(tokens).parseProgram();
   final results = <String>[];
   for (final f in forms) {
     results.add(emit(await asyncExpand(f)));
   }
-  return results.join('\n\n');
+  return assembleOutput(results);
 }

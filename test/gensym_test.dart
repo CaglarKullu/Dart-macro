@@ -31,7 +31,9 @@ void main() {
 
   group('gensym — resetGensym', () {
     test('reset makes counter restart from 0', () {
-      gensym(); gensym(); gensym();
+      gensym();
+      gensym();
+      gensym();
       resetGensym();
       expect(gensym('x'), equals('__x_0'));
     });
@@ -53,14 +55,18 @@ void main() {
       // Burn __swap_0 so the macro must use a later name
       gensym('swap'); // __swap_0 taken
 
-      final parent = expand(['do', ['swap!', 'a', 'b']]) as List;
+      final parent = expand([
+        'do',
+        ['swap!', 'a', 'b']
+      ]) as List;
       final letStmt = parent[1] as List;
       final tmp = letStmt[1] as String;
       expect(tmp, isNot(equals('__swap_0')));
       expect(tmp, startsWith('__swap_'));
     });
 
-    test('compile() calls resetGensym() — repeated calls are deterministic', () {
+    test('compile() calls resetGensym() — repeated calls are deterministic',
+        () {
       registerBuiltins();
       const src = '(do (let x 1) (let y 2))';
       final out1 = compile(src);

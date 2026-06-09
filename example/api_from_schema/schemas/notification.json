@@ -9,6 +9,6 @@
     "title":     { "type": "string" },
     "body":      { "type": "string" },
     "isRead":    { "type": "boolean" },
-    "createdAt": { "type": "string" }
+    "createdAt": { "type": "string", "format": "date-time" }
   }
 }

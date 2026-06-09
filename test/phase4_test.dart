@@ -23,7 +23,7 @@ void main() {
       } on TokenizerException catch (e) {
         expect(e.toString(), contains('TokenizerException'));
         expect(e.line, greaterThan(0));
-        expect(e.col,  greaterThan(0));
+        expect(e.col, greaterThan(0));
       }
     });
 
@@ -42,7 +42,7 @@ void main() {
         compileDartLike('void f() { 123 }');
       } on ParseException catch (e) {
         expect(e.line, greaterThan(0));
-        expect(e.col,  greaterThan(0));
+        expect(e.col, greaterThan(0));
         return;
       }
       fail('Expected ParseException');
@@ -86,9 +86,10 @@ void main() {
     test('--check exits non-zero when .dart is stale', () async {
       // Create a .dmacro file with no corresponding .dart
       final src = File('${tmpDir.path}/test.dmacro')
-          ..writeAsStringSync('void foo() { return 1; }');
+        ..writeAsStringSync('void foo() { return 1; }');
       final result = await Process.run(
-        'dart', ['run', 'bin/dmacro.dart', 'compile', src.path, '--check'],
+        'dart',
+        ['run', 'bin/dmacro.dart', 'compile', src.path, '--check'],
         workingDirectory: Directory.current.path,
       );
       expect(result.exitCode, isNot(0));
@@ -102,14 +103,29 @@ void main() {
       // First compile to create the .dart (no-format for determinism in CI)
       await Process.run(
         'dart',
-        ['run', 'bin/dmacro.dart', 'compile', srcPath, '-o', outPath, '--no-format'],
+        [
+          'run',
+          'bin/dmacro.dart',
+          'compile',
+          srcPath,
+          '-o',
+          outPath,
+          '--no-format'
+        ],
         workingDirectory: Directory.current.path,
       );
 
       // Now check with same flags — should be up to date
       final result = await Process.run(
         'dart',
-        ['run', 'bin/dmacro.dart', 'compile', srcPath, '--check', '--no-format'],
+        [
+          'run',
+          'bin/dmacro.dart',
+          'compile',
+          srcPath,
+          '--check',
+          '--no-format'
+        ],
         workingDirectory: Directory.current.path,
       );
       expect(result.exitCode, equals(0));
@@ -122,7 +138,7 @@ void main() {
     test('single-line token has line=1', () {
       final tokens = Tokenizer('void foo').tokenize();
       expect(tokens[0].line, equals(1));
-      expect(tokens[0].col,  equals(1));
+      expect(tokens[0].col, equals(1));
     });
 
     test('second-line token has line=2', () {

@@ -24,7 +24,7 @@ class Product {
           double? price,
           int? stock,
           String? category,
-          String? imageUrl}) =>
+          Object? imageUrl = _dmUndefined}) =>
       Product(
           id: id ?? this.id,
           name: name ?? this.name,
@@ -32,7 +32,9 @@ class Product {
           price: price ?? this.price,
           stock: stock ?? this.stock,
           category: category ?? this.category,
-          imageUrl: imageUrl ?? this.imageUrl);
+          imageUrl: identical(imageUrl, _dmUndefined)
+              ? this.imageUrl
+              : imageUrl as String?);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -50,6 +52,23 @@ class Product {
   @override
   String toString() =>
       'Product(id: $id, name: $name, description: $description, price: $price, stock: $stock, category: $category, imageUrl: $imageUrl)';
+  factory Product.fromJson(Map<String, dynamic> json) => Product(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      description: json['description'] as String,
+      price: (json['price'] as num).toDouble(),
+      stock: json['stock'] as int,
+      category: json['category'] as String,
+      imageUrl: json['imageUrl'] as String?);
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'description': description,
+        'price': price,
+        'stock': stock,
+        'category': category,
+        'imageUrl': imageUrl
+      };
 }
 
 class CartItem {
@@ -85,6 +104,17 @@ class CartItem {
   @override
   String toString() =>
       'CartItem(productId: $productId, productName: $productName, unitPrice: $unitPrice, quantity: $quantity)';
+  factory CartItem.fromJson(Map<String, dynamic> json) => CartItem(
+      productId: json['productId'] as String,
+      productName: json['productName'] as String,
+      unitPrice: (json['unitPrice'] as num).toDouble(),
+      quantity: json['quantity'] as int);
+  Map<String, dynamic> toJson() => {
+        'productId': productId,
+        'productName': productName,
+        'unitPrice': unitPrice,
+        'quantity': quantity
+      };
 }
 
 class ShippingAddress {
@@ -104,14 +134,14 @@ class ShippingAddress {
   ShippingAddress copyWith(
           {String? fullName,
           String? line1,
-          String? line2,
+          Object? line2 = _dmUndefined,
           String? city,
           String? country,
           String? postcode}) =>
       ShippingAddress(
           fullName: fullName ?? this.fullName,
           line1: line1 ?? this.line1,
-          line2: line2 ?? this.line2,
+          line2: identical(line2, _dmUndefined) ? this.line2 : line2 as String?,
           city: city ?? this.city,
           country: country ?? this.country,
           postcode: postcode ?? this.postcode);
@@ -131,6 +161,22 @@ class ShippingAddress {
   @override
   String toString() =>
       'ShippingAddress(fullName: $fullName, line1: $line1, line2: $line2, city: $city, country: $country, postcode: $postcode)';
+  factory ShippingAddress.fromJson(Map<String, dynamic> json) =>
+      ShippingAddress(
+          fullName: json['fullName'] as String,
+          line1: json['line1'] as String,
+          line2: json['line2'] as String?,
+          city: json['city'] as String,
+          country: json['country'] as String,
+          postcode: json['postcode'] as String);
+  Map<String, dynamic> toJson() => {
+        'fullName': fullName,
+        'line1': line1,
+        'line2': line2,
+        'city': city,
+        'country': country,
+        'postcode': postcode
+      };
 }
 
 class Order {
@@ -175,18 +221,40 @@ class Order {
       other is Order &&
           other.id == id &&
           other.customerId == customerId &&
-          other.items == items &&
+          _dmEq(other.items, items) &&
           other.subtotal == subtotal &&
           other.shippingCost == shippingCost &&
           other.total == total &&
           other.shippingAddress == shippingAddress &&
           other.createdAt == createdAt;
   @override
-  int get hashCode => Object.hash(id, customerId, items, subtotal, shippingCost,
-      total, shippingAddress, createdAt);
+  int get hashCode => Object.hash(id, customerId, _dmHash(items), subtotal,
+      shippingCost, total, shippingAddress, createdAt);
   @override
   String toString() =>
       'Order(id: $id, customerId: $customerId, items: $items, subtotal: $subtotal, shippingCost: $shippingCost, total: $total, shippingAddress: $shippingAddress, createdAt: $createdAt)';
+  factory Order.fromJson(Map<String, dynamic> json) => Order(
+      id: json['id'] as String,
+      customerId: json['customerId'] as String,
+      items: (json['items'] as List)
+          .map((e) => CartItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      subtotal: (json['subtotal'] as num).toDouble(),
+      shippingCost: (json['shippingCost'] as num).toDouble(),
+      total: (json['total'] as num).toDouble(),
+      shippingAddress: ShippingAddress.fromJson(
+          json['shippingAddress'] as Map<String, dynamic>),
+      createdAt: json['createdAt'] as String);
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'customerId': customerId,
+        'items': items.map((e) => e.toJson()).toList(),
+        'subtotal': subtotal,
+        'shippingCost': shippingCost,
+        'total': total,
+        'shippingAddress': shippingAddress.toJson(),
+        'createdAt': createdAt
+      };
 }
 
 sealed class OrderStatus {
@@ -253,4 +321,44 @@ bool validateOrder(double total, int itemCount) {
     throw Exception("Order total exceeds limit");
   }
   return true;
+}
+
+const Object? _dmUndefined = Object();
+
+/// Structural equality for List/Set/Map fields (generated by dmacro).
+bool _dmEq(Object? a, Object? b) {
+  if (identical(a, b)) return true;
+  if (a is List && b is List) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (!_dmEq(a[i], b[i])) return false;
+    }
+    return true;
+  }
+  if (a is Set && b is Set) {
+    if (a.length != b.length) return false;
+    for (final e in a) {
+      if (!b.any((o) => _dmEq(e, o))) return false;
+    }
+    return true;
+  }
+  if (a is Map && b is Map) {
+    if (a.length != b.length) return false;
+    for (final k in a.keys) {
+      if (!b.containsKey(k) || !_dmEq(a[k], b[k])) return false;
+    }
+    return true;
+  }
+  return a == b;
+}
+
+/// Structural hash for List/Set/Map fields (generated by dmacro).
+int _dmHash(Object? v) {
+  if (v is List) return Object.hashAll(v.map(_dmHash));
+  if (v is Set) return Object.hashAllUnordered(v.map(_dmHash));
+  if (v is Map) {
+    return Object.hashAllUnordered(
+        v.entries.map((e) => Object.hash(_dmHash(e.key), _dmHash(e.value))));
+  }
+  return v.hashCode;
 }

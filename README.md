@@ -26,15 +26,18 @@ class Payment {
 
   const Payment({required this.amount, required this.currency, ...});
 
-  Payment copyWith({double? amount, String? currency, ...}) => ...;
+  Payment copyWith({...}) => ...;              // clears nullable fields too
 
-  @override bool operator ==(Object other) => ...;
+  factory Payment.fromJson(Map<String, dynamic> json) => ...;   // ← real (de)serialization
+  Map<String, dynamic> toJson() => ...;
+
+  @override bool operator ==(Object other) => ...;   // ← deep equality on List/Set/Map
   @override int get hashCode => ...;
   @override String toString() => 'Payment(amount: $amount, ...)';
 }
 ```
 
-No annotations. No generated `*.g.dart` files to commit. No `build_runner watch` process to keep running. The schema is the single source of truth — update it, recompile, done.
+A complete, **JSON-serializable, value-equal** model. No annotations. No generated `*.g.dart` files to commit. No `build_runner watch` process. No `package:json_serializable` or `package:freezed` — the output imports nothing. The schema is the single source of truth — update it, recompile, done.
 
 ---
 
@@ -277,7 +280,7 @@ There is also an S-expression syntax (`.sexp`) for the full Lisp experience — 
 
 | Macro | What it generates | Why a function can't do this |
 |---|---|---|
-| `defrecord Name { ... }` | Immutable class: fields, constructor, `copyWith`, `==`, `hashCode`, `toString` | Functions can't generate class declarations |
+| `defrecord Name { ... }` | Immutable class: fields, constructor, `copyWith`, deep `==`/`hashCode`, `toString`, **`fromJson`/`toJson`** | Functions can't generate class declarations |
 | `defunion Name { ... }` | Sealed class hierarchy | Same |
 | `defFromJsonSchema("path")` | `defrecord` from a JSON Schema file | Functions run at runtime; I/O at build time requires a macro |
 | `defFromOpenApi("path", "Name")` | `defrecord` from an OpenAPI `components/schemas` entry | Same |
@@ -385,6 +388,9 @@ The **async expander** is why `defFromJsonSchema` works: macros run at compile t
 | Zero dependencies | ✅ | ❌ | ❌ | — |
 | No build daemon | ✅ | ❌ (build_runner watch) | ❌ (WebSocket daemon) | — |
 | Generate entire class | ✅ | ✅ | ❌ (appends only) | ✅ |
+| `fromJson` / `toJson` | ✅ (built in) | ➖ (needs `json_serializable`) | ❌ | ✅ |
+| Deep value equality (List/Set/Map) | ✅ | ✅ | ❌ | ✅ |
+| `copyWith` can clear nullable fields | ✅ | ✅ | ❌ | ✅ |
 | Read external files at build time | ✅ | ❌ | ❌ | ❌ |
 | Expression-level transforms | ✅ | ❌ | ❌ | ✅ |
 | Inject variables into caller scope | ✅ | ❌ | ❌ | ❌ |

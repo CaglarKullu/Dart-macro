@@ -17,17 +17,19 @@ class Address {
       required this.country});
   Address copyWith(
           {String? line1,
-          String? line2,
+          Object? line2 = _dmUndefined,
           String? city,
-          String? state,
-          String? postcode,
+          Object? state = _dmUndefined,
+          Object? postcode = _dmUndefined,
           String? country}) =>
       Address(
           line1: line1 ?? this.line1,
-          line2: line2 ?? this.line2,
+          line2: identical(line2, _dmUndefined) ? this.line2 : line2 as String?,
           city: city ?? this.city,
-          state: state ?? this.state,
-          postcode: postcode ?? this.postcode,
+          state: identical(state, _dmUndefined) ? this.state : state as String?,
+          postcode: identical(postcode, _dmUndefined)
+              ? this.postcode
+              : postcode as String?,
           country: country ?? this.country);
   @override
   bool operator ==(Object other) =>
@@ -44,6 +46,21 @@ class Address {
   @override
   String toString() =>
       'Address(line1: $line1, line2: $line2, city: $city, state: $state, postcode: $postcode, country: $country)';
+  factory Address.fromJson(Map<String, dynamic> json) => Address(
+      line1: json['line1'] as String,
+      line2: json['line2'] as String?,
+      city: json['city'] as String,
+      state: json['state'] as String?,
+      postcode: json['postcode'] as String?,
+      country: json['country'] as String);
+  Map<String, dynamic> toJson() => {
+        'line1': line1,
+        'line2': line2,
+        'city': city,
+        'state': state,
+        'postcode': postcode,
+        'country': country
+      };
 }
 
 class Notification {
@@ -53,7 +70,7 @@ class Notification {
   final String? title;
   final String? body;
   final bool? isRead;
-  final String createdAt;
+  final DateTime createdAt;
   const Notification(
       {required this.id,
       required this.userId,
@@ -66,17 +83,18 @@ class Notification {
           {String? id,
           String? userId,
           String? type,
-          String? title,
-          String? body,
-          bool? isRead,
-          String? createdAt}) =>
+          Object? title = _dmUndefined,
+          Object? body = _dmUndefined,
+          Object? isRead = _dmUndefined,
+          DateTime? createdAt}) =>
       Notification(
           id: id ?? this.id,
           userId: userId ?? this.userId,
           type: type ?? this.type,
-          title: title ?? this.title,
-          body: body ?? this.body,
-          isRead: isRead ?? this.isRead,
+          title: identical(title, _dmUndefined) ? this.title : title as String?,
+          body: identical(body, _dmUndefined) ? this.body : body as String?,
+          isRead:
+              identical(isRead, _dmUndefined) ? this.isRead : isRead as bool?,
           createdAt: createdAt ?? this.createdAt);
   @override
   bool operator ==(Object other) =>
@@ -95,6 +113,23 @@ class Notification {
   @override
   String toString() =>
       'Notification(id: $id, userId: $userId, type: $type, title: $title, body: $body, isRead: $isRead, createdAt: $createdAt)';
+  factory Notification.fromJson(Map<String, dynamic> json) => Notification(
+      id: json['id'] as String,
+      userId: json['userId'] as String,
+      type: json['type'] as String,
+      title: json['title'] as String?,
+      body: json['body'] as String?,
+      isRead: json['isRead'] as bool?,
+      createdAt: DateTime.parse(json['createdAt'] as String));
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'userId': userId,
+        'type': type,
+        'title': title,
+        'body': body,
+        'isRead': isRead,
+        'createdAt': createdAt.toIso8601String()
+      };
 }
 
 class User {
@@ -114,16 +149,22 @@ class User {
   User copyWith(
           {String? id,
           String? email,
-          String? displayName,
-          String? avatarUrl,
-          bool? isVerified,
+          Object? displayName = _dmUndefined,
+          Object? avatarUrl = _dmUndefined,
+          Object? isVerified = _dmUndefined,
           String? createdAt}) =>
       User(
           id: id ?? this.id,
           email: email ?? this.email,
-          displayName: displayName ?? this.displayName,
-          avatarUrl: avatarUrl ?? this.avatarUrl,
-          isVerified: isVerified ?? this.isVerified,
+          displayName: identical(displayName, _dmUndefined)
+              ? this.displayName
+              : displayName as String?,
+          avatarUrl: identical(avatarUrl, _dmUndefined)
+              ? this.avatarUrl
+              : avatarUrl as String?,
+          isVerified: identical(isVerified, _dmUndefined)
+              ? this.isVerified
+              : isVerified as bool?,
           createdAt: createdAt ?? this.createdAt);
   @override
   bool operator ==(Object other) =>
@@ -141,4 +182,21 @@ class User {
   @override
   String toString() =>
       'User(id: $id, email: $email, displayName: $displayName, avatarUrl: $avatarUrl, isVerified: $isVerified, createdAt: $createdAt)';
+  factory User.fromJson(Map<String, dynamic> json) => User(
+      id: json['id'] as String,
+      email: json['email'] as String,
+      displayName: json['displayName'] as String?,
+      avatarUrl: json['avatarUrl'] as String?,
+      isVerified: json['isVerified'] as bool?,
+      createdAt: json['createdAt'] as String);
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'email': email,
+        'displayName': displayName,
+        'avatarUrl': avatarUrl,
+        'isVerified': isVerified,
+        'createdAt': createdAt
+      };
 }
+
+const Object? _dmUndefined = Object();

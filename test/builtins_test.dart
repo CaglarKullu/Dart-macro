@@ -19,7 +19,11 @@ void main() {
     });
 
     test('expands nested condition', () {
-      final result = expand(['unless', ['>', 'x', 0], 'y']) as List;
+      final result = expand([
+        'unless',
+        ['>', 'x', 0],
+        'y'
+      ]) as List;
       expect(result[0], equals('if'));
       final negCond = result[1] as List;
       expect(negCond[0], equals('!'));
@@ -38,7 +42,11 @@ void main() {
     });
 
     test('condition is NOT negated', () {
-      final result = expand(['when', ['>', 'x', 0], 'y']) as List;
+      final result = expand([
+        'when',
+        ['>', 'x', 0],
+        'y'
+      ]) as List;
       final cond = result[1];
       expect(cond, isNot(isA<List>().having((l) => l[0], 'head', '!')));
     });
@@ -48,7 +56,10 @@ void main() {
 
   group('assert-that', () {
     test('expands to [if, [!, expr], [throw, ...]]', () {
-      final result = expand(['assert-that', ['>', 'x', 0]]) as List;
+      final result = expand([
+        'assert-that',
+        ['>', 'x', 0]
+      ]) as List;
       expect(result[0], equals('if'));
       // negated condition
       final cond = result[1] as List;
@@ -59,7 +70,10 @@ void main() {
     });
 
     test('throw message contains source expression', () {
-      final result = expand(['assert-that', ['<=', 'amount', 1000000]]) as List;
+      final result = expand([
+        'assert-that',
+        ['<=', 'amount', 1000000]
+      ]) as List;
       final body = result[2] as List;
       final msg = body[1] as String;
       // The message should contain the emitted expression
@@ -72,7 +86,11 @@ void main() {
 
   group('with-retry', () {
     test('expands to [for-in, ...]', () {
-      final result = expand(['with-retry', 3, ['print', '"try"']]) as List;
+      final result = expand([
+        'with-retry',
+        3,
+        ['print', '"try"']
+      ]) as List;
       expect(result[0], equals('for-in'));
     });
 
@@ -104,7 +122,8 @@ void main() {
   group('defrecord', () {
     test('expands to [defclass, name, ...members]', () {
       final result = expand([
-        'defrecord', 'Point',
+        'defrecord',
+        'Point',
         ['double', 'x'],
         ['double', 'y'],
       ]) as List;
@@ -112,21 +131,26 @@ void main() {
       expect(result[1], equals('Point'));
     });
 
-    test('generates 2 field nodes + ctor + copyWith + equalop + hashop + tostringop', () {
+    test(
+        'generates 2 fields + ctor + copyWith + equalop + hashop + tostringop + fromjson + tojson',
+        () {
       final result = expand([
-        'defrecord', 'Point',
+        'defrecord',
+        'Point',
         ['double', 'x'],
         ['double', 'y'],
       ]) as List;
       // args = members = defclass head + name + members...
-      final members = result.sublist(2); // everything after 'defclass' and 'Point'
-      // 2 fields + ctor + copywith + equalop + hashop + tostringop = 7
-      expect(members.length, equals(7));
+      final members =
+          result.sublist(2); // everything after 'defclass' and 'Point'
+      // 2 fields + ctor + copywith + equalop + hashop + tostringop + fromjson + tojson = 9
+      expect(members.length, equals(9));
     });
 
     test('field nodes have correct types and names', () {
       final result = expand([
-        'defrecord', 'Point',
+        'defrecord',
+        'Point',
         ['double', 'x'],
         ['double', 'y'],
       ]) as List;
@@ -143,7 +167,8 @@ void main() {
 
     test('ctor node references class name', () {
       final result = expand([
-        'defrecord', 'Foo',
+        'defrecord',
+        'Foo',
         ['int', 'a'],
       ]) as List;
       final members = result.sublist(2);
@@ -154,7 +179,8 @@ void main() {
 
     test('emits valid Dart class', () {
       final node = expand([
-        'defrecord', 'Point',
+        'defrecord',
+        'Point',
         ['double', 'x'],
         ['double', 'y'],
       ]);
@@ -173,18 +199,32 @@ void main() {
   group('defunion', () {
     test('expands to [do, ...]', () {
       final result = expand([
-        'defunion', 'Shape',
-        ['Circle', ['double', 'radius']],
-        ['Square', ['double', 'side']],
+        'defunion',
+        'Shape',
+        [
+          'Circle',
+          ['double', 'radius']
+        ],
+        [
+          'Square',
+          ['double', 'side']
+        ],
       ]) as List;
       expect(result[0], equals('do'));
     });
 
     test('first child is the sealed class string', () {
       final result = expand([
-        'defunion', 'Shape',
-        ['Circle', ['double', 'radius']],
-        ['Square', ['double', 'side']],
+        'defunion',
+        'Shape',
+        [
+          'Circle',
+          ['double', 'radius']
+        ],
+        [
+          'Square',
+          ['double', 'side']
+        ],
       ]) as List;
       final sealedDecl = result[1] as String;
       expect(sealedDecl, contains('sealed class Shape'));
@@ -192,9 +232,16 @@ void main() {
 
     test('subsequent children are variant defclass nodes', () {
       final result = expand([
-        'defunion', 'Shape',
-        ['Circle', ['double', 'radius']],
-        ['Square', ['double', 'side']],
+        'defunion',
+        'Shape',
+        [
+          'Circle',
+          ['double', 'radius']
+        ],
+        [
+          'Square',
+          ['double', 'side']
+        ],
       ]) as List;
       // ['do', 'sealed class Shape {}', circle_class, square_class]
       expect(result.length, equals(4)); // do + sealed + 2 variants
@@ -205,9 +252,16 @@ void main() {
 
     test('emits sealed class + variant classes', () {
       final node = expand([
-        'defunion', 'Shape',
-        ['Circle', ['double', 'radius']],
-        ['Square', ['double', 'side']],
+        'defunion',
+        'Shape',
+        [
+          'Circle',
+          ['double', 'radius']
+        ],
+        [
+          'Square',
+          ['double', 'side']
+        ],
       ]);
       final out = emit(node);
       expect(out, contains('sealed class Shape'));
@@ -229,7 +283,10 @@ void main() {
       // Instead: use defmacro's registered macro fn directly via expand on a
       // 'do'-wrapped form and count the statements.
       resetGensym();
-      final result = expand(['do', ['swap!', 'a', 'b']]) as List;
+      final result = expand([
+        'do',
+        ['swap!', 'a', 'b']
+      ]) as List;
       // 'do' + let + set! + set! = 4 items
       expect(result[0], equals('do'));
       expect(result.length, equals(4)); // do + 3 spliced statements
@@ -237,7 +294,10 @@ void main() {
 
     test('swap! statements: let tmp = a, a = b, b = tmp', () {
       resetGensym();
-      final result = expand(['do', ['swap!', 'a', 'b']]) as List;
+      final result = expand([
+        'do',
+        ['swap!', 'a', 'b']
+      ]) as List;
       final stmt1 = result[1] as List; // let tmp = a
       final stmt2 = result[2] as List; // a = b
       final stmt3 = result[3] as List; // b = tmp
@@ -258,7 +318,10 @@ void main() {
 
     test('swap! temp var starts with __swap_', () {
       resetGensym();
-      final result = expand(['do', ['swap!', 'x', 'y']]) as List;
+      final result = expand([
+        'do',
+        ['swap!', 'x', 'y']
+      ]) as List;
       final stmt1 = result[1] as List;
       final tmp = stmt1[1] as String;
       expect(tmp, startsWith('__swap_'));
@@ -266,7 +329,11 @@ void main() {
 
     test('swap! works inside when (if branch context)', () {
       resetGensym();
-      final result = expand(['when', ['>', 'a', 'b'], ['swap!', 'a', 'b']]);
+      final result = expand([
+        'when',
+        ['>', 'a', 'b'],
+        ['swap!', 'a', 'b']
+      ]);
       // should be ['if', cond, splice-flattened...]
       // when → if; swap! inside if body gets spliced
       final out = emit(result);
@@ -275,7 +342,10 @@ void main() {
 
     test('expand is idempotent after swap! splice', () {
       resetGensym();
-      final form = ['do', ['swap!', 'a', 'b']];
+      final form = [
+        'do',
+        ['swap!', 'a', 'b']
+      ];
       final once = expand(form);
       resetGensym();
       final twice = expand(expand(form));

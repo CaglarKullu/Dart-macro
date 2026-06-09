@@ -6,7 +6,7 @@ import 'generator.dart';
 import 'dart_source_parser.dart';
 
 const _blockStart = '  // ━━━ dart_macros generated ━━━';
-const _blockEnd   = '  // ━━━ end dart_macros ━━━';
+const _blockEnd = '  // ━━━ end dart_macros ━━━';
 
 class TransformResult {
   final String source;
@@ -32,7 +32,8 @@ class Transformer {
     // 2. Parse annotated classes
     final classes = _parser.parse(stripped);
     if (classes.isEmpty) {
-      return TransformResult(source: source, classesTransformed: 0, classNames: []);
+      return TransformResult(
+          source: source, classesTransformed: 0, classNames: []);
     }
 
     // 3. Build insertion map: bodyEnd offset → generated code
@@ -62,9 +63,7 @@ class Transformer {
 
     // Apply in reverse so earlier indices stay correct
     for (final (bodyEnd, code) in insertions.reversed) {
-      result = result.substring(0, bodyEnd) +
-          code +
-          result.substring(bodyEnd);
+      result = result.substring(0, bodyEnd) + code + result.substring(bodyEnd);
     }
 
     return TransformResult(
@@ -103,18 +102,19 @@ class Transformer {
     if (!result.changed) return '(no changes)';
 
     final original = source.split('\n');
-    final updated  = result.source.split('\n');
+    final updated = result.source.split('\n');
     final buf = StringBuffer();
 
     // Very simple line diff
     int i = 0, j = 0;
     while (i < original.length || j < updated.length) {
       final a = i < original.length ? original[i] : null;
-      final b = j < updated.length  ? updated[j]  : null;
+      final b = j < updated.length ? updated[j] : null;
 
       if (a == b) {
         buf.writeln('  $a');
-        i++; j++;
+        i++;
+        j++;
       } else if (a != null && !result.source.contains(a)) {
         buf.writeln('- $a');
         i++;

@@ -6,11 +6,16 @@ class Payment {
   final String currency;
   final String? reference;
   const Payment({required this.amount, required this.currency, this.reference});
-  Payment copyWith({double? amount, String? currency, String? reference}) =>
+  Payment copyWith(
+          {double? amount,
+          String? currency,
+          Object? reference = _dmUndefined}) =>
       Payment(
           amount: amount ?? this.amount,
           currency: currency ?? this.currency,
-          reference: reference ?? this.reference);
+          reference: identical(reference, _dmUndefined)
+              ? this.reference
+              : reference as String?);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -23,6 +28,12 @@ class Payment {
   @override
   String toString() =>
       'Payment(amount: $amount, currency: $currency, reference: $reference)';
+  factory Payment.fromJson(Map<String, dynamic> json) => Payment(
+      amount: (json['amount'] as num).toDouble(),
+      currency: json['currency'] as String,
+      reference: json['reference'] as String?);
+  Map<String, dynamic> toJson() =>
+      {'amount': amount, 'currency': currency, 'reference': reference};
 }
 
 class TransferRequest {
@@ -51,6 +62,16 @@ class TransferRequest {
   @override
   String toString() =>
       'TransferRequest(payment: $payment, fromAccount: $fromAccount, toAccount: $toAccount)';
+  factory TransferRequest.fromJson(Map<String, dynamic> json) =>
+      TransferRequest(
+          payment: Payment.fromJson(json['payment'] as Map<String, dynamic>),
+          fromAccount: json['fromAccount'] as String,
+          toAccount: json['toAccount'] as String);
+  Map<String, dynamic> toJson() => {
+        'payment': payment.toJson(),
+        'fromAccount': fromAccount,
+        'toAccount': toAccount
+      };
 }
 
 sealed class PaymentState {
@@ -123,3 +144,5 @@ String describeAmount(double amount) {
   }
   return "normal";
 }
+
+const Object? _dmUndefined = Object();

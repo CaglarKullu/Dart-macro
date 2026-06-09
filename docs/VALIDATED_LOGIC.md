@@ -46,10 +46,12 @@ Emits Dart from an expanded AST. Validated rules:
 | `['defclass', name, …members]` | `class name { members }` |
 | `['field', type, name]` | `final type name;` |
 | `['ctor', name, [[type,p]…]]` | `const name({required this.p, …});` — nullable types omit `required`; empty field list emits `const name();` |
-| `['copywith', name, [[type,name]…]]` | a `copyWith` method |
-| `['equalop', name, fields]` | `operator ==` override |
-| `['hashop', _, fields]` | `hashCode` override |
+| `['copywith', name, [[type,name]…]]` | a `copyWith` method — nullable fields take an `Object? f = _dmUndefined` sentinel so `copyWith(f: null)` can clear them |
+| `['equalop', name, fields]` | `operator ==` override — `List`/`Set`/`Map` fields compared via `_dmEq` (structural), others via `==` |
+| `['hashop', _, fields]` | `hashCode` override — collection fields hashed via `_dmHash` |
 | `['tostringop', name, fields]` | `toString` override |
+| `['fromjson', name, fields]` | `factory name.fromJson(Map<String,dynamic>)` — type-aware: `double` via `(x as num).toDouble()`, `DateTime` via `DateTime.parse`, `List`/`Set` of primitives or nested records, nested records via `T.fromJson` |
+| `['tojson', _, fields]` | `Map<String,dynamic> toJson()` — inverse of `fromjson` (`DateTime`→`toIso8601String`, records→`toJson`) |
 | `['.method', recv, …args]` | `recv.method(args)` |
 | `['.-prop', recv]` | `recv.prop` |
 | `[name, …args]` (default) | `name(args)` — function call |
@@ -94,8 +96,15 @@ defrecord(name, fields…)  → ['defclass', name,
                               ['copywith', name, fields],
                               ['equalop', name, fields],
                               ['hashop', null, fields],
-                              ['tostringop', name, fields]]
+                              ['tostringop', name, fields],
+                              ['fromjson', name, fields],
+                              ['tojson', null, fields]]
 ```
+
+**Output assembly.** `compile`/`asyncCompile` (and the `.dmacro` variants) join the emitted
+top-level forms via `assembleOutput`, which appends the self-contained runtime helpers
+(`_dmUndefined` sentinel, `_dmEq`, `_dmHash`) **once per file, only when referenced**. Output
+stays dependency-free — no `package:` imports are ever added.
 
 ## Validated end-to-end example
 

@@ -40,7 +40,10 @@ class DartParser {
           j = _skipWhitespace(source, annoEnd.$2);
         }
 
-        if (annos.isEmpty) { i++; continue; }
+        if (annos.isEmpty) {
+          i++;
+          continue;
+        }
 
         // After annotations, skip 'abstract', 'final', 'base', 'sealed'
         j = _skipWhitespace(source, j);
@@ -52,8 +55,7 @@ class DartParser {
         }
 
         // Expect 'class'
-        if (!_startsWith(source, 'class', j) ||
-            _isIdentChar(source, j + 5)) {
+        if (!_startsWith(source, 'class', j) || _isIdentChar(source, j + 5)) {
           i++;
           continue;
         }
@@ -62,12 +64,17 @@ class DartParser {
 
         // Read class name
         final nameEnd = _readIdentifier(source, j);
-        if (nameEnd == null) { i++; continue; }
+        if (nameEnd == null) {
+          i++;
+          continue;
+        }
         final className = nameEnd.$1;
         j = nameEnd.$2;
 
         // Skip type parameters, extends, implements, with — up to '{'
-        while (j < source.length && source[j] != '{') { j++; }
+        while (j < source.length && source[j] != '{') {
+          j++;
+        }
         if (j >= source.length) break;
 
         final bodyStart = j;
@@ -105,13 +112,13 @@ class DartParser {
     // Pattern: [static] [final|late final|late|var] Type[?] name [= ...] ;
     final pattern = RegExp(
       r'(?:^|\n)\s*'
-      r'(?:static\s+)?'                          // optional static
-      r'(final\s+|late\s+final\s+|late\s+|var\s+)?'  // optional modifier
+      r'(?:static\s+)?' // optional static
+      r'(final\s+|late\s+final\s+|late\s+|var\s+)?' // optional modifier
       r'((?:[A-Z]\w*|int|double|num|String|bool|dynamic|Object|List|Map|Set|Iterable|Future|Stream)'
-      r'(?:<[^;]*?>)?'                           // optional generics (non-greedy)
-      r'\s*\??)'                                  // optional ?
-      r'\s+(\w+)'                                // field name
-      r'\s*(?:=[^;]*)?\s*;',                     // optional initialiser + ;
+      r'(?:<[^;]*?>)?' // optional generics (non-greedy)
+      r'\s*\??)' // optional ?
+      r'\s+(\w+)' // field name
+      r'\s*(?:=[^;]*)?\s*;', // optional initialiser + ;
     );
 
     for (final m in pattern.allMatches(flat)) {
@@ -183,8 +190,15 @@ class DartParser {
     if (j < s.length && s[j] == '(') {
       int depth = 0;
       while (j < s.length) {
-        if (s[j] == '(') { depth++; }
-        else if (s[j] == ')') { depth--; if (depth == 0) { j++; break; } }
+        if (s[j] == '(') {
+          depth++;
+        } else if (s[j] == ')') {
+          depth--;
+          if (depth == 0) {
+            j++;
+            break;
+          }
+        }
         j++;
       }
     }
@@ -195,26 +209,37 @@ class DartParser {
     if (i >= s.length) return null;
     if (!RegExp(r'[a-zA-Z_$]').hasMatch(s[i])) return null;
     final start = i;
-    while (i < s.length && RegExp(r'\w').hasMatch(s[i])) { i++; }
+    while (i < s.length && RegExp(r'\w').hasMatch(s[i])) {
+      i++;
+    }
     return (s.substring(start, i), i);
   }
 
   int _findMatchingBrace(String s, int open) {
     int depth = 0;
     for (int i = open; i < s.length; i++) {
-      if (s[i] == '{') { depth++; }
-      else if (s[i] == '}') { depth--; if (depth == 0) return i; }
+      if (s[i] == '{') {
+        depth++;
+      } else if (s[i] == '}') {
+        depth--;
+        if (depth == 0) return i;
+      }
     }
     return -1;
   }
 
   int _skipWhitespace(String s, int i) {
-    while (i < s.length && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r')) { i++; }
+    while (i < s.length &&
+        (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r')) {
+      i++;
+    }
     return i;
   }
 
   int _skipLineComment(String s, int i) {
-    while (i < s.length && s[i] != '\n') { i++; }
+    while (i < s.length && s[i] != '\n') {
+      i++;
+    }
     return i;
   }
 
@@ -231,7 +256,10 @@ class DartParser {
     final quote = s[i];
     i++;
     while (i < s.length) {
-      if (s[i] == '\\') { i += 2; continue; }
+      if (s[i] == '\\') {
+        i += 2;
+        continue;
+      }
       if (s[i] == quote) return i + 1;
       i++;
     }
@@ -239,14 +267,34 @@ class DartParser {
   }
 
   bool _startsWith(String s, String prefix, int i) =>
-      s.length >= i + prefix.length && s.substring(i, i + prefix.length) == prefix;
+      s.length >= i + prefix.length &&
+      s.substring(i, i + prefix.length) == prefix;
 
   bool _isIdentChar(String s, int i) =>
       i < s.length && RegExp(r'\w').hasMatch(s[i]);
 
   bool _isKeyword(String s) => const {
-    'return', 'if', 'else', 'for', 'while', 'switch', 'case', 'break',
-    'continue', 'new', 'null', 'true', 'false', 'this', 'super',
-    'void', 'get', 'set', 'async', 'await', 'yield', 'throw',
-  }.contains(s);
+        'return',
+        'if',
+        'else',
+        'for',
+        'while',
+        'switch',
+        'case',
+        'break',
+        'continue',
+        'new',
+        'null',
+        'true',
+        'false',
+        'this',
+        'super',
+        'void',
+        'get',
+        'set',
+        'async',
+        'await',
+        'yield',
+        'throw',
+      }.contains(s);
 }

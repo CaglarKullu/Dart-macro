@@ -34,7 +34,9 @@ class DartLikeParser {
 
   List<Node> parseProgram() {
     final nodes = <Node>[];
-    while (!_atEnd()) { nodes.add(_declaration()); }
+    while (!_atEnd()) {
+      nodes.add(_declaration());
+    }
     return nodes;
   }
 
@@ -42,7 +44,7 @@ class DartLikeParser {
 
   Node _declaration() {
     if (_check(TK.ident, 'defrecord')) return _defrecord();
-    if (_check(TK.ident, 'defunion'))  return _defunion();
+    if (_check(TK.ident, 'defunion')) return _defunion();
     // Top-level macro call: ident ( args... ) ;
     // Distinguished from a function declaration (type name ( ) { }) by looking
     // ahead: ident immediately followed by lparen → call, not declaration.
@@ -104,7 +106,7 @@ class DartLikeParser {
     // Optional 'async' return-type prefix: "async Future<T> f() async { }"
     // The 'async' keyword appears BEFORE the body open-brace (after the params).
     final returnType = _parseType();
-    final name       = _expect(TK.ident).value as String;
+    final name = _expect(TK.ident).value as String;
     _expect(TK.lparen);
     final params = _parseParams();
     _expect(TK.rparen);
@@ -119,7 +121,7 @@ class DartLikeParser {
       return ['defn', tag, name, params, '__arrow__', expr];
     }
     final body = _blockStatements();
-    final tag  = isAsync ? 'async $returnType' : returnType;
+    final tag = isAsync ? 'async $returnType' : returnType;
     return ['defn', tag, name, params, ...body];
   }
 
@@ -128,8 +130,14 @@ class DartLikeParser {
     while (!_check(TK.rparen)) {
       // Named/optional params: { String? host, int port = 8080 }
       // For simplicity, skip '{' / '}' wrappers and treat as regular params.
-      if (_check(TK.lbrace)) { _advance(); continue; }
-      if (_check(TK.rbrace)) { _advance(); continue; }
+      if (_check(TK.lbrace)) {
+        _advance();
+        continue;
+      }
+      if (_check(TK.rbrace)) {
+        _advance();
+        continue;
+      }
       final t = _parseType();
       final n = _expect(TK.ident).value as String;
       // Skip default value if present
@@ -147,12 +155,17 @@ class DartLikeParser {
     if (_check(TK.lt)) {
       _advance();
       final inner = [_parseType()];
-      while (_match(TK.comma)) { inner.add(_parseType()); }
+      while (_match(TK.comma)) {
+        inner.add(_parseType());
+      }
       _expect(TK.gt);
       name = '$name<${inner.join(', ')}>';
     }
     // Nullable
-    if (_check(TK.question)) { _advance(); name = '$name?'; }
+    if (_check(TK.question)) {
+      _advance();
+      name = '$name?';
+    }
     return name;
   }
 
@@ -161,7 +174,9 @@ class DartLikeParser {
   List<Node> _blockStatements() {
     _expect(TK.lbrace);
     final stmts = <Node>[];
-    while (!_check(TK.rbrace)) { stmts.add(_statement()); }
+    while (!_check(TK.rbrace)) {
+      stmts.add(_statement());
+    }
     _expect(TK.rbrace);
     return stmts;
   }
@@ -193,7 +208,10 @@ class DartLikeParser {
       var name = _expect(TK.ident).value as String;
       // If followed by another IDENT (or IDENT?), the first was the type
       if (_check(TK.ident) || _check(TK.question)) {
-        if (_check(TK.question)) { _advance(); name = '$name?'; }
+        if (_check(TK.question)) {
+          _advance();
+          name = '$name?';
+        }
         final realName = _expect(TK.ident).value as String;
         _expect(TK.assign);
         final val = _expr();
@@ -267,7 +285,8 @@ class DartLikeParser {
       return expr;
     }
     final bad = _peek();
-    throw ParseException('Unexpected token: $bad', line: bad.line, col: bad.col);
+    throw ParseException('Unexpected token: $bad',
+        line: bad.line, col: bad.col);
   }
 
   // ─── Expressions (operator precedence) ───────────────────────────────────────
@@ -299,13 +318,19 @@ class DartLikeParser {
 
   Node _or() {
     var left = _and();
-    while (_check(TK.or)) { _advance(); left = ['||', left, _and()]; }
+    while (_check(TK.or)) {
+      _advance();
+      left = ['||', left, _and()];
+    }
     return left;
   }
 
   Node _and() {
     var left = _equality();
-    while (_check(TK.and)) { _advance(); left = ['&&', left, _equality()]; }
+    while (_check(TK.and)) {
+      _advance();
+      left = ['&&', left, _equality()];
+    }
     return left;
   }
 
@@ -342,8 +367,14 @@ class DartLikeParser {
   }
 
   Node _unary() {
-    if (_check(TK.bang))  { _advance(); return ['!', _unary()]; }
-    if (_check(TK.minus)) { _advance(); return ['-', _unary()]; }
+    if (_check(TK.bang)) {
+      _advance();
+      return ['!', _unary()];
+    }
+    if (_check(TK.minus)) {
+      _advance();
+      return ['-', _unary()];
+    }
     return _postfix();
   }
 
@@ -437,7 +468,9 @@ class DartLikeParser {
       while (!_check(TK.rbracket)) {
         // spread: ...expr
         if (_check(TK.dot)) {
-          _advance(); _advance(); _advance(); // consume three dots
+          _advance();
+          _advance();
+          _advance(); // consume three dots
           items.add(['...', _expr()]);
         } else {
           items.add(_expr());
@@ -458,7 +491,8 @@ class DartLikeParser {
         t.kind == TK.ident) {
       return _advance().value!;
     }
-    throw ParseException('Unexpected token in expression: $t', line: t.line, col: t.col);
+    throw ParseException('Unexpected token in expression: $t',
+        line: t.line, col: t.col);
   }
 
   List<Node> _argList() {
@@ -479,7 +513,7 @@ class DartLikeParser {
 
   // ─── Token helpers ────────────────────────────────────────────────────────────
 
-  Token _peek()  => _tokens[_pos];
+  Token _peek() => _tokens[_pos];
   Token _peek2() => _tokens[_pos + 1 < _tokens.length ? _pos + 1 : _pos];
 
   Token _advance() {
@@ -494,7 +528,10 @@ class DartLikeParser {
   }
 
   bool _match(TK kind, [Object? value]) {
-    if (_check(kind, value)) { _advance(); return true; }
+    if (_check(kind, value)) {
+      _advance();
+      return true;
+    }
     return false;
   }
 
@@ -504,7 +541,8 @@ class DartLikeParser {
       throw ParseException(
         'Expected ${kind.name}${value != null ? "($value)" : ""}, '
         'got $t',
-        line: t.line, col: t.col,
+        line: t.line,
+        col: t.col,
       );
     }
     return _advance();
@@ -522,6 +560,6 @@ class DartLikeParser {
 String compileDartLike(String source) {
   resetGensym();
   final tokens = Tokenizer(source).tokenize();
-  final forms  = DartLikeParser(tokens).parseProgram();
-  return forms.map((f) => emit(expand(f))).join('\n\n');
+  final forms = DartLikeParser(tokens).parseProgram();
+  return assembleOutput(forms.map((f) => emit(expand(f))));
 }

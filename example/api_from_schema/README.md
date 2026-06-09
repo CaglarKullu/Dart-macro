@@ -33,6 +33,7 @@ dart run bin/dmacro.dart compile example/api_from_schema/models.dmacro
 | JSON Schema type | Dart type |
 |---|---|
 | `string` | `String` |
+| `string` + `format: date-time` / `date` | `DateTime` (parsed in `fromJson`, ISO-8601 in `toJson`) |
 | `integer` | `int` |
 | `number` | `double` |
 | `boolean` | `bool` |
@@ -40,6 +41,8 @@ dart run bin/dmacro.dart compile example/api_from_schema/models.dmacro
 | `object` with `title` | the title as a type name |
 | required field | `Type field` |
 | optional field | `Type? field` (nullable, optional in constructor) |
+
+Each generated class includes `fromJson`/`toJson`, deep `==`/`hashCode`, and `copyWith` — a ready-to-use API model, not just a data holder.
 
 ## Adding a new type
 

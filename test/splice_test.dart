@@ -9,12 +9,17 @@ void main() {
 
   group('Splice — basic', () {
     test('Splice holds a list of nodes', () {
-      final s = Splice([['let', 'a', 1], ['set!', 'b', 2]]);
+      final s = Splice([
+        ['let', 'a', 1],
+        ['set!', 'b', 2]
+      ]);
       expect(s.nodes.length, equals(2));
     });
 
     test('\$splice returns a Splice', () {
-      final s = $splice([['let', 'x', 0]]);
+      final s = $splice([
+        ['let', 'x', 0]
+      ]);
       expect(s, isA<Splice>());
     });
   });
@@ -23,7 +28,9 @@ void main() {
 
   group('emit — Splice guard', () {
     test('Splice reaching emit throws StateError', () {
-      final s = $splice([['let', 'a', 1]]);
+      final s = $splice([
+        ['let', 'a', 1]
+      ]);
       expect(() => emit(s), throwsA(isA<StateError>()));
     });
   });
@@ -32,7 +39,10 @@ void main() {
 
   group('expand — Splice flattening', () {
     test('swap! inside [do ...] is flattened to 3 statements', () {
-      final result = expand(['do', ['swap!', 'a', 'b']]) as List;
+      final result = expand([
+        'do',
+        ['swap!', 'a', 'b']
+      ]) as List;
       // do + let + set! + set! = 4 total
       expect(result[0], equals('do'));
       expect(result.length, equals(4));
@@ -45,7 +55,11 @@ void main() {
       // swap! produces a Splice of 3 statements.
       // When used as the body of 'when', the resulting 'if' will have
       // the splice flattened into the if args: [if, cond, let, set!, set!]
-      final result = expand(['when', ['>', 'a', 'b'], ['swap!', 'a', 'b']]) as List;
+      final result = expand([
+        'when',
+        ['>', 'a', 'b'],
+        ['swap!', 'a', 'b']
+      ]) as List;
       expect(result[0], equals('if'));
       // cond at [1], then 3 splice children at [2], [3], [4]
       expect(result.length, equals(5));
@@ -58,7 +72,11 @@ void main() {
     });
 
     test('swap! inside [while cond body] → while has 3 spliced children', () {
-      final result = expand(['while', 'cond', ['swap!', 'a', 'b']]) as List;
+      final result = expand([
+        'while',
+        'cond',
+        ['swap!', 'a', 'b']
+      ]) as List;
       expect(result[0], equals('while'));
       // while [cond, let, set!, set!] = 5 total
       expect(result.length, equals(5));
@@ -67,7 +85,11 @@ void main() {
 
     test('nested macro using swap! inlines correctly', () {
       // unless wraps the body in an if; if swap! is the body it should splice
-      final result = expand(['unless', ['<', 'a', 'b'], ['swap!', 'a', 'b']]) as List;
+      final result = expand([
+        'unless',
+        ['<', 'a', 'b'],
+        ['swap!', 'a', 'b']
+      ]) as List;
       expect(result[0], equals('if'));
       // [if, [!, cond], let, set!, set!]
       expect(result.length, equals(5));
@@ -83,7 +105,11 @@ void main() {
         }
       }
 
-      final result = expand(['when', 'c', ['swap!', 'a', 'b']]);
+      final result = expand([
+        'when',
+        'c',
+        ['swap!', 'a', 'b']
+      ]);
       checkNoSplice(result);
     });
   });
@@ -93,8 +119,11 @@ void main() {
   group('expand — idempotency after splice', () {
     test('expand(expand(x)) == expand(x) for swap! in do', () {
       resetGensym();
-      final form = ['do', ['swap!', 'a', 'b']];
-      final once  = expand(form);
+      final form = [
+        'do',
+        ['swap!', 'a', 'b']
+      ];
+      final once = expand(form);
       // NOTE: we can't call expand again on the same form because
       // gensym would advance. So we just verify the structure is stable:
       // expand on an already-expanded do-list does not change structure.
@@ -104,7 +133,11 @@ void main() {
     });
 
     test('expand on non-splice form is idempotent', () {
-      final form = ['if', 'cond', ['let', 'x', 1]];
+      final form = [
+        'if',
+        'cond',
+        ['let', 'x', 1]
+      ];
       expect(expand(expand(form)), equals(expand(form)));
     });
   });
@@ -114,7 +147,10 @@ void main() {
   group('emit — swap! produces valid Dart', () {
     test('emitting swap! in do context produces valid Dart statements', () {
       resetGensym();
-      final expanded = expand(['do', ['swap!', 'a', 'b']]);
+      final expanded = expand([
+        'do',
+        ['swap!', 'a', 'b']
+      ]);
       final out = emit(expanded);
       expect(out, contains('final __swap_0 = a'));
       expect(out, contains('a = b'));
@@ -123,7 +159,11 @@ void main() {
 
     test('emitting when with swap! produces valid Dart if-statement', () {
       resetGensym();
-      final expanded = expand(['when', ['>', 'a', 'b'], ['swap!', 'a', 'b']]);
+      final expanded = expand([
+        'when',
+        ['>', 'a', 'b'],
+        ['swap!', 'a', 'b']
+      ]);
       final out = emit(expanded);
       expect(out, contains('if'));
       expect(out, contains('__swap_0'));

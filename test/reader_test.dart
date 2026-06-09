@@ -71,7 +71,12 @@ void main() {
     test('reads nested list', () {
       expect(
         Reader('(if (> x 0) y z)').readOne(),
-        equals(['if', ['>', 'x', 0], 'y', 'z']),
+        equals([
+          'if',
+          ['>', 'x', 0],
+          'y',
+          'z'
+        ]),
       );
     });
 

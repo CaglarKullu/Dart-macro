@@ -69,9 +69,11 @@ void _approach2_TypedBuilder() {
 
   // You write normal Dart to build and emit code.
   // No S-expressions visible. Just Dart function calls.
-  final paymentRecord = ['defrecord', 'Payment',
-    ['double',  'amount'],
-    ['String',  'currency'],
+  final paymentRecord = [
+    'defrecord',
+    'Payment',
+    ['double', 'amount'],
+    ['String', 'currency'],
     ['String?', 'reference'],
   ];
 
@@ -80,8 +82,8 @@ void _approach2_TypedBuilder() {
     name: 'validatePayment',
     params: [Param('double', 'amount')],
     body: [
-      $call('unless', [$gt('amount', 0),
-        $throw('Exception("Amount must be positive")')]),
+      $call('unless',
+          [$gt('amount', 0), $throw('Exception("Amount must be positive")')]),
       $return('true'),
     ],
   );
@@ -111,7 +113,8 @@ void _approach2_TypedBuilder() {
 
   print('');
   print('  Verdict: 100% Dart. Good for codegen tools and build scripts.');
-  print('  Uncomfortable for application code — you\'re building, not writing.\n');
+  print(
+      '  Uncomfortable for application code — you\'re building, not writing.\n');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -152,7 +155,8 @@ void _approach3_Hybrid() {
 
   print('  Verdict: S-expressions are quarantined to data-model declarations.');
   print('  The syntax is foreign but the SCOPE is small and well-defined.');
-  print('  Similar to SQL or regex — a different language for a specific purpose.\n');
+  print(
+      '  Similar to SQL or regex — a different language for a specific purpose.\n');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

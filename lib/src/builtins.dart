@@ -25,7 +25,6 @@ void registerBuiltins() {
 // ─── Control flow ─────────────────────────────────────────────────────────────
 
 void _registerControlFlow() {
-
   // (unless condition body)
   // A function can't do this — it would evaluate both args before calling.
   // Raw:   defmacro('unless', (args) => ['if', ['!', args[0]], args[1]]);
@@ -40,19 +39,25 @@ void _registerControlFlow() {
   // into the caller's scope — impossible with a higher-order function.
   // Registered under both the kebab-case (.sexp) and camelCase (.dmacro) names.
   Node withRetry(List<Node> args) {
-    final n       = args[0];
-    final body    = args[1];
+    final n = args[0];
+    final body = args[1];
     final attempt = gensym('attempt');
-    final err     = gensym('err');
-    return $forIn(attempt, 'Iterable.generate(${emit(n)})',
-      $try(body, err,
-        $if($eq(attempt, $sub(n, 1)),
+    final err = gensym('err');
+    return $forIn(
+      attempt,
+      'Iterable.generate(${emit(n)})',
+      $try(
+        body,
+        err,
+        $if(
+          $eq(attempt, $sub(n, 1)),
           $throw(err),
           $call('print', [$str('Retrying...')]),
         ),
       ),
     );
   }
+
   defmacro('with-retry', withRetry);
   defmacro('withRetry', withRetry);
 
@@ -61,9 +66,9 @@ void _registerControlFlow() {
   // A function receives a value — it can never know what expression produced it.
   // Registered under both the kebab-case (.sexp) and camelCase (.dmacro) names.
   Node assertThat(List<Node> args) => $if(
-    $not(args[0]),
-    $throw('AssertionError("Expected: ${emit(args[0])}, got false")'),
-  );
+        $not(args[0]),
+        $throw('AssertionError("Expected: ${emit(args[0])}, got false")'),
+      );
   defmacro('assert-that', assertThat);
   defmacro('assertThat', assertThat);
 }
@@ -71,7 +76,6 @@ void _registerControlFlow() {
 // ─── Binding ──────────────────────────────────────────────────────────────────
 
 void _registerBinding() {
-
   // (swap! a b)
   // Injects a temp variable directly into the caller's scope.
   // A function receives values — it cannot write back to the caller's variables.
@@ -90,8 +94,8 @@ void _registerBinding() {
   // Cascading bindings where each can see the previous.
   defmacro('and-let', (args) {
     final bindings = args.sublist(0, args.length - 1);
-    final body     = args.last;
-    Node result    = body;
+    final body = args.last;
+    Node result = body;
     for (final b in bindings.reversed) {
       final name = (b as List)[0] as String;
       final expr = b[1];
@@ -105,7 +109,7 @@ void _registerBinding() {
   defmacro('once', (args) {
     final name = args[0] as String;
     final expr = args[1];
-    final tmp  = '_once_$name';
+    final tmp = '_once_$name';
     return $do([
       $let(tmp, expr),
       $set(name, tmp),
@@ -116,7 +120,6 @@ void _registerBinding() {
 // ─── Data class generation ────────────────────────────────────────────────────
 
 void _registerDataClass() {
-
   // (defrecord Name [Type field] [Type field] ...)
   //
   // Generates a COMPLETE immutable data class from a compact spec.
@@ -125,8 +128,9 @@ void _registerDataClass() {
   //
   // One line of macro code replaces ~40 lines of Dart boilerplate.
   defmacro('defrecord', (args) {
-    final name   = args[0] as String;
-    final fields = args.sublist(1)
+    final name = args[0] as String;
+    final fields = args
+        .sublist(1)
         .map((f) => Field((f as List)[0] as String, f[1] as String))
         .toList();
 
@@ -137,18 +141,21 @@ void _registerDataClass() {
       $equality(name, fields),
       $hashCode(fields),
       $toString(name, fields),
+      $fromJson(name, fields),
+      $toJson(fields),
     ]);
   });
 
   // (defunion Name [Variant1 [Type field]...] [Variant2 ...])
   // Generates a sealed class hierarchy — like Freezed's union types.
   defmacro('defunion', (args) {
-    final name     = args[0] as String;
+    final name = args[0] as String;
     final variants = args.sublist(1);
 
     final variantClasses = variants.map((v) {
-      final variantName   = (v as List)[0] as String;
-      final variantFields = v.sublist(1)
+      final variantName = (v as List)[0] as String;
+      final variantFields = v
+          .sublist(1)
           .map((f) => Field((f as List)[0] as String, f[1] as String))
           .toList();
       return $class('$variantName extends $name', [
@@ -159,6 +166,7 @@ void _registerDataClass() {
 
     // The parent carries a const constructor so the variant subclasses (which
     // use `const`) can call a const super constructor.
-    return $do(['sealed class $name {\n  const $name();\n}', ...variantClasses]);
+    return $do(
+        ['sealed class $name {\n  const $name();\n}', ...variantClasses]);
   });
 }

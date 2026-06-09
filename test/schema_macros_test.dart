@@ -18,9 +18,10 @@ void main() {
       // Hand-written equivalent
       resetGensym();
       final manual = expand([
-        'defrecord', 'Payment',
-        ['double',  'amount'],
-        ['String',  'currency'],
+        'defrecord',
+        'Payment',
+        ['double', 'amount'],
+        ['String', 'currency'],
         ['String?', 'reference'],
         ['List<String>?', 'tags'],
       ]) as List;
@@ -42,10 +43,11 @@ void main() {
         ['defFromJsonSchema', '"example/schema_demo/schemas/payment.json"'],
       ) as List;
       final members = result.sublist(2);
-      final fields = members.whereType<List>().where((m) => m[0] == 'field').toList();
-      final amount   = fields.firstWhere((f) => f[2] == 'amount');
+      final fields =
+          members.whereType<List>().where((m) => m[0] == 'field').toList();
+      final amount = fields.firstWhere((f) => f[2] == 'amount');
       final currency = fields.firstWhere((f) => f[2] == 'currency');
-      expect(amount[1],   equals('double'));
+      expect(amount[1], equals('double'));
       expect(currency[1], equals('String'));
     });
 
@@ -54,7 +56,8 @@ void main() {
         ['defFromJsonSchema', '"example/schema_demo/schemas/payment.json"'],
       ) as List;
       final members = result.sublist(2);
-      final fields = members.whereType<List>().where((m) => m[0] == 'field').toList();
+      final fields =
+          members.whereType<List>().where((m) => m[0] == 'field').toList();
       final reference = fields.firstWhere((f) => f[2] == 'reference');
       expect(reference[1], equals('String?'));
     });
@@ -64,7 +67,8 @@ void main() {
         ['defFromJsonSchema', '"example/schema_demo/schemas/payment.json"'],
       ) as List;
       final members = result.sublist(2);
-      final fields = members.whereType<List>().where((m) => m[0] == 'field').toList();
+      final fields =
+          members.whereType<List>().where((m) => m[0] == 'field').toList();
       final tags = fields.firstWhere((f) => f[2] == 'tags');
       expect(tags[1], equals('List<String>?'));
     });
@@ -91,7 +95,8 @@ void main() {
 
   group('asyncCompileDartLike — end to end', () {
     test('compiles defFromJsonSchema in .dmacro source', () async {
-      const src = 'defFromJsonSchema("example/schema_demo/schemas/payment.json");';
+      const src =
+          'defFromJsonSchema("example/schema_demo/schemas/payment.json");';
       final out = await asyncCompileDartLike(src);
       expect(out, contains('class Payment'));
       expect(out, contains('final double amount;'));
@@ -99,7 +104,8 @@ void main() {
     });
 
     test('output is deterministic', () async {
-      const src = 'defFromJsonSchema("example/schema_demo/schemas/payment.json");';
+      const src =
+          'defFromJsonSchema("example/schema_demo/schemas/payment.json");';
       final a = await asyncCompileDartLike(src);
       final b = await asyncCompileDartLike(src);
       expect(a, equals(b));
@@ -140,7 +146,10 @@ void main() {
 
     test('swap! splice works through async expander', () async {
       resetGensym();
-      final result = await asyncExpand(['do', ['swap!', 'a', 'b']]) as List;
+      final result = await asyncExpand([
+        'do',
+        ['swap!', 'a', 'b']
+      ]) as List;
       expect(result[0], equals('do'));
       expect(result.length, equals(4));
     });
@@ -153,8 +162,12 @@ void main() {
     });
 
     test('asyncExpand is idempotent for non-macro forms', () async {
-      final form = ['if', 'cond', ['let', 'x', 1]];
-      final once  = await asyncExpand(form);
+      final form = [
+        'if',
+        'cond',
+        ['let', 'x', 1]
+      ];
+      final once = await asyncExpand(form);
       final twice = await asyncExpand(once);
       expect(once, equals(twice));
     });
@@ -164,7 +177,8 @@ void main() {
 
   group('schema demo — generate models.dart', () {
     test('generates and writes example/schema_demo/models.dart', () async {
-      const src = 'defFromJsonSchema("example/schema_demo/schemas/payment.json");';
+      const src =
+          'defFromJsonSchema("example/schema_demo/schemas/payment.json");';
       final dart = await asyncCompileDartLike(src);
       File('example/schema_demo/models.dart').writeAsStringSync(dart);
       expect(dart, contains('class Payment'));
@@ -172,6 +186,62 @@ void main() {
   });
 
   // ─── defAllFromJsonSchema ─────────────────────────────────────────────────────
+
+  group('schema format → DateTime', () {
+    late Directory tmpDir;
+    setUp(() => tmpDir = Directory.systemTemp.createTempSync('dmacro_dt_'));
+    tearDown(() => tmpDir.deleteSync(recursive: true));
+
+    test('string with format date-time/date maps to DateTime', () async {
+      File('${tmpDir.path}/event.json').writeAsStringSync(jsonEncode({
+        'title': 'Event',
+        'type': 'object',
+        'required': ['id', 'startsAt'],
+        'properties': {
+          'id': {'type': 'string'},
+          'startsAt': {'type': 'string', 'format': 'date-time'},
+          'day': {'type': 'string', 'format': 'date'},
+        },
+      }));
+      final result = await asyncExpand(
+        ['defFromJsonSchema', '"${tmpDir.path}/event.json"'],
+      ) as List;
+      final fields =
+          result.sublist(2).whereType<List>().where((m) => m[0] == 'field');
+      expect(
+          fields.firstWhere((f) => f[2] == 'startsAt')[1], equals('DateTime'));
+      expect(fields.firstWhere((f) => f[2] == 'day')[1], equals('DateTime?'));
+    });
+
+    test('generated DateTime field round-trips through JSON', () async {
+      File('${tmpDir.path}/event.json').writeAsStringSync(jsonEncode({
+        'title': 'Event',
+        'type': 'object',
+        'required': ['id', 'startsAt'],
+        'properties': {
+          'id': {'type': 'string'},
+          'startsAt': {'type': 'string', 'format': 'date-time'},
+        },
+      }));
+      final code = await asyncCompileDartLike(
+        'defFromJsonSchema("${tmpDir.path}/event.json");',
+      );
+      final prog = File('${tmpDir.path}/prog.dart')..writeAsStringSync('''
+$code
+
+void main() {
+  final e = Event(id: 'a', startsAt: DateTime.utc(2026, 1, 2, 3, 4, 5));
+  final back = Event.fromJson(e.toJson());
+  if (back != e) throw 'round-trip mismatch: \$back';
+  if (e.toJson()['startsAt'] is! String) throw 'DateTime not serialized to String';
+  print('ok');
+}
+''');
+      final r = await Process.run('dart', ['run', prog.path]);
+      expect(r.exitCode, 0, reason: '${r.stderr}\n${r.stdout}\n$code');
+      expect('${r.stdout}'.trim(), 'ok');
+    });
+  });
 
   group('defAllFromJsonSchema', () {
     late Directory tmpDir;
@@ -187,7 +257,7 @@ void main() {
         'type': 'object',
         'required': ['id', 'name'],
         'properties': {
-          'id':   {'type': 'integer'},
+          'id': {'type': 'integer'},
           'name': {'type': 'string'},
         },
       }));
@@ -197,7 +267,7 @@ void main() {
         'required': ['street'],
         'properties': {
           'street': {'type': 'string'},
-          'city':   {'type': 'string'},
+          'city': {'type': 'string'},
         },
       }));
 
@@ -218,13 +288,17 @@ void main() {
         'title': 'BSchema',
         'type': 'object',
         'required': ['x'],
-        'properties': {'x': {'type': 'integer'}},
+        'properties': {
+          'x': {'type': 'integer'}
+        },
       }));
       File('${tmpDir.path}/a_schema.json').writeAsStringSync(jsonEncode({
         'title': 'ASchema',
         'type': 'object',
         'required': ['y'],
-        'properties': {'y': {'type': 'string'}},
+        'properties': {
+          'y': {'type': 'string'}
+        },
       }));
 
       final result = await asyncExpand(
@@ -241,13 +315,17 @@ void main() {
         'title': 'Item',
         'type': 'object',
         'required': ['id'],
-        'properties': {'id': {'type': 'integer'}},
+        'properties': {
+          'id': {'type': 'integer'}
+        },
       }));
 
       resetGensym();
-      final a = emit(await asyncExpand(['defAllFromJsonSchema', '"${tmpDir.path}"']));
+      final a =
+          emit(await asyncExpand(['defAllFromJsonSchema', '"${tmpDir.path}"']));
       resetGensym();
-      final b = emit(await asyncExpand(['defAllFromJsonSchema', '"${tmpDir.path}"']));
+      final b =
+          emit(await asyncExpand(['defAllFromJsonSchema', '"${tmpDir.path}"']));
       expect(a, equals(b));
     });
 
@@ -256,7 +334,9 @@ void main() {
         asyncExpand(['defAllFromJsonSchema', '"no/such/dir"']),
         throwsA(
           isA<StateError>().having(
-            (e) => e.message, 'message', contains('no/such/dir'),
+            (e) => e.message,
+            'message',
+            contains('no/such/dir'),
           ),
         ),
       );
@@ -338,13 +418,16 @@ void main() {
         ]),
         throwsA(
           isA<StateError>().having(
-            (e) => e.message, 'message', contains('no/such/spec.json'),
+            (e) => e.message,
+            'message',
+            contains('no/such/spec.json'),
           ),
         ),
       );
     });
 
-    test('unknown schema name throws StateError listing available schemas', () async {
+    test('unknown schema name throws StateError listing available schemas',
+        () async {
       await expectLater(
         asyncExpand([
           'defFromOpenApi',
@@ -353,7 +436,8 @@ void main() {
         ]),
         throwsA(
           isA<StateError>().having(
-            (e) => e.message, 'message',
+            (e) => e.message,
+            'message',
             allOf(contains('NoSuchSchema'), contains('Pet')),
           ),
         ),

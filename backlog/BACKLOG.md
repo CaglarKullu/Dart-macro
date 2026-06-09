@@ -115,6 +115,41 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked/needs dec
 
 ---
 
+## Phase 6 — Flutter ergonomics (model classes that ship)
+
+Senior-Flutter-dev review (2026-06): the package emits analyzer-clean code, but a
+generated `defrecord` is not yet a usable Flutter model. These close the gap with the
+de-facto stack (`freezed` + `json_serializable` / `Equatable`).
+
+### 6.1 JSON serialization (P0)
+- [x] `defrecord` emits `factory Name.fromJson(Map<String, dynamic>)` and `toJson()`
+- [x] Type-aware: primitives, `double` via `(x as num).toDouble()`, `DateTime` via
+      `DateTime.parse` / `toIso8601String`, `List<T>`/`Set<T>` (primitive + nested record),
+      nested record types via `T.fromJson` / `e.toJson()`, nullable variants of each
+- [x] Self-contained — no `package:json_serializable`, no imports added
+- [x] Round-trip test: `Name.fromJson(x.toJson()) == x` (test/flutter_ergonomics_test.dart)
+
+### 6.2 Deep value equality (P0)
+- [x] `==` and `hashCode` compare `List`/`Set`/`Map` fields structurally (not by identity)
+- [x] Self-contained `_dmEq` / `_dmHash` helpers (in `assembleOutput`), emitted once per
+      file only when used, zero non-SDK deps
+- [x] Test: equal-but-distinct lists are `==`, hash-equal, and usable as `Set` keys
+
+### 6.3 copyWith explicit-null (P1)
+- [x] `x.copyWith(field: null)` clears a nullable field (`_dmUndefined` sentinel)
+- [x] Non-nullable fields keep the simple `?? this.x` form; both paths tested
+- Note: nullable params are typed `Object?` to carry the sentinel — a deliberate
+  trade-off (loses per-arg IDE type hints) matching the freezed approach.
+
+### 6.4 Schema coverage (P1)
+- [x] `format: date-time` / `date` (string) → `DateTime` (+ round-trip test)
+- [!] `enum` → generated Dart `enum`. Deferred: requires the emitter to distinguish an
+      enum-typed field from a nested-record field (both are bare identifiers) so fromJson
+      can pick `Values.byName(...)` vs `T.fromJson(...)`. Needs an explicit enum-type
+      signal threaded from schema → defrecord → emitter. Scoped as its own task.
+
+---
+
 ## Cross-cutting (apply throughout)
 
 - [x] `dart analyze` clean across `lib/` (0 errors)
