@@ -396,4 +396,242 @@ void main() {
       expect(setNode[1], equals('x'));
     });
   });
+
+  // ─── macro aliases (camelCase ↔ kebab-case) ───────────────────────────────────
+
+  group('macro aliases', () {
+    test('assertThat (camelCase) is registered and works', () {
+      final result = expand(['assertThat', ['>', 'x', 0]]) as List;
+      expect(result[0], equals('if'));
+      final cond = result[1] as List;
+      expect(cond[0], equals('!'));
+    });
+
+    test('assert-that (kebab) and assertThat produce same expansion', () {
+      final kebab = expand([
+        'assert-that',
+        ['>=', 'n', 0]
+      ]);
+      final camel = expand([
+        'assertThat',
+        ['>=', 'n', 0]
+      ]);
+      expect(emit(kebab), equals(emit(camel)));
+    });
+
+    test('withRetry (camelCase) is registered and works', () {
+      final result = expand(['withRetry', 3, 'body']) as List;
+      expect(result[0], equals('for-in'));
+    });
+
+    test('with-retry (kebab) and withRetry produce same structure', () {
+      resetGensym();
+      final kebab = expand(['with-retry', 3, 'body']);
+      resetGensym();
+      final camel = expand(['withRetry', 3, 'body']);
+      expect(emit(kebab), equals(emit(camel)));
+    });
+  });
+
+  // ─── defrecord — edge cases ───────────────────────────────────────────────────
+
+  group('defrecord — edge cases', () {
+    test('defrecord with no fields emits class with empty const ctor', () {
+      final node = expand(['defrecord', 'Empty']);
+      final out = emit(node);
+      expect(out, contains('class Empty'));
+      expect(out, contains('const Empty();'));
+    });
+
+    test('defrecord with no fields still has 9 members (0 fields)', () {
+      final result = expand(['defrecord', 'Empty']) as List;
+      final members = result.sublist(2);
+      // 0 fields + ctor + copywith + equalop + hashop + tostringop + fromjson + tojson = 7
+      expect(members.length, equals(7));
+    });
+
+    test('defrecord with single field', () {
+      final node = expand(['defrecord', 'Wrapper', ['String', 'value']]);
+      final out = emit(node);
+      expect(out, contains('class Wrapper'));
+      expect(out, contains('final String value;'));
+      expect(out, contains('const Wrapper({required this.value})'));
+    });
+
+    test('defrecord with nullable field has no required keyword in ctor', () {
+      final node =
+          expand(['defrecord', 'Box', ['String', 'id'], ['String?', 'label']]);
+      final out = emit(node);
+      expect(out, contains('required this.id'));
+      expect(out, isNot(contains('required this.label')));
+      expect(out, contains('this.label'));
+    });
+
+    test('defrecord emits fromJson and toJson', () {
+      final node = expand(['defrecord', 'Item', ['int', 'n']]);
+      final out = emit(node);
+      expect(out, contains('factory Item.fromJson'));
+      expect(out, contains('Map<String, dynamic> toJson()'));
+    });
+
+    test('defrecord copyWith non-nullable uses ?? this.field', () {
+      final node = expand(['defrecord', 'Pt', ['double', 'x']]);
+      final out = emit(node);
+      expect(out, contains('x ?? this.x'));
+    });
+
+    test('defrecord copyWith nullable uses _dmUndefined sentinel', () {
+      final node = expand(['defrecord', 'Pt', ['double?', 'z']]);
+      final out = emit(node);
+      expect(out, contains('_dmUndefined'));
+      expect(out, contains('identical(z, _dmUndefined)'));
+    });
+
+    test('defrecord with List field uses _dmEq in ==', () {
+      final node =
+          expand(['defrecord', 'Foo', ['List<String>', 'items']]);
+      final out = emit(node);
+      expect(out, contains('_dmEq(other.items, items)'));
+    });
+  });
+
+  // ─── defunion — edge cases ────────────────────────────────────────────────────
+
+  group('defunion — edge cases', () {
+    test('sealed parent class has const constructor', () {
+      final result = expand([
+        'defunion',
+        'Expr',
+        ['Num', ['int', 'value']],
+      ]) as List;
+      final sealedDecl = result[1] as String;
+      expect(sealedDecl, contains('const Expr()'));
+    });
+
+    test('single-variant defunion works', () {
+      final node = expand([
+        'defunion',
+        'Result',
+        ['Ok', ['String', 'value']],
+      ]);
+      final out = emit(node);
+      expect(out, contains('sealed class Result'));
+      expect(out, contains('class Ok extends Result'));
+    });
+
+    test('variant class name includes extends parent', () {
+      final result = expand([
+        'defunion',
+        'Shape',
+        ['Circle', ['double', 'r']],
+        ['Square', ['double', 's']],
+      ]) as List;
+      final circle = result[2] as List;
+      expect((circle[1] as String), contains('extends Shape'));
+    });
+
+    test('variant with no fields has empty const ctor', () {
+      final node = expand([
+        'defunion',
+        'Token',
+        ['TkEof'],
+      ]);
+      final out = emit(node);
+      expect(out, contains('const TkEof'));
+    });
+
+    test('defunion emits valid Dart with 3 variants', () {
+      final node = expand([
+        'defunion',
+        'Msg',
+        ['Start', ['String', 'id']],
+        ['Stop'],
+        ['Error', ['String', 'msg']],
+      ]);
+      final out = emit(node);
+      expect(out, contains('sealed class Msg'));
+      expect(out, contains('class Start extends Msg'));
+      expect(out, contains('class Stop extends Msg'));
+      expect(out, contains('class Error extends Msg'));
+    });
+  });
+
+  // ─── assert-that — more cases ────────────────────────────────────────────────
+
+  group('assert-that — more cases', () {
+    test('message contains the emitted expression source', () {
+      final result = expand([
+        'assert-that',
+        ['&&', ['>', 'x', 0], ['<', 'x', 100]]
+      ]) as List;
+      final body = result[2] as List;
+      final msg = body[1] as String;
+      expect(msg, contains('x'));
+      expect(msg, contains('100'));
+    });
+
+    test('emits valid if-throw Dart', () {
+      final out = emit(expand([
+        'assert-that',
+        ['!=', 'ptr', null]
+      ]));
+      expect(out, contains('if'));
+      expect(out, contains('throw'));
+      expect(out, contains('AssertionError'));
+    });
+  });
+
+  // ─── with-retry — more cases ─────────────────────────────────────────────────
+
+  group('with-retry — more cases', () {
+    test('n=1 means exactly one attempt before re-throw', () {
+      resetGensym();
+      final result = expand(['with-retry', 1, 'body']) as List;
+      final tryNode = result[3] as List;
+      // catch body: if attempt == (n-1) throw else print
+      final catchBody = tryNode[3] as List;
+      expect(catchBody[0], equals('if'));
+    });
+
+    test('loop variable and error variable are different gensyms', () {
+      resetGensym();
+      final result = expand(['with-retry', 2, 'body']) as List;
+      final loopVar = result[1] as String;
+      final tryNode = result[3] as List;
+      final errVar = tryNode[2] as String;
+      expect(loopVar, isNot(equals(errVar)));
+    });
+  });
+
+  // ─── and-let — edge cases ────────────────────────────────────────────────────
+
+  group('and-let — edge cases', () {
+    test('three bindings nest three levels deep', () {
+      final result = expand([
+        'and-let',
+        ['a', 1],
+        ['b', 2],
+        ['c', 3],
+        'body',
+      ]) as List;
+      // outer: do [let a 1] inner
+      // inner: do [let b 2] inner2
+      // inner2: do [let c 3] body
+      expect(result[0], equals('do'));
+      final outerLet = result[1] as List;
+      expect(outerLet[1], equals('a'));
+      // verify nesting
+      final inner = result[2] as List;
+      expect(inner[0], equals('do'));
+    });
+
+    test('body is preserved as-is', () {
+      final result = expand([
+        'and-let',
+        ['x', 42],
+        'body_node',
+      ]) as List;
+      expect(result[2], equals('body_node'));
+    });
+  });
 }

@@ -184,4 +184,95 @@ void main() {
       expect(out, contains('a = b'));
     });
   });
+
+  // ─── Splice edge cases ────────────────────────────────────────────────────────
+
+  group('Splice — edge cases', () {
+    test(r'empty Splice ($splice([])) produces no children when flattened', () {
+      // A macro returning $splice([]) should splice 0 items — the parent list
+      // is unchanged except the Splice slot disappears.
+      defmacro('noop-splice', (_) => $splice([]));
+      final result = expand([
+        'do',
+        ['noop-splice'],
+        ['let', 'x', 1],
+      ]) as List;
+      // 'do' + 'let x 1' = 2 items (the empty splice vanished)
+      expect(result.length, equals(2));
+      expect(result[0], equals('do'));
+      expect((result[1] as List)[0], equals('let'));
+    });
+
+    test('two swap! calls in same do produce 6 spliced statements', () {
+      final result = expand([
+        'do',
+        ['swap!', 'a', 'b'],
+        ['swap!', 'c', 'd'],
+      ]) as List;
+      // do + 3 stmts (first swap) + 3 stmts (second swap) = 7 items
+      expect(result.length, equals(7));
+      expect(result[0], equals('do'));
+      // All are let/set! nodes
+      for (final stmt in result.sublist(1)) {
+        expect((stmt as List)[0], anyOf('let', 'set!'));
+      }
+    });
+
+    test('Splice alongside non-spliced siblings preserves order', () {
+      resetGensym();
+      final result = expand([
+        'do',
+        ['let', 'before', 0],
+        ['swap!', 'a', 'b'],
+        ['let', 'after', 1],
+      ]) as List;
+      // do + let before + (3 swap stmts) + let after = 6
+      expect(result.length, equals(6));
+      final first = result[1] as List;
+      expect(first[1], equals('before'));
+      final last = result[5] as List;
+      expect(last[1], equals('after'));
+    });
+
+    test('no Splice remains in result after two swap! calls', () {
+      void checkNoSplice(dynamic node) {
+        expect(node, isNot(isA<Splice>()));
+        if (node is List) {
+          for (final child in node) checkNoSplice(child);
+        }
+      }
+
+      final result = expand([
+        'do',
+        ['swap!', 'x', 'y'],
+        ['swap!', 'y', 'z'],
+      ]);
+      checkNoSplice(result);
+    });
+
+    test('Splice inside for-in body is flattened', () {
+      final result = expand([
+        'for-in',
+        'i',
+        'items',
+        ['swap!', 'a', 'b'],
+      ]) as List;
+      // for-in [i, items, let, set!, set!] = 6 items (head + var + iterable + 3 body stmts)
+      expect(result.length, equals(6));
+      expect(result[0], equals('for-in'));
+      expect((result[3] as List)[0], equals('let'));
+    });
+
+    test('Splice inside try body is flattened', () {
+      final result = expand([
+        'try',
+        ['swap!', 'a', 'b'],
+        'err',
+        'handleErr',
+      ]) as List;
+      // try [let, set!, set!, err, handleErr] = 6 items
+      expect(result.length, equals(6));
+      expect(result[0], equals('try'));
+    });
+  });
 }

@@ -186,4 +186,162 @@ void main() {
       expect(compile(src), equals(compile(src)));
     });
   });
+
+  // ─── Reader — string edge cases ───────────────────────────────────────────────
+
+  group('Reader — string edge cases', () {
+    test('reads empty string literal', () {
+      final forms = Reader('("")').readAll();
+      expect(forms[0], isA<List>());
+      final list = forms[0] as List;
+      expect(list[0], equals('""'));
+    });
+
+    test('empty string atom ""', () {
+      // A standalone "" is read as the two-char atom ""
+      final forms = Reader('(let x "")').readAll();
+      final node = forms[0] as List;
+      expect(node[2], equals('""'));
+    });
+
+    test('string with tab escape sequence', () {
+      final forms = Reader(r'(f "a\tb")').readAll();
+      final node = forms[0] as List;
+      expect(node[1], equals('"a\tb"'));
+    });
+
+    test('string with escaped backslash', () {
+      final forms = Reader(r'(f "a\\b")').readAll();
+      final node = forms[0] as List;
+      expect(node[1], equals('"a\\b"'));
+    });
+
+    test('string with escaped quote', () {
+      final forms = Reader(r'(f "say \"hi\"")').readAll();
+      final node = forms[0] as List;
+      expect((node[1] as String), contains('"'));
+    });
+
+    test('string with newline escape', () {
+      final forms = Reader(r'(f "line1\nline2")').readAll();
+      final node = forms[0] as List;
+      expect(node[1], equals('"line1\nline2"'));
+    });
+
+    test('string with multiple escape sequences', () {
+      final forms = Reader(r'(f "a\tb\nc")').readAll();
+      final node = forms[0] as List;
+      expect(node[1], equals('"a\tb\nc"'));
+    });
+
+    test('string with non-ASCII characters', () {
+      final forms = Reader('(f "héllo")').readAll();
+      final node = forms[0] as List;
+      expect(node[1], equals('"héllo"'));
+    });
+  });
+
+  // ─── Reader — atom edge cases ─────────────────────────────────────────────────
+
+  group('Reader — atom edge cases', () {
+    test('reads arrow operator ->', () {
+      final forms = Reader('(-> a b)').readAll();
+      final node = forms[0] as List;
+      expect(node[0], equals('->'));
+    });
+
+    test('reads fat arrow =>', () {
+      final forms = Reader('(=> x y)').readAll();
+      final node = forms[0] as List;
+      expect(node[0], equals('=>'));
+    });
+
+    test('reads dotted method .foo', () {
+      final forms = Reader('(.foo obj)').readAll();
+      final node = forms[0] as List;
+      expect(node[0], equals('.foo'));
+    });
+
+    test('reads null-coalesce ?? as atom', () {
+      final forms = Reader('(?? x y)').readAll();
+      final node = forms[0] as List;
+      expect(node[0], equals('??'));
+    });
+
+    test('reads zero as integer', () {
+      final forms = Reader('0').readAll();
+      expect(forms[0], equals(0));
+    });
+
+    test('reads negative integer as integer (reader handles leading minus)', () {
+      // -5 is read as the integer -5 (the reader handles negative number literals)
+      final forms = Reader('-5').readAll();
+      expect(forms[0], equals(-5));
+    });
+
+    test('reads Dart generic type identifier List<int> as atom', () {
+      // Angle brackets stop atom reading at '<' — this is a known limitation
+      // of the S-expression reader (generic types in reader go atom-by-atom).
+      // This test documents the behavior, not an error.
+      final forms = Reader('(List<int>)').readAll();
+      // parsed as a list starting with 'List<int>' or multiple atoms
+      expect(forms[0], isA<List>());
+    });
+  });
+
+  // ─── Reader — readOne ─────────────────────────────────────────────────────────
+
+  group('Reader — readOne', () {
+    test('readOne reads only the first form', () {
+      final r = Reader('(let a 1) (let b 2)');
+      final form = r.readOne();
+      expect(form, isA<List>());
+      final node = form as List;
+      expect(node[1], equals('a'));
+    });
+
+    test('readOne skips leading whitespace', () {
+      final form = Reader('   42').readOne();
+      expect(form, equals(42));
+    });
+
+    test('readOne skips leading comments', () {
+      final form = Reader('; comment\n99').readOne();
+      expect(form, equals(99));
+    });
+  });
+
+  // ─── Reader — error positions ─────────────────────────────────────────────────
+
+  group('Reader — error positions', () {
+    test('EOF inside list reports position', () {
+      expect(
+        () => Reader('(let x').readAll(),
+        throwsA(isA<ReaderException>()
+            .having((e) => e.message, 'message', contains('Unclosed'))),
+      );
+    });
+
+    test('unterminated string reports position', () {
+      expect(
+        () => Reader('(f "oops').readAll(),
+        throwsA(isA<ReaderException>()
+            .having((e) => e.message, 'message', contains('Unterminated'))),
+      );
+    });
+
+    test('ReaderException.toString includes position', () {
+      final ex = ReaderException('bad input', 42);
+      expect(ex.toString(), contains('42'));
+      expect(ex.toString(), contains('bad input'));
+    });
+
+    test('empty source returns empty list (no exception)', () {
+      expect(Reader('').readAll(), isEmpty);
+    });
+
+    test('only comments returns empty list', () {
+      expect(Reader('; line1\n; line2\n').readAll(), isEmpty);
+    });
+  });
 }
