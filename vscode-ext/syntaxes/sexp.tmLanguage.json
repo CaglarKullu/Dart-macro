@@ -24,7 +24,7 @@
     },
     "macro-keywords": {
       "name": "keyword.control.macro.sexp",
-      "match": "\\b(defrecord|defunion|defn|defFromJsonSchema|unless|when|swap!|assert-that|with-retry|and-let|once|do|let|set!|if|return|throw)\\b"
+      "match": "\\b(defrecord|defunion|defenum|defn|defFromJsonSchema|defFromOpenApi|defAllFromJsonSchema|unless|when|swap!|assertThat|withRetry|do|let|set!|if|return|throw)\\b"
     },
     "numbers": {
       "patterns": [
