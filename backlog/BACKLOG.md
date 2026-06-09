@@ -100,7 +100,11 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked/needs dec
 
 - [x] 4.1 `watch` with 100ms debounce; survives errors; initial full build
 - [x] 4.2a Located parse/tokenize errors (`line:col` + source line + caret) in TokenizerException/ParseException
-- [ ] 4.2b Top-level form origin comments (`// from file:line`) — deferred; form-level tracking adds significant complexity for limited gain
+- [x] 4.2b Top-level form origin comments (`// @dmacro-origin: file:line`) — implemented.
+      `asyncCompileDartLikeWithOrigins` / `asyncCompileWithOrigins` embed the marker
+      before each top-level form; `_buildOriginMap` + `_lookupOrigin` in `bin/dmacro.dart`
+      map generated-file line numbers back to source references.
+      Form-level (not statement-level) attribution; sufficient for surfacing errors per macro call.
 - [x] 4.3 `compile <dir>`, `--check` (CI staleness, exits non-zero if stale), `--no-format` flag
 - [x] Tests: `test/phase4_test.dart` — located errors, --check exit codes, token line/col
 
@@ -112,6 +116,11 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked/needs dec
 - [x] 5.2 `.dmacro` and `.sexp` TextMate grammars + language registration
 - [x] 5.3 CLI errors → editor diagnostics at correct locations (parseDiagnostics)
 - [x] 5.4 Command palette (compile file / workspace), status bar item
+- [x] 5.5 `watch --with-analyze`: runs `dart analyze --format json` after each successful
+      compile; errors remapped to `.dmacro` source via `@dmacro-origin` comments
+- [x] 5.6 `flutter.hotReload` on successful compile: `vscode.commands.executeCommand`
+      guarded by `activeDebugSession?.type === 'dart'`
+- [x] 5.7 Settings: `dmacro.analyzeOnCompile` (default true), `dmacro.hotReloadOnCompile` (default true)
 
 ---
 
@@ -151,6 +160,68 @@ de-facto stack (`freezed` + `json_serializable` / `Equatable`).
       (via pre-scan in `defAllFromJsonSchema` / `defFromOpenApi`).
       Tests: node shape, emitter output, inline enum + record, $ref resolution,
       nullable sentinel copyWith, JSON round-trip (dart run).
+
+---
+
+## Phase 7 — Adoption Polish
+
+Senior-Flutter-dev review (2026-06): the engine is correct and the feature set is
+compelling, but three adoption-friction items stand between the current state and a
+team being able to `dart pub add` and ship with it. These are polish tasks, not
+correctness bugs. Prioritised by user-facing impact.
+
+### 7.1 pub.dev packaging (P0 — blocks any real adoption)
+
+Without this, users vendor the repo rather than taking a normal dependency. The
+`pubspec.yaml` scaffold is already in place; what follows is the publish checklist.
+
+- [ ] Add `topics: [codegen, macros, preprocessor]` to pubspec.yaml (pub.dev search)
+- [ ] Add `executables: { dmacro: dmacro }` so `dart pub global activate dart_macros`
+      installs the CLI
+- [ ] `CHANGELOG.md` with 0.1.0 entry: list stable features, flag async I/O and
+      schema macros as experimental/preview
+- [ ] `dart pub publish --dry-run` passes with 0 warnings (fixes any missing fields)
+- [ ] Smoke test: `dart pub add dart_macros` in a fresh project; confirm
+      `import 'package:dart_macros/dart_macros.dart'` resolves correctly
+- [ ] Decision gate: publish as public beta (0.1.0) once 7.3 is done, or publish
+      sooner with a known-gap note in CHANGELOG
+
+### 7.2 Enum generation (design archived — schema path done, hand-authored gap open)
+
+The design blocker identified in review: the emitter cannot distinguish an enum-typed
+field from a nested-record field from a bare identifier alone. An explicit signal must
+be threaded schema → defrecord → emitter.
+
+**Resolved for schema-driven path (Phase 6.4):** the `'enum:TypeName'` prefix in
+field type strings IS that signal. `_resolveType()` strips it at emit time;
+`_fromJsonExpr` / `_toJsonExpr` detect it to emit `Status.values.byName(...)` /
+`status.name`. Covers `defFromJsonSchema`, `defFromOpenApi`, `defAllFromJsonSchema`.
+
+**Remaining gap → tracked as 7.3:** users writing `.dmacro` by hand cannot yet
+declare `Status status;` and get enum-aware serialization without going through the
+schema path. The emitter still has no signal for hand-declared enum fields.
+
+### 7.3 `defenum` — manual enum declaration in .dmacro files (P1)
+
+Prerequisite for 7.1 to be feature-complete. Scope is intentionally minimal.
+
+- [ ] `defenum` macro: `defenum Status { active, inactive, pending }` emits
+      Dart `enum Status { active, inactive, pending }`
+- [ ] Enum registry: `defenum` registers its name in a file-scoped set so subsequent
+      `defrecord` invocations know which bare-identifier field types are enums
+      (mirrors the `'enum:TypeName'` signal from schema macros)
+- [ ] `defrecord` with a `defenum`-registered field type: `fromJson` / `toJson`
+      use `values.byName(...)` / `.name` for that field
+- [ ] Ordering: `defenum` must precede the `defrecord` that references it in the
+      same file (no forward-declaration needed for the initial cut — document the constraint)
+- [ ] Tests: `defenum` node shape, emitter output, `defrecord` with defenum field,
+      JSON round-trip, nullable defenum field
+
+### 7.4 Analyzer awareness + watch ↔ hot-reload (archived — fully implemented)
+
+Resolved in the session following the Phase 5 review. Items 5.5–5.7 above cover the
+details. Remaining adoption gap: the VS Code extension is not yet on the marketplace
+— surfacing it there is part of 7.1.
 
 ---
 
