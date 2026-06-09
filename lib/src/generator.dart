@@ -3,8 +3,6 @@ library;
 
 import 'models.dart';
 
-const _genStart = '  // ━━━ dart_macros generated ━━━';
-const _genEnd   = '  // ━━━ end dart_macros ━━━';
 
 abstract class MacroGenerator {
   /// Returns generated Dart code for the class body.

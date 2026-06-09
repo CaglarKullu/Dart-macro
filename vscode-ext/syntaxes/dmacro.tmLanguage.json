@@ -1,0 +1,56 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Dart Macro",
+  "scopeName": "source.dmacro",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#macro-keywords" },
+    { "include": "#dart-keywords" },
+    { "include": "#types" },
+    { "include": "#numbers" },
+    { "include": "#operators" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "name": "comment.line.double-slash.dmacro",
+      "match": "//.*$"
+    },
+    "strings": {
+      "name": "string.quoted.double.dmacro",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        { "name": "constant.character.escape.dmacro", "match": "\\\\." }
+      ]
+    },
+    "macro-keywords": {
+      "name": "keyword.control.macro.dmacro",
+      "match": "\\b(defrecord|defunion|defFromJsonSchema|unless|when|swap!|assert-that|with-retry|and-let|once)\\b"
+    },
+    "dart-keywords": {
+      "name": "keyword.control.dmacro",
+      "match": "\\b(if|else|while|for|return|throw|final|var|async|await|in)\\b"
+    },
+    "types": {
+      "name": "support.type.dmacro",
+      "match": "\\b(void|bool|int|double|String|List|Map|Set|dynamic|Object|Future|Stream|num)\\b"
+    },
+    "numbers": {
+      "patterns": [
+        { "name": "constant.numeric.float.dmacro",   "match": "\\b[0-9]+\\.[0-9]+\\b" },
+        { "name": "constant.numeric.integer.dmacro", "match": "\\b[0-9]+\\b" },
+        { "name": "constant.language.dmacro",        "match": "\\b(true|false|null)\\b" }
+      ]
+    },
+    "operators": {
+      "name": "keyword.operator.dmacro",
+      "match": "(==|!=|<=|>=|&&|\\|\\||\\?\\?|=>|\\.\\.|[+\\-*/<>!?=])"
+    },
+    "identifiers": {
+      "name": "variable.other.dmacro",
+      "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*!?\\b"
+    }
+  }
+}

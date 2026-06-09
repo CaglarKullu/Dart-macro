@@ -11,7 +11,9 @@
 library;
 
 import 'core.dart';
+import 'gensym.dart';
 import 'nodes.dart';
+import 'splice.dart';
 
 /// Registers all built-in macros.
 void registerBuiltins() {
@@ -37,12 +39,14 @@ void _registerControlFlow() {
   // Generates a stateful retry loop. The variable _attempt is injected
   // into the caller's scope — impossible with a higher-order function.
   defmacro('with-retry', (args) {
-    final n    = args[0];
-    final body = args[1];
-    return $forIn('_attempt', 'Iterable.generate(${emit(n)})',
-      $try(body, '_e',
-        $if($eq('_attempt', $sub(n, 1)),
-          $throw('_e'),
+    final n       = args[0];
+    final body    = args[1];
+    final attempt = gensym('attempt');
+    final err     = gensym('err');
+    return $forIn(attempt, 'Iterable.generate(${emit(n)})',
+      $try(body, err,
+        $if($eq(attempt, $sub(n, 1)),
+          $throw(err),
           $call('print', [$str('Retrying...')]),
         ),
       ),
@@ -65,11 +69,16 @@ void _registerBinding() {
   // (swap! a b)
   // Injects a temp variable directly into the caller's scope.
   // A function receives values — it cannot write back to the caller's variables.
-  defmacro('swap!', (args) => $do([
-    $let('_swap_tmp', args[0]),
-    $set(args[0] as String, args[1]),
-    $set(args[1] as String, '_swap_tmp'),
-  ]));
+  // Uses $splice so the three statements are inlined into any parent context
+  // (if body, while body, another macro, etc.) — not just defn bodies.
+  defmacro('swap!', (args) {
+    final tmp = gensym('swap');
+    return $splice([
+      $let(tmp, args[0]),
+      $set(args[0] as String, args[1]),
+      $set(args[1] as String, tmp),
+    ]);
+  });
 
   // (and-let [name expr] [name expr] ... body)
   // Cascading bindings where each can see the previous.
@@ -117,7 +126,7 @@ void _registerDataClass() {
 
     return $class(name, [
       ...fields.map((f) => $field(f.type, f.name)),
-      $ctor(name, fields.map((f) => f.name).toList()),
+      $ctor(name, fields.map((f) => [f.type, f.name]).toList()),
       $copyWith(name, fields),
       $equality(name, fields),
       $hashCode(fields),
@@ -129,7 +138,7 @@ void _registerDataClass() {
   // Generates a sealed class hierarchy — like Freezed's union types.
   defmacro('defunion', (args) {
     final name     = args[0] as String;
-    final variants = args.sublist(1) as List<dynamic>;
+    final variants = args.sublist(1);
 
     final variantClasses = variants.map((v) {
       final variantName   = (v as List)[0] as String;
@@ -138,7 +147,7 @@ void _registerDataClass() {
           .toList();
       return $class('$variantName extends $name', [
         ...variantFields.map((f) => $field(f.type, f.name)),
-        $ctor(variantName, variantFields.map((f) => f.name).toList()),
+        $ctor(variantName, variantFields.map((f) => [f.type, f.name]).toList()),
       ]);
     }).toList();
 

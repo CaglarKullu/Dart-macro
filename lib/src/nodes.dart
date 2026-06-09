@@ -65,10 +65,10 @@ Node $call(String name, List<Node> args) => [name, ...args];
 
 /// Method call: `receiver.method(arg1, arg2)`
 Node $method(Node receiver, String method, [List<Node> args = const []]) =>
-    ['.${method}', receiver, ...args];
+    ['.$method', receiver, ...args];
 
 /// Property access: `receiver.prop`
-Node $prop(Node receiver, String prop) => ['.-${prop}', receiver];
+Node $prop(Node receiver, String prop) => ['.-$prop', receiver];
 
 // ─── Declarations ─────────────────────────────────────────────────────────────
 
@@ -83,7 +83,7 @@ Node $defn({
 // ─── Class building ───────────────────────────────────────────────────────────
 
 Node $field(String type, String name)     => ['field', type, name];
-Node $ctor(String name, List<String> paramNames) => ['ctor', name, paramNames];
+Node $ctor(String name, List<List<String>> params) => ['ctor', name, params];
 Node $class(String name, List<Node> members) => ['defclass', name, ...members];
 
 Node $copyWith(String name, List<Field> fields) =>

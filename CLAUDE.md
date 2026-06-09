@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-Guidance for Claude Code working on the `dart_sexp` project.
+Guidance for Claude Code working on the `dmacro` project.
 
 ## What this is
 
-`dart_sexp` is a Lisp-style macro system for Dart. Code is represented as data
+`dmacro` is a Lisp-style macro system for Dart. Code is represented as data
 (nested lists), macros are pure Dart functions that transform that data, and the
 final output is plain Dart source. It is a **preprocessor**, not a compiler plugin
 — this is a deliberate architectural choice (see `docs/ARCHITECTURE.md`).
@@ -62,7 +62,7 @@ authoritative — match its output exactly.
 
 ```
 lib/
-  dart_sexp.dart            Public API barrel file
+  dmacro.dart            Public API barrel file
   src/
     core.dart               Node typedef, expand(), emit()  [DONE]
     reader.dart             S-expression reader             [DONE]
@@ -102,8 +102,8 @@ If not, the project is still a strong learning artifact — document and stop.
 
 ```bash
 dart test                                    # run all tests
-dart run bin/sexp.dart compile <file>        # compile a source file
-dart run bin/sexp.dart repl                  # interactive
+dart run bin/dmacro.dart compile <file>        # compile a source file
+dart run bin/dmacro.dart repl                  # interactive
 dart format lib/ test/                       # format
 dart analyze                                 # static analysis
 ```

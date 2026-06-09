@@ -1,5 +1,5 @@
 ;; payment.sexp
-;; Compile with: dart run bin/sexp.dart compile payment.sexp -o payment.dart
+;; Compile with: dart run bin/dmacro.dart compile payment.sexp -o payment.dart
 ;;
 ;; This is the actual source you write.
 ;; The .dart file is generated — never edit it directly.

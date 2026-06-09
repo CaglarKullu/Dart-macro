@@ -45,7 +45,7 @@ Emits Dart from an expanded AST. Validated rules:
 | `['defn', ret, name, params, …body]` | function declaration |
 | `['defclass', name, …members]` | `class name { members }` |
 | `['field', type, name]` | `final type name;` |
-| `['ctor', name, [p…]]` | `const name({required this.p, …});` |
+| `['ctor', name, [[type,p]…]]` | `const name({required this.p, …});` — nullable types omit `required` |
 | `['copywith', name, [[type,name]…]]` | a `copyWith` method |
 | `['equalop', name, fields]` | `operator ==` override |
 | `['hashop', _, fields]` | `hashCode` override |
@@ -122,7 +122,7 @@ class Payment {
   final double amount;
   final String currency;
   final String? reference;
-  const Payment({required this.amount, required this.currency, required this.reference});
+  const Payment({required this.amount, required this.currency, this.reference});
   Payment copyWith({double? amount, String? currency, String? reference}) =>
       Payment(amount: amount ?? this.amount, currency: currency ?? this.currency,
               reference: reference ?? this.reference);

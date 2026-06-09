@@ -67,7 +67,7 @@ class DartParser {
         j = nameEnd.$2;
 
         // Skip type parameters, extends, implements, with — up to '{'
-        while (j < source.length && source[j] != '{') j++;
+        while (j < source.length && source[j] != '{') { j++; }
         if (j >= source.length) break;
 
         final bodyStart = j;
@@ -183,7 +183,7 @@ class DartParser {
     if (j < s.length && s[j] == '(') {
       int depth = 0;
       while (j < s.length) {
-        if (s[j] == '(') depth++;
+        if (s[j] == '(') { depth++; }
         else if (s[j] == ')') { depth--; if (depth == 0) { j++; break; } }
         j++;
       }
@@ -195,26 +195,26 @@ class DartParser {
     if (i >= s.length) return null;
     if (!RegExp(r'[a-zA-Z_$]').hasMatch(s[i])) return null;
     final start = i;
-    while (i < s.length && RegExp(r'\w').hasMatch(s[i])) i++;
+    while (i < s.length && RegExp(r'\w').hasMatch(s[i])) { i++; }
     return (s.substring(start, i), i);
   }
 
   int _findMatchingBrace(String s, int open) {
     int depth = 0;
     for (int i = open; i < s.length; i++) {
-      if (s[i] == '{') depth++;
+      if (s[i] == '{') { depth++; }
       else if (s[i] == '}') { depth--; if (depth == 0) return i; }
     }
     return -1;
   }
 
   int _skipWhitespace(String s, int i) {
-    while (i < s.length && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r')) i++;
+    while (i < s.length && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r')) { i++; }
     return i;
   }
 
   int _skipLineComment(String s, int i) {
-    while (i < s.length && s[i] != '\n') i++;
+    while (i < s.length && s[i] != '\n') { i++; }
     return i;
   }
 

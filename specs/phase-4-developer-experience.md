@@ -16,7 +16,7 @@ the difference between "a demo" and "something I'd keep installed".
 ## Task 4.1 — Watch mode
 
 ### Behaviour
-`dart run bin/sexp.dart watch <path>` watches `.dmacro` and `.sexp` files under `<path>`
+`dart run bin/dmacro.dart watch <path>` watches `.dmacro` and `.sexp` files under `<path>`
 and recompiles each on change, writing the sibling `.dart` file.
 
 ### Implementation

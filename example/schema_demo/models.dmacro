@@ -1,0 +1,1 @@
+defFromJsonSchema("example/schema_demo/schemas/payment.json");

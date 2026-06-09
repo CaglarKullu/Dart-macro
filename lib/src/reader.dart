@@ -13,6 +13,7 @@
 library;
 
 import 'core.dart';
+import 'gensym.dart';
 
 class ReaderException implements Exception {
   final String message;
@@ -153,7 +154,7 @@ class Reader {
         _pos++;
       } else if (c == ';') {
         // Line comment — skip to end of line
-        while (_pos < source.length && source[_pos] != '\n') _pos++;
+        while (_pos < source.length && source[_pos] != '\n') { _pos++; }
       } else {
         break;
       }
@@ -170,7 +171,9 @@ class Reader {
 ///
 /// Full pipeline: read → expand macros → emit Dart.
 /// Macros must be registered before calling this.
+/// Calls [resetGensym] first for deterministic output.
 String compile(String source) {
+  resetGensym();
   final forms = Reader(source).readAll();
   return forms
       .map((f) => emit(expand(f)))

@@ -1,0 +1,11 @@
+// openapi_demo/models.dmacro
+// Compile: dart run bin/dmacro.dart compile example/openapi_demo/models.dmacro
+//
+// Generate typed Dart classes straight from an OpenAPI spec.
+// Point it at your backend's openapi.json — no manual type maintenance.
+//
+// The macro reads petstore.json, finds each schema under components/schemas,
+// maps the fields to Dart types, and emits a complete immutable class.
+
+defFromOpenApi("example/openapi_demo/petstore.json", "Category");
+defFromOpenApi("example/openapi_demo/petstore.json", "Pet");
