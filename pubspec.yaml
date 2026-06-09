@@ -1,4 +1,4 @@
-name: dart_macros
+name: dmacro
 description: >-
   Lisp-style macro preprocessor for Dart. Write defrecord, defunion, defenum and
   custom macros; compile .dmacro files to plain .dart with no build_runner, no

@@ -9,7 +9,7 @@ library;
 import 'dart:io';
 
 import 'package:test/test.dart';
-import 'package:dart_macros/dart_macros.dart';
+import 'package:dmacro/dmacro.dart';
 
 /// Compiles [dmacro], appends [mainBody], runs it, and returns the program's
 /// stdout. Fails the test if the program exits non-zero.

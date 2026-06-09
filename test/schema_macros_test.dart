@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:test/test.dart';
-import 'package:dart_macros/dart_macros.dart';
+import 'package:dmacro/dmacro.dart';
 
 void main() {
   setUpAll(() {

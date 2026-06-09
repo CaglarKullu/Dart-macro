@@ -46,7 +46,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked/needs dec
 - [x] Works inside `when`, inside `while`, and nested in another macro
 - [x] No `Splice` ever reaches emitted output (guard/assert)
 - [x] `test/splice_test.dart`
-- [x] Exports added to `lib/dart_macros.dart`
+- [x] Exports added to `lib/dmacro.dart`
 
 ---
 
@@ -173,7 +173,7 @@ correctness bugs. Prioritised by user-facing impact.
 ### 7.1 pub.dev packaging
 
 - [x] `topics: [codegen, macros, preprocessor, build]` added to pubspec.yaml
-- [x] `executables: { dmacro: dmacro }` — `dart pub global activate dart_macros`
+- [x] `executables: { dmacro: dmacro }` — `dart pub global activate dmacro`
       installs the CLI
 - [x] `issue_tracker:` URL added
 - [x] Description expanded (multi-line, more specific)
@@ -182,12 +182,9 @@ correctness bugs. Prioritised by user-facing impact.
 - [x] `LICENSE` (MIT) added — was the only hard error in `dart pub publish --dry-run`
 - [x] `dart pub publish --dry-run` passes with 0 errors; 1 potential issue (docs/ → doc/
       convention, noted in CHANGELOG, non-blocking) and 1 hint (see below)
-- [!] **Package name conflict**: `dart_macros` is already published on pub.dev at v1.0.2
-      by another author. Must resolve before publishing:
-      Option A — verify you own that pub.dev account and bump the version above 1.0.2.
-      Option B — rename the package (e.g. `dmacro`) and update all imports.
-- [ ] Smoke test: `dart pub add dart_macros` (or new name) in a fresh project
-- [ ] Actual `dart pub publish` once name conflict is resolved
+- [x] Package renamed from `dart_macros` → `dmacro` (name was taken on pub.dev at 1.0.2)
+- [ ] Smoke test: `dart pub add dmacro` in a fresh project
+- [ ] Actual `dart pub publish`
 
 ### 7.2 Enum generation (design archived — schema path done, hand-authored gap open)
 

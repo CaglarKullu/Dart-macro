@@ -16,8 +16,8 @@ Initial public release.
 - `unless`, `when`, `swap!`, `withRetry`, `assertThat` — control-flow macros.
 - `.dmacro` source format — Dart-like syntax compiled to `.dart` by the CLI.
 - `.sexp` source format — S-expression syntax for full Lisp-style macro power.
-- CLI: `dart run dart_macros:dmacro compile <file>`, `repl`, `watch`, `--check`.
-- `dart pub global activate dart_macros` installs the `dmacro` command.
+- CLI: `dart run dmacro:dmacro compile <file>`, `repl`, `watch`, `--check`.
+- `dart pub global activate dmacro` installs the `dmacro` command.
 
 ### Experimental / preview
 
