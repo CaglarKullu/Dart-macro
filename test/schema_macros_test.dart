@@ -478,18 +478,21 @@ void main() {
     setUp(() => tmpDir = Directory.systemTemp.createTempSync('dmacro_enum_'));
     tearDown(() => tmpDir.deleteSync(recursive: true));
 
-    test('top-level enum schema generates defenum node', () async {
+    test('top-level enum schema emits Dart enum', () async {
       File('${tmpDir.path}/status.json').writeAsStringSync(jsonEncode({
         'title': 'Status',
         'type': 'string',
         'enum': ['active', 'inactive', 'pending'],
       }));
+      // The defenum macro expands the node to a raw Dart string.
       final result = await asyncExpand(
         ['defFromJsonSchema', '"${tmpDir.path}/status.json"'],
-      ) as List;
-      expect(result[0], equals('defenum'));
-      expect(result[1], equals('Status'));
-      expect(result[2], equals(['active', 'inactive', 'pending']));
+      ) as String;
+      expect(result, contains('enum Status {'));
+      expect(result, contains('active'));
+      expect(result, contains('inactive'));
+      expect(result, contains('pending'));
+      expect(result, contains('values.byName(s)'));
     });
 
     test('defenum node emits valid Dart enum with fromJson/toJson', () {

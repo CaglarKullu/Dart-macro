@@ -405,7 +405,6 @@ The **async expander** is why `defFromJsonSchema` works: macros run at compile t
 ```
 bin/
   dmacro.dart             CLI: compile / watch / repl / --check
-  dart_macros.dart        Annotation-based preprocessor CLI
 lib/src/
   core.dart               Node type, expand(), emit()
   async_expand.dart       Async macro expander (enables compile-time I/O)

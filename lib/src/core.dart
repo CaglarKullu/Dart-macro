@@ -36,6 +36,22 @@ bool isMacro(String name) => _macros.containsKey(name);
 /// Returns the macro function registered under [name], or null.
 MacroFn? getMacro(String name) => _macros[name];
 
+// ─── Enum registry ────────────────────────────────────────────────────────────
+
+final _enumNames = <String>{};
+
+/// Registers [name] as a known enum type for the current compile.
+/// Called by the [defenum] macro. Queried by [defrecord] to emit enum-aware
+/// serialization for hand-authored `.dmacro` fields.
+void registerEnum(String name) => _enumNames.add(name);
+
+/// Returns true if [name] was registered via [defenum] in the current compile.
+bool isRegisteredEnum(String name) => _enumNames.contains(name);
+
+/// Clears the enum registry. Call at the start of each compilation unit,
+/// alongside [resetGensym], so compiles are isolated and deterministic.
+void resetEnumRegistry() => _enumNames.clear();
+
 // ─── Expander ─────────────────────────────────────────────────────────────────
 
 /// Recursively expands all macros in [node].
