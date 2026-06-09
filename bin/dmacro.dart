@@ -20,7 +20,14 @@ import 'dart:io';
 import 'package:dmacro/src/builtins.dart';
 import 'package:dmacro/src/core.dart' show MacroExpansionError;
 import 'package:dmacro/src/schema_macros.dart';
-import 'package:dmacro/src/async_expand.dart';
+import 'package:dmacro/src/async_expand.dart'
+    show
+        asyncCompile,
+        asyncCompileDartLike,
+        asyncCompileDartLikeWithOrigins,
+        asyncCompileDartLikeWithTrace,
+        asyncCompileWithOrigins,
+        asyncCompileWithTrace;
 import 'dart:convert' show jsonDecode;
 
 void main(List<String> args) async {
@@ -33,6 +40,7 @@ void main(List<String> args) async {
     case 'compile': await _compileCmd(args.sublist(1));
     case 'watch':   await _watchCmd(args.sublist(1));
     case 'repl':    await _repl();
+    case 'trace':   await _traceCmd(args.sublist(1));
     default:
       stderr.writeln('Unknown command: ${args.first}');
       _usage(); exit(1);
@@ -271,6 +279,40 @@ String? _lookupOrigin(List<(int, String)> origins, int dartLine) {
   return best;
 }
 
+// ─── trace command ───────────────────────────────────────────────────────────
+
+/// Expands all macros in [inputPath] step-by-step and prints each expansion.
+///
+/// Useful for debugging custom macros: you can see exactly which macro ran,
+/// what input it received, and what AST it produced at each step.
+Future<void> _traceCmd(List<String> args) async {
+  if (args.isEmpty) {
+    stderr.writeln('Usage: dmacro trace <file.dmacro|file.sexp>');
+    exit(1);
+  }
+  final inputPath = args.first;
+  if (!File(inputPath).existsSync()) {
+    stderr.writeln('Error: $inputPath does not exist');
+    exit(1);
+  }
+  final source = await File(inputPath).readAsString();
+  stdout.writeln('dmacro trace — $inputPath');
+  try {
+    if (inputPath.endsWith('.dmacro')) {
+      await asyncCompileDartLikeWithTrace(source, inputPath, stdout);
+    } else {
+      await asyncCompileWithTrace(source, inputPath, stdout);
+    }
+  } catch (e) {
+    if (e is MacroExpansionError) {
+      stderr.writeln(e);
+    } else {
+      stderr.writeln('$inputPath: ${_stripExceptionPrefix(e)}');
+    }
+    exit(1);
+  }
+}
+
 // ─── REPL ────────────────────────────────────────────────────────────────────
 
 Future<void> _repl() async {
@@ -347,6 +389,7 @@ Usage:
   dart run bin/dmacro.dart compile <file> --no-format         Skip dart format
   dart run bin/dmacro.dart watch <path>                       Watch and recompile on save
   dart run bin/dmacro.dart watch <path> --with-analyze        Watch + run dart analyze after each compile
+  dart run bin/dmacro.dart trace <file>                       Print each macro expansion step (debug)
   dart run bin/dmacro.dart repl                               Interactive REPL
 
 Dart-like syntax (.dmacro):

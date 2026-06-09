@@ -40,6 +40,33 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
+  // 5.1b — "Jump to .dmacro source" code lens on generated .dart files
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      { language: 'dart' },
+      new DmacroCodeLensProvider(),
+    ),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'dmacro.jumpToSource',
+      async (sourcePath: string, sourceLine: number) => {
+        const uri = vscode.Uri.file(sourcePath);
+        try {
+          const doc    = await vscode.workspace.openTextDocument(uri);
+          const editor = await vscode.window.showTextDocument(doc);
+          const line   = Math.max(0, sourceLine - 1); // 1-based → 0-based
+          const range  = new vscode.Range(line, 0, line, 0);
+          editor.selection = new vscode.Selection(line, 0, line, 0);
+          editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+        } catch {
+          vscode.window.showWarningMessage(`dmacro: could not open ${sourcePath}`);
+        }
+      },
+    ),
+  );
+
   context.subscriptions.push(diagnostics);
 }
 
@@ -60,7 +87,6 @@ function dmacroCmd(workDir: string): { cmd: string; args: string[] } {
   const explicit: string = cfg.get('cliPath') ?? '';
   if (explicit) return { cmd: explicit, args: [] };
 
-  // Use dart run bin/dmacro.dart from the workspace root.
   return { cmd: 'dart', args: ['run', path.join(workDir, 'bin', 'dmacro.dart')] };
 }
 
@@ -68,9 +94,9 @@ function compileFile(filePath: string): void {
   const workDir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? path.dirname(filePath);
   const { cmd, args } = dmacroCmd(workDir);
   const cfg = vscode.workspace.getConfiguration('dmacro');
-  const doFormat: boolean      = cfg.get('formatOnCompile') ?? true;
-  const doAnalyze: boolean     = cfg.get('analyzeOnCompile') ?? true;
-  const doHotReload: boolean   = cfg.get('hotReloadOnCompile') ?? true;
+  const doFormat: boolean    = cfg.get('formatOnCompile') ?? true;
+  const doAnalyze: boolean   = cfg.get('analyzeOnCompile') ?? true;
+  const doHotReload: boolean = cfg.get('hotReloadOnCompile') ?? true;
 
   const cliArgs = [
     ...args, 'compile', filePath,
@@ -89,21 +115,19 @@ function compileFile(filePath: string): void {
 
     updateStatusBar('✓ dmacro compiled');
 
-    // 5.5 — Trigger Flutter hot-reload if a Flutter/Dart debug session is active.
-    if (doHotReload) {
-      const session = vscode.debug.activeDebugSession;
-      if (session?.type === 'dart') {
-        vscode.commands.executeCommand('flutter.hotReload').then(
-          undefined,
-          () => { /* Flutter extension not available — ignore */ },
-        );
-      }
-    }
+    const outPath = filePath.replace(/\.(dmacro|sexp)$/, '.dart');
 
-    // 5.6 — Run dart analyze on the generated .dart and map errors back.
     if (doAnalyze) {
-      const outPath = filePath.replace(/\.(dmacro|sexp)$/, '.dart');
-      runAnalyzerAndShowDiagnostics(filePath, outPath);
+      // 5.6 — Analyze the generated .dart and map errors back to the source.
+      // Hot-reload (5.5) fires only when analyze reports no errors.
+      runAnalyzerAndShowDiagnostics(filePath, outPath, (hasErrors) => {
+        if (doHotReload && !hasErrors) {
+          triggerHotReload();
+        }
+      });
+    } else if (doHotReload) {
+      // Analyzer disabled — hot-reload unconditionally on successful compile.
+      triggerHotReload();
     }
   });
 }
@@ -119,6 +143,25 @@ function compileDir(dir: string): void {
   });
 }
 
+// ─── 5.5 — Flutter hot-reload ─────────────────────────────────────────────────
+
+/**
+ * Fires a Flutter hot-reload if an active Dart/Flutter debug session is present.
+ * Waits 500 ms first so the file system has time to flush the written .dart file
+ * before the Flutter engine re-reads it. Shows the result in the status bar.
+ */
+function triggerHotReload(): void {
+  const session = vscode.debug.activeDebugSession;
+  if (session?.type !== 'dart') return;
+
+  setTimeout(() => {
+    vscode.commands.executeCommand('flutter.hotReload').then(
+      () => updateStatusBar('✓ hot reload'),
+      () => updateStatusBar('✗ hot reload failed'),
+    );
+  }, 500);
+}
+
 // ─── 5.5 / 5.6 — Analyzer integration ────────────────────────────────────────
 
 /** @dmacro-origin comment pattern in generated .dart files */
@@ -128,12 +171,18 @@ const ORIGIN_RE = /\/\/ @dmacro-origin: (.+):(\d+)/;
  * Reads the generated .dart file, builds a line-number → source-location map
  * from embedded `@dmacro-origin` comments, then runs `dart analyze --format json`
  * and surfaces any warnings/errors as VS Code diagnostics on the source .dmacro file.
+ *
+ * Calls [onDone] with whether any ERROR-severity diagnostics were found.
  */
 function runAnalyzerAndShowDiagnostics(
   sourcePath: string,
   dartPath: string,
+  onDone?: (hasErrors: boolean) => void,
 ): void {
-  if (!fs.existsSync(dartPath)) return;
+  if (!fs.existsSync(dartPath)) {
+    onDone?.(false);
+    return;
+  }
 
   // Build origin map: dart line → { file, srcLine }
   const origins: Array<{ dartLine: number; file: string; srcLine: number }> = [];
@@ -146,12 +195,17 @@ function runAnalyzerAndShowDiagnostics(
   } catch { /* can't read generated file — skip */ }
 
   cp.execFile('dart', ['analyze', '--format', 'json', dartPath], (err, stdout) => {
-    // Clear previous analyzer diagnostics on the source file.
     const analyzerDiags: vscode.Diagnostic[] = [];
 
     let json: { diagnostics?: AnalyzerDiagnostic[] } | undefined;
-    try { json = JSON.parse(stdout); } catch { return; }
-    if (!json?.diagnostics?.length) return;
+    try { json = JSON.parse(stdout); } catch {
+      onDone?.(false);
+      return;
+    }
+    if (!json?.diagnostics?.length) {
+      onDone?.(false);
+      return;
+    }
 
     for (const d of json.diagnostics) {
       const dartLine = (d.location?.range?.start?.line ?? 0) + 1; // JSON is 0-based
@@ -179,6 +233,11 @@ function runAnalyzerAndShowDiagnostics(
     if (analyzerDiags.length > 0) {
       diagnostics.set(vscode.Uri.file(sourcePath), analyzerDiags);
     }
+
+    const hasErrors = analyzerDiags.some(
+      d => d.severity === vscode.DiagnosticSeverity.Error,
+    );
+    onDone?.(hasErrors);
   });
 }
 
@@ -190,6 +249,42 @@ interface AnalyzerDiagnostic {
       start?: { line?: number; character?: number };
     };
   };
+}
+
+// ─── 5.1b — Code lens: jump to .dmacro source ────────────────────────────────
+
+/**
+ * Provides "↑ dmacro: file:line" code lenses on generated `.dart` files.
+ *
+ * Each `// @dmacro-origin: path:line` comment in the generated file becomes a
+ * clickable lens that opens the `.dmacro`/`.sexp` source at the exact line.
+ */
+class DmacroCodeLensProvider implements vscode.CodeLensProvider {
+  provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
+    const lenses: vscode.CodeLens[] = [];
+    const lines = document.getText().split('\n');
+
+    for (let i = 0; i < lines.length; i++) {
+      const m = ORIGIN_RE.exec(lines[i]);
+      if (!m) continue;
+
+      const rawPath  = m[1];
+      const srcLine  = parseInt(m[2], 10);
+      const resolved = path.isAbsolute(rawPath)
+        ? rawPath
+        : path.resolve(path.dirname(document.uri.fsPath), rawPath);
+
+      lenses.push(new vscode.CodeLens(
+        new vscode.Range(i, 0, i, lines[i].length),
+        {
+          title:     `↑ dmacro: ${path.basename(resolved)}:${srcLine}`,
+          command:   'dmacro.jumpToSource',
+          arguments: [resolved, srcLine],
+        },
+      ));
+    }
+    return lenses;
+  }
 }
 
 // ─── 5.3 — Diagnostics ────────────────────────────────────────────────────────
@@ -236,7 +331,7 @@ function updateStatusBar(text: string): void {
     statusItem.show();
   }
   statusItem.text = text;
-  // Auto-clear success message after 3 s.
+  // Auto-clear success messages after 3 s.
   if (text.startsWith('✓')) {
     setTimeout(() => { if (statusItem) statusItem.text = 'dmacro'; }, 3000);
   }

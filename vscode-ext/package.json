@@ -10,6 +10,7 @@
   "repository": { "type": "git", "url": "https://github.com/caglarkullu/dart-macro" },
   "activationEvents": [
     "onLanguage:dmacro",
+    "onLanguage:dart",
     "workspaceContains:**/*.dmacro",
     "workspaceContains:**/*.sexp"
   ],
@@ -49,6 +50,10 @@
       {
         "command": "dmacro.compileWorkspace",
         "title": "dmacro: Compile Workspace"
+      },
+      {
+        "command": "dmacro.jumpToSource",
+        "title": "dmacro: Jump to Source"
       }
     ],
     "configuration": {

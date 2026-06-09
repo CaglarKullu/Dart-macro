@@ -38,3 +38,10 @@ Initial public release.
 - `defenum` must precede any `defrecord` that references it in the same file
   (no forward declaration).
 - The `doc/` directory follows the pub.dev convention (renamed from `docs/` in 0.1.0).
+- **Breakpoints and runtime stack traces** point to the generated `.dart` file, not the
+  `.dmacro` source. The Dart VM has no mechanism to consume external source maps for
+  JIT/AOT builds. Mitigations: (1) the VS Code extension shows a
+  `↑ dmacro: file:line` code lens on every `@dmacro-origin` line in generated `.dart`
+  files — click it to jump directly to the corresponding `.dmacro` source line;
+  (2) `dart run dmacro:dmacro trace <file>` prints each macro expansion step so you
+  can understand what generated code corresponds to which macro call.

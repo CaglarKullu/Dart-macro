@@ -148,3 +148,89 @@ Future<String> asyncCompileWithOrigins(
   }
   return assembleOutput(results);
 }
+
+// ─── Trace variant ────────────────────────────────────────────────────────────
+
+/// Expands [node] like [asyncExpand] but writes each macro invocation to [sink].
+Future<Node> _asyncExpandWithTrace(
+    Node node, StringSink sink, int depth, _TraceRef counter) async {
+  if (node is! List || node.isEmpty) return node;
+
+  final head = node[0];
+  final args = node.sublist(1);
+
+  if (head is String) {
+    final asyncFn = _asyncMacros[head];
+    final syncFn  = getMacro(head);
+
+    if (asyncFn != null || syncFn != null) {
+      counter.value++;
+      final pad = '  ' * depth;
+      sink.writeln('$pad[${counter.value}] ${_abbrev(_nodeStr(node))}');
+      final raw    = asyncFn != null ? await asyncFn(args) : syncFn!(args);
+      final result = await _asyncExpandWithTrace(raw, sink, depth + 1, counter);
+      sink.writeln('$pad        → ${_abbrev(_nodeStr(result))}');
+      return result;
+    }
+  }
+
+  final out = <Node>[head];
+  for (final child in args) {
+    final expanded = await _asyncExpandWithTrace(child, sink, depth, counter);
+    if (expanded is Splice) {
+      out.addAll(expanded.nodes);
+    } else {
+      out.add(expanded);
+    }
+  }
+  return out;
+}
+
+class _TraceRef { int value = 0; }
+
+String _nodeStr(Node node) {
+  if (node == null) return 'null';
+  if (node is Splice) return '~@(${node.nodes.map(_nodeStr).join(' ')})';
+  if (node is List) return node.isEmpty ? '()' : '(${node.map(_nodeStr).join(' ')})';
+  return '$node';
+}
+
+String _abbrev(String s, [int max = 100]) =>
+    s.length <= max ? s : '${s.substring(0, max - 3)}...';
+
+/// Compiles Dart-like [source] while printing each expansion step to [sink].
+Future<String> asyncCompileDartLikeWithTrace(
+    String source, String sourcePath, StringSink sink) async {
+  resetGensym();
+  resetEnumRegistry();
+  final tokens  = Tokenizer(source).tokenize();
+  final spanned = DartLikeParser(tokens).parseProgramSpanned();
+  final results = <String>[];
+  final counter = _TraceRef();
+
+  for (final (form, line) in spanned) {
+    sink.writeln('\n─── $sourcePath:$line ───');
+    sink.writeln('    ${_abbrev(_nodeStr(form))}');
+    final expanded = await _asyncExpandWithTrace(form, sink, 0, counter);
+    results.add(emit(expanded));
+  }
+  return assembleOutput(results);
+}
+
+/// Compiles S-expression [source] while printing each expansion step to [sink].
+Future<String> asyncCompileWithTrace(
+    String source, String sourcePath, StringSink sink) async {
+  resetGensym();
+  resetEnumRegistry();
+  final spanned = Reader(source).readAllSpanned();
+  final results = <String>[];
+  final counter = _TraceRef();
+
+  for (final (form, line) in spanned) {
+    sink.writeln('\n─── $sourcePath:$line ───');
+    sink.writeln('    ${_abbrev(_nodeStr(form))}');
+    final expanded = await _asyncExpandWithTrace(form, sink, 0, counter);
+    results.add(emit(expanded));
+  }
+  return assembleOutput(results);
+}
