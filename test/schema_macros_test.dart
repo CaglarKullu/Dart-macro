@@ -470,4 +470,159 @@ void main() {
       expect(out, contains('final String name;'));
     });
   });
+
+  // ─── Schema enum generation ───────────────────────────────────────────────
+
+  group('schema enum generation', () {
+    late Directory tmpDir;
+    setUp(() => tmpDir = Directory.systemTemp.createTempSync('dmacro_enum_'));
+    tearDown(() => tmpDir.deleteSync(recursive: true));
+
+    test('top-level enum schema generates defenum node', () async {
+      File('${tmpDir.path}/status.json').writeAsStringSync(jsonEncode({
+        'title': 'Status',
+        'type': 'string',
+        'enum': ['active', 'inactive', 'pending'],
+      }));
+      final result = await asyncExpand(
+        ['defFromJsonSchema', '"${tmpDir.path}/status.json"'],
+      ) as List;
+      expect(result[0], equals('defenum'));
+      expect(result[1], equals('Status'));
+      expect(result[2], equals(['active', 'inactive', 'pending']));
+    });
+
+    test('defenum node emits valid Dart enum with fromJson/toJson', () {
+      final out = emit(['defenum', 'Status', ['active', 'inactive']]);
+      expect(out, contains('enum Status'));
+      expect(out, contains('active'));
+      expect(out, contains('inactive'));
+      expect(out, contains('factory Status.fromJson(String s)'));
+      expect(out, contains('values.byName(s)'));
+      expect(out, contains('String toJson() => name'));
+    });
+
+    test('inline enum property generates both enum declaration and record',
+        () async {
+      File('${tmpDir.path}/order.json').writeAsStringSync(jsonEncode({
+        'title': 'Order',
+        'type': 'object',
+        'required': ['id', 'status'],
+        'properties': {
+          'id': {'type': 'string'},
+          'status': {
+            'type': 'string',
+            'enum': ['pending', 'paid', 'cancelled'],
+          },
+        },
+      }));
+      final code = await asyncCompileDartLike(
+        'defFromJsonSchema("${tmpDir.path}/order.json");',
+      );
+      expect(code, contains('enum Status'));
+      expect(code, contains('pending'));
+      expect(code, contains('class Order'));
+      expect(code, contains('final Status status;'));
+    });
+
+    test('enum field serializes via values.byName and .name', () async {
+      File('${tmpDir.path}/order.json').writeAsStringSync(jsonEncode({
+        'title': 'Order',
+        'type': 'object',
+        'required': ['id', 'status'],
+        'properties': {
+          'id': {'type': 'string'},
+          'status': {
+            'type': 'string',
+            'enum': ['pending', 'paid'],
+          },
+        },
+      }));
+      final code = await asyncCompileDartLike(
+        'defFromJsonSchema("${tmpDir.path}/order.json");',
+      );
+      expect(code, contains('values.byName'));
+      expect(code, contains('.name'));
+    });
+
+    test('defAllFromJsonSchema resolves \$ref to top-level enum schema',
+        () async {
+      File('${tmpDir.path}/status.json').writeAsStringSync(jsonEncode({
+        'title': 'Status',
+        'type': 'string',
+        'enum': ['active', 'inactive'],
+      }));
+      File('${tmpDir.path}/user.json').writeAsStringSync(jsonEncode({
+        'title': 'User',
+        'type': 'object',
+        'required': ['name'],
+        'properties': {
+          'name': {'type': 'string'},
+          'status': {r'$ref': '#/components/schemas/Status'},
+        },
+      }));
+      final code = emit(await asyncExpand(
+        ['defAllFromJsonSchema', '"${tmpDir.path}"'],
+      ));
+      expect(code, contains('enum Status'));
+      expect(code, contains('class User'));
+      expect(code, contains('final Status? status;'));
+    });
+
+    test('nullable enum field uses sentinel copyWith correctly', () async {
+      File('${tmpDir.path}/item.json').writeAsStringSync(jsonEncode({
+        'title': 'Item',
+        'type': 'object',
+        'required': ['id'],
+        'properties': {
+          'id': {'type': 'string'},
+          'priority': {
+            'type': 'string',
+            'enum': ['low', 'medium', 'high'],
+          },
+        },
+      }));
+      final code = await asyncCompileDartLike(
+        'defFromJsonSchema("${tmpDir.path}/item.json");',
+      );
+      expect(code, contains('enum Priority'));
+      // Nullable enum field uses sentinel pattern in copyWith
+      expect(code, contains('Object? priority = _dmUndefined'));
+      // fromJson handles null
+      expect(code, contains('priority'));
+    });
+
+    test('enum field round-trips through JSON', () async {
+      File('${tmpDir.path}/order.json').writeAsStringSync(jsonEncode({
+        'title': 'Order',
+        'type': 'object',
+        'required': ['id', 'status'],
+        'properties': {
+          'id': {'type': 'string'},
+          'status': {
+            'type': 'string',
+            'enum': ['pending', 'paid', 'cancelled'],
+          },
+        },
+      }));
+      final code = await asyncCompileDartLike(
+        'defFromJsonSchema("${tmpDir.path}/order.json");',
+      );
+      final prog = File('${tmpDir.path}/prog.dart')
+        ..writeAsStringSync('''
+$code
+
+void main() {
+  final o = Order(id: 'x', status: Status.paid);
+  final back = Order.fromJson(o.toJson());
+  if (back.status != o.status) throw 'round-trip mismatch: \${back.status}';
+  if (o.toJson()['status'] != 'paid') throw 'toJson wrong: \${o.toJson()["status"]}';
+  print('ok');
+}
+''');
+      final r = await Process.run('dart', ['run', prog.path]);
+      expect(r.exitCode, 0, reason: '${r.stderr}\n${r.stdout}\n$code');
+      expect('${r.stdout}'.trim(), 'ok');
+    });
+  });
 }

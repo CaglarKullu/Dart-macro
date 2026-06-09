@@ -15,6 +15,7 @@ void registerSchemaMacros() {
   // ─── defFromJsonSchema ──────────────────────────────────────────────────────
 
   defAsyncMacro('defFromJsonSchema', (args) async {
+    _knownEnumNames.clear();
     final path = _unquote(args[0] as String);
     return _defrecordFromSchemaFile(path, callerMacro: 'defFromJsonSchema');
   });
@@ -43,6 +44,18 @@ void registerSchemaMacros() {
       throw StateError(
         'defAllFromJsonSchema: no .json files found in $dirPath',
       );
+    }
+
+    // Clear stale registry, then pre-scan to register top-level enum schemas
+    // before processing fields that might $ref them.
+    _knownEnumNames.clear();
+    for (final file in files) {
+      final json =
+          jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+      final title = json['title'] as String?;
+      if (title != null && json['enum'] != null) {
+        _knownEnumNames.add(title);
+      }
     }
 
     final records = <Node>[];
@@ -99,11 +112,24 @@ void registerSchemaMacros() {
       );
     }
 
+    // Pre-scan all schemas to register enums so $ref can resolve them.
+    _knownEnumNames.clear();
+    for (final entry in schemas.entries) {
+      final s = entry.value as Map<String, dynamic>;
+      if (s['enum'] != null) {
+        _knownEnumNames.add(entry.key);
+      }
+    }
+
     return _defrecordFromSchema(schemaName, schema);
   });
 }
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
+
+/// Set of type names that are known to be enums (populated during pre-scan).
+/// Used by [_dartType] to emit `enum:Name` signal for `$ref` fields.
+final _knownEnumNames = <String>{};
 
 Future<Node> _defrecordFromSchemaFile(
   String path, {
@@ -122,7 +148,16 @@ Future<Node> _defrecordFromSchemaFile(
     throw StateError('$callerMacro: schema at $path missing "title"');
   }
 
-  return _defrecordFromSchema(json['title'] as String, json);
+  final title = json['title'] as String;
+
+  // Top-level enum schema: `{"title": "Status", "enum": ["a", "b"]}`
+  final enumValues = json['enum'] as List?;
+  if (enumValues != null) {
+    _knownEnumNames.add(title);
+    return ['defenum', title, enumValues.map((v) => v.toString()).toList()];
+  }
+
+  return _defrecordFromSchema(title, json);
 }
 
 Node _defrecordFromSchema(String name, Map<String, dynamic> schema) {
@@ -132,13 +167,33 @@ Node _defrecordFromSchema(String name, Map<String, dynamic> schema) {
       ((schema['required'] as List<dynamic>?) ?? const []).cast<String>();
 
   final fields = <List<String>>[];
+  final inlineEnums = <Node>[];
+
   for (final entry in props.entries) {
-    var type = _dartType(entry.value as Map<String, dynamic>);
-    if (!required.contains(entry.key)) type = '$type?';
-    fields.add([type, entry.key]);
+    final propSchema = entry.value as Map<String, dynamic>;
+    final enumValues = propSchema['enum'] as List?;
+
+    if (enumValues != null) {
+      // Inline enum property: derive name from the field key and generate a
+      // separate enum declaration alongside the record.
+      final enumName = _toPascalCase(entry.key);
+      _knownEnumNames.add(enumName);
+      inlineEnums
+          .add(['defenum', enumName, enumValues.map((v) => v.toString()).toList()]);
+      var type = 'enum:$enumName';
+      if (!required.contains(entry.key)) type = '$type?';
+      fields.add([type, entry.key]);
+    } else {
+      var type = _dartType(propSchema);
+      if (!required.contains(entry.key)) type = '$type?';
+      fields.add([type, entry.key]);
+    }
   }
 
-  return ['defrecord', name, ...fields];
+  final record = ['defrecord', name, ...fields];
+  if (inlineEnums.isEmpty) return record;
+  // Wrap in 'do' so both the enum declaration(s) and the record are emitted.
+  return ['do', ...inlineEnums, record];
 }
 
 // ─── Type mapping ─────────────────────────────────────────────────────────────
@@ -146,7 +201,11 @@ Node _defrecordFromSchema(String name, Map<String, dynamic> schema) {
 String _dartType(Map<String, dynamic> schema) {
   // OpenAPI $ref: '#/components/schemas/Money' → 'Money'
   final ref = schema[r'$ref'] as String?;
-  if (ref != null) return ref.split('/').last;
+  if (ref != null) {
+    final refName = ref.split('/').last;
+    // Preserve the enum signal so fromJson/toJson use values.byName/.name.
+    return _knownEnumNames.contains(refName) ? 'enum:$refName' : refName;
+  }
 
   switch (schema['type'] as String?) {
     case 'number':
@@ -171,6 +230,13 @@ String _dartType(Map<String, dynamic> schema) {
       return 'dynamic';
   }
 }
+
+/// PascalCase: `status` → `Status`, `order_status` → `OrderStatus`.
+String _toPascalCase(String s) => s
+    .split('_')
+    .map((part) =>
+        part.isEmpty ? '' : part[0].toUpperCase() + part.substring(1))
+    .join('');
 
 String _unquote(String s) =>
     (s.startsWith('"') && s.endsWith('"')) ? s.substring(1, s.length - 1) : s;
