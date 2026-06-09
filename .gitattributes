@@ -1,0 +1,4 @@
+# Tell GitHub's Linguist to treat .dmacro and .sexp as Dart for syntax
+# highlighting (closest match until a dmacro Linguist grammar is added).
+*.dmacro linguist-language=Dart
+*.sexp   linguist-language=Lisp
