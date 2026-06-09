@@ -2,6 +2,8 @@
 ///
 /// Each snippet either compiles to analyzer-clean Dart (assertions made here)
 /// or fails with a located ParseException (not a silent mis-parse).
+library;
+
 import 'package:test/test.dart';
 import 'package:dart_macros/dart_macros.dart';
 

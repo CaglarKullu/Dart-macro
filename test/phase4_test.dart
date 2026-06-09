@@ -1,4 +1,6 @@
 /// Phase 4 — Developer Experience tests.
+library;
+
 import 'dart:io';
 
 import 'package:test/test.dart';

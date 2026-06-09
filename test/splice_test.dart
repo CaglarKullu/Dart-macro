@@ -238,7 +238,7 @@ void main() {
       void checkNoSplice(dynamic node) {
         expect(node, isNot(isA<Splice>()));
         if (node is List) {
-          for (final child in node) checkNoSplice(child);
+          for (final child in node) { checkNoSplice(child); }
         }
       }
 

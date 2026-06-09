@@ -414,7 +414,7 @@ void main() {
         ],
       ]);
       expect(out, contains('@override'));
-      expect(out, contains("String toString()"));
+      expect(out, contains('String toString()'));
       expect(out, contains('Point('));
       expect(out, contains(r'$x'));
     });
@@ -722,8 +722,8 @@ void main() {
           ['String?', 'note']
         ],
       ]);
-      expect(out, contains("as String?"));
-      expect(out, isNot(contains("== null ? null :")));
+      expect(out, contains('as String?'));
+      expect(out, isNot(contains('== null ? null :')));
     });
 
     test('List<String> field uses .map().toList()', () {
