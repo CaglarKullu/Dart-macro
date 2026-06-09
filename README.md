@@ -236,6 +236,76 @@ Expands to a `for` loop with a `try/catch` and an `_attempt` counter injected di
 
 ---
 
+### 7. User-defined macros in `.dmacro` files
+
+You can define your own macros directly in `.dmacro` source — no Dart code required:
+
+```dart
+// Define once
+defmacro log(msg) {
+  print("[LOG] " + msg);
+}
+
+defmacro guard(cond, err) {
+  if (!cond) {
+    throw Exception(err);
+  }
+}
+
+// Use anywhere below the definition
+bool createUser(String email, int age) {
+  guard(email.contains("@"), "Invalid email");
+  guard(age >= 18, "Must be 18 or older");
+  log("Creating user: " + email);
+  return true;
+}
+```
+
+Each `defmacro` registers a template macro: call-site arguments are substituted for parameter names throughout the body. Definitions must appear before the first call, just like `defenum`.
+
+---
+
+### 8. OpenAPI `oneOf` → sealed class hierarchy
+
+OpenAPI specs that use `oneOf` for polymorphic types are automatically mapped to a Dart sealed class:
+
+```json
+{
+  "title": "Shape",
+  "oneOf": [
+    { "title": "Circle",    "type": "object", "required": ["radius"],       "properties": { "radius": { "type": "number" } } },
+    { "title": "Rectangle", "type": "object", "required": ["width","height"],"properties": { "width":  { "type": "number" }, "height": { "type": "number" } } }
+  ]
+}
+```
+
+```dart
+defFromJsonSchema("schemas/shape.json");
+```
+
+Generates:
+
+```dart
+sealed class Shape { const Shape(); }
+class Circle    extends Shape { final double radius; ... }
+class Rectangle extends Shape { final double width; final double height; ... }
+```
+
+---
+
+### 9. YAML OpenAPI specs
+
+`defFromOpenApi` now accepts `.yaml` and `.yml` files in addition to `.json` — no external dependencies:
+
+```dart
+defFromOpenApi("api/openapi.yaml", "User");
+defFromOpenApi("api/openapi.yaml", "Order");
+```
+
+The built-in YAML parser handles block and flow mappings/sequences, quoted scalars, block scalars (`|`/`>`), and `#` comments — the full subset needed for real-world OpenAPI specs.
+
+---
+
 ## Syntax
 
 dmacro files look like Dart. The `.dmacro` extension signals the preprocessor.
@@ -282,8 +352,9 @@ There is also an S-expression syntax (`.sexp`) for the full Lisp experience — 
 |---|---|---|
 | `defrecord Name { ... }` | Immutable class: fields, constructor, `copyWith`, deep `==`/`hashCode`, `toString`, **`fromJson`/`toJson`** | Functions can't generate class declarations |
 | `defunion Name { ... }` | Sealed class hierarchy | Same |
-| `defFromJsonSchema("path")` | `defrecord` from a JSON Schema file | Functions run at runtime; I/O at build time requires a macro |
-| `defFromOpenApi("path", "Name")` | `defrecord` from an OpenAPI `components/schemas` entry | Same |
+| `defmacro name(params) { ... }` | User-defined template macro, registered for use in the same file | Functions run at call time with values; macros run at expand time with code |
+| `defFromJsonSchema("path")` | `defrecord` from a JSON Schema file; `$defs`/`definitions` blocks and `oneOf` are supported | Functions run at runtime; I/O at build time requires a macro |
+| `defFromOpenApi("path", "Name")` | `defrecord` (or `defunion` for `oneOf`) from an OpenAPI `components/schemas` entry; accepts `.json`, `.yaml`, or `.yml` | Same |
 | `defAllFromJsonSchema("dir/")` | One `defrecord` per `.json` file in a directory | Same |
 | `unless (cond) { ... }` | `if (!(cond)) { ... }` | Convenience only — could be a function but this reads better |
 | `when (cond) { ... }` | `if (cond) { ... }` | Same |
@@ -418,14 +489,15 @@ lib/src/
   core.dart               Node type, expand(), emit()
   async_expand.dart       Async macro expander (enables compile-time I/O)
   schema_macros.dart      defFromJsonSchema, defFromOpenApi, defAllFromJsonSchema
-  builtins.dart           unless, when, swap!, assertThat, withRetry, defrecord, defunion
-  dart_parser.dart        .dmacro parser
+  yaml_parser.dart        Built-in YAML parser (no external deps)
+  builtins.dart           unless, when, swap!, assertThat, withRetry, defrecord, defunion, defmacro
+  dart_parser.dart        .dmacro parser (including defmacro declarations)
   tokenizer.dart          .dmacro tokenizer
   reader.dart             S-expression reader
 example/
   ecommerce/              Domain models: Product, Order, Cart, OrderStatus
   api_from_schema/        Types from a directory of JSON Schemas
-  openapi_demo/           Types from an OpenAPI spec
+  openapi_demo/           Types from an OpenAPI spec (JSON + YAML)
   schema_demo/            Single defFromJsonSchema walkthrough
   payment.dmacro          Core syntax reference
   payment.sexp            S-expression syntax reference

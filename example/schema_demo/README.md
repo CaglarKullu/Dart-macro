@@ -50,6 +50,15 @@ class Payment {
 }
 ```
 
+## Advanced schema features
+
+`defFromJsonSchema` handles the full JSON Schema feature set needed for real APIs:
+
+- **`$defs` / `definitions`** — local type references are generated before the main record so `$ref` fields resolve correctly
+- **Inline `enum` properties** — a Dart `enum` is generated alongside the record, with `values.byName` / `.name` serialization
+- **`oneOf`** — generates a sealed `defunion` hierarchy
+- **`format: date-time` / `date`** — mapped to `DateTime` with ISO-8601 serialization
+
 ## What this proves
 
 Every existing Dart code-gen tool (build_runner, freezed, json_serializable) transforms

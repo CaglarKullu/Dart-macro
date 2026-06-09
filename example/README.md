@@ -35,6 +35,8 @@ dart run bin/dmacro.dart compile example/api_from_schema/models.dmacro
 ## [`openapi_demo/`](openapi_demo/)
 
 Generate types directly from an OpenAPI 3.0 spec by schema name.
+Accepts both `.json` and `.yaml` / `.yml` specs — no external YAML library required.
+`oneOf` schemas are automatically mapped to sealed `defunion` hierarchies.
 
 Demonstrates: `defFromOpenApi`
 

@@ -39,6 +39,9 @@ dart run bin/dmacro.dart compile example/api_from_schema/models.dmacro
 | `boolean` | `bool` |
 | `array` with `items` | `List<T>` |
 | `object` with `title` | the title as a type name |
+| `enum` values on a property | generates a Dart `enum` and uses `values.byName` / `.name` for serialization |
+| `$ref` pointing to a `$defs` / `definitions` entry | the referenced type, with enum-aware serialization if the target is an enum |
+| `oneOf` array | `defunion` sealed class hierarchy |
 | required field | `Type field` |
 | optional field | `Type? field` (nullable, optional in constructor) |
 
