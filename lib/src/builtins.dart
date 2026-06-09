@@ -47,7 +47,7 @@ void _registerControlFlow() {
       attempt,
       'Iterable.generate(${emit(n)})',
       $try(
-        body,
+        $do([body, 'break']), // break on success so body runs exactly once
         err,
         $if(
           $eq(attempt, $sub(n, 1)),
@@ -65,10 +65,14 @@ void _registerControlFlow() {
   // Generates an error message that CONTAINS THE SOURCE OF THE EXPRESSION.
   // A function receives a value — it can never know what expression produced it.
   // Registered under both the kebab-case (.sexp) and camelCase (.dmacro) names.
-  Node assertThat(List<Node> args) => $if(
-        $not(args[0]),
-        $throw('AssertionError("Expected: ${emit(args[0])}, got false")'),
-      );
+  Node assertThat(List<Node> args) {
+    // Escape \ and " so the emitted expression is safe inside a double-quoted string.
+    final exprStr = emit(args[0]).replaceAll(r'\', r'\\').replaceAll('"', r'\"');
+    return $if(
+      $not(args[0]),
+      $throw('AssertionError("Expected: $exprStr, got false")'),
+    );
+  }
   defmacro('assert-that', assertThat);
   defmacro('assertThat', assertThat);
 }
@@ -109,7 +113,7 @@ void _registerBinding() {
   defmacro('once', (args) {
     final name = args[0] as String;
     final expr = args[1];
-    final tmp = '_once_$name';
+    final tmp = gensym('once');
     return $do([
       $let(tmp, expr),
       $set(name, tmp),
@@ -209,6 +213,10 @@ void _registerDataClass() {
       return $class('$variantName extends $name', [
         ...variantFields.map((f) => $field(f.type, f.name)),
         $ctor(variantName, variantFields.map((f) => [f.type, f.name]).toList()),
+        $copyWith(variantName, variantFields),
+        $equality(variantName, variantFields),
+        $hashCode(variantFields),
+        $toString(variantName, variantFields),
       ]);
     }).toList();
 

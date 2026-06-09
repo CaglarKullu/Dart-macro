@@ -80,6 +80,18 @@ void main() {
       expect(msg, contains('amount'));
       expect(msg, contains('1000000'));
     });
+
+    test('string literal in expression produces valid Dart (no unescaped quotes)', () {
+      // email.contains("@") — the " inside must be escaped in the error string
+      final out = emit(expand([
+        'assert-that',
+        ['.contains', 'email', '"@"']
+      ]));
+      // Count unescaped quotes: the string must be well-formed Dart
+      // A simple proxy: after the opening AssertionError(" the next " must be the
+      // closing one, not an unescaped quote from the expression.
+      expect(out, contains(r'\"@\"'));
+    });
   });
 
   // ─── with-retry ──────────────────────────────────────────────────────────────
@@ -99,6 +111,27 @@ void main() {
       // result = ['for-in', attemptVar, iterableExpr, tryNode]
       final tryNode = result[3] as List;
       expect(tryNode[0], equals('try'));
+    });
+
+    test('try body contains break so loop exits on success', () {
+      final result = expand(['with-retry', 3, 'body']) as List;
+      // tryNode = ['try', doNode, errVar, catchBody]
+      final tryNode = result[3] as List;
+      final tryBody = tryNode[1] as List;
+      // try body is a 'do' containing the user body and 'break'
+      expect(tryBody[0], equals('do'));
+      expect(tryBody.last, equals('break'));
+    });
+
+    test('emitted output contains break inside try block', () {
+      final out = emit(expand(['with-retry', 2, 'body']));
+      expect(out, contains('break'));
+      // break must appear before the closing brace of try (not after catch)
+      final tryIdx = out.indexOf('try {');
+      final catchIdx = out.indexOf('} catch (');
+      final breakIdx = out.indexOf('break');
+      expect(breakIdx, greaterThan(tryIdx));
+      expect(breakIdx, lessThan(catchIdx));
     });
 
     test('iterable uses Iterable.generate with n', () {
@@ -395,6 +428,23 @@ void main() {
       expect(setNode[0], equals('set!'));
       expect(setNode[1], equals('x'));
     });
+
+    test('tmp variable uses gensym (unique, starts with __)', () {
+      resetGensym();
+      final result = expand(['once', 'x', 'expr']) as List;
+      final letNode = result[1] as List;
+      final tmpName = letNode[1] as String;
+      expect(tmpName, startsWith('__'));
+    });
+
+    test('two once macros use different tmp vars (no collision)', () {
+      resetGensym();
+      final r1 = expand(['once', 'a', 'exprA']) as List;
+      final r2 = expand(['once', 'b', 'exprB']) as List;
+      final tmp1 = (r1[1] as List)[1] as String;
+      final tmp2 = (r2[1] as List)[1] as String;
+      expect(tmp1, isNot(equals(tmp2)));
+    });
   });
 
   // ─── macro aliases (camelCase ↔ kebab-case) ───────────────────────────────────
@@ -553,6 +603,77 @@ void main() {
       expect(out, contains('class Start extends Msg'));
       expect(out, contains('class Stop extends Msg'));
       expect(out, contains('class Error extends Msg'));
+    });
+  });
+
+  // ─── defunion — value semantics ──────────────────────────────────────────────
+
+  group('defunion — value semantics', () {
+    test('variant emits copyWith', () {
+      final out = emit(expand([
+        'defunion',
+        'Shape',
+        ['Circle', ['double', 'radius']],
+      ]));
+      expect(out, contains('copyWith'));
+    });
+
+    test('variant emits == override', () {
+      final out = emit(expand([
+        'defunion',
+        'Shape',
+        ['Circle', ['double', 'radius']],
+      ]));
+      expect(out, contains('operator =='));
+    });
+
+    test('variant emits hashCode override', () {
+      final out = emit(expand([
+        'defunion',
+        'Shape',
+        ['Circle', ['double', 'radius']],
+      ]));
+      expect(out, contains('hashCode'));
+    });
+
+    test('variant emits toString override', () {
+      final out = emit(expand([
+        'defunion',
+        'Shape',
+        ['Circle', ['double', 'radius']],
+      ]));
+      expect(out, contains('toString()'));
+    });
+
+    test('== uses the variant name, not the sealed parent name', () {
+      final out = emit(expand([
+        'defunion',
+        'Shape',
+        ['Circle', ['double', 'radius']],
+      ]));
+      expect(out, contains('other is Circle'));
+      expect(out, isNot(contains('other is Shape')));
+    });
+
+    test('no-field variant has valid == without trailing &&', () {
+      final out = emit(expand([
+        'defunion',
+        'Token',
+        ['TkEof'],
+      ]));
+      // Should not emit dangling '&& ;'
+      expect(out, isNot(contains('&& ;')));
+      expect(out, contains('other is TkEof'));
+    });
+  });
+
+  // ─── equalop — empty fields ───────────────────────────────────────────────────
+
+  group('equalop — empty fields', () {
+    test('defrecord with no fields has valid == (no trailing &&)', () {
+      final out = emit(expand(['defrecord', 'Empty']));
+      expect(out, isNot(contains('&& ;')));
+      expect(out, contains('other is Empty'));
     });
   });
 

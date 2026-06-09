@@ -337,6 +337,7 @@ String emit(Node node, [int indent = 0]) {
     case 'copywith':
       final name = args[0] as String;
       final fields = args[1] as List<dynamic>;
+      if (fields.isEmpty) return '$name copyWith() => $name();';
       // Nullable fields use a sentinel default so `copyWith(field: null)` can
       // clear them; non-nullable fields keep the simple `?? this.field` form.
       final params = fields.map((f) {
@@ -364,8 +365,9 @@ String emit(Node node, [int indent = 0]) {
             ? '_dmEq(other.$fname, $fname)'
             : 'other.$fname == $fname';
       }).join(' && ');
+      final fieldCheck = checks.isEmpty ? '' : ' && $checks';
       return '@override\n  bool operator ==(Object other) => '
-          'identical(this, other) || other is $name && $checks;';
+          'identical(this, other) || other is $name$fieldCheck;';
 
     case 'hashop':
       final fields = args[1] as List<dynamic>;
