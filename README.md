@@ -314,9 +314,48 @@ dart run bin/dmacro.dart compile lib/ --check
 # exits non-zero if any .dart is out of date
 ```
 
-### VS Code
+### VS Code extension
 
-Install the `dmacro` extension from `vscode-ext/` — it compiles on save and shows errors as squiggles.
+The `vscode-ext/` directory contains a VS Code extension that gives you:
+
+- Syntax highlighting for `.dmacro` and `.sexp` files
+- Compile on save (runs `dmacro compile` automatically)
+- Errors shown as red squiggles in the editor
+- Commands: **dmacro: Compile File** and **dmacro: Compile Workspace**
+
+**Install steps:**
+
+1. Install [Node.js](https://nodejs.org) if you don't have it.
+
+2. Build the `.vsix` package:
+
+   ```bash
+   cd vscode-ext
+   npm install
+   npm run package        # produces dmacro-0.1.0.vsix
+   ```
+
+3. Install in VS Code:
+   - Open the Extensions panel (`Ctrl+Shift+X` / `Cmd+Shift+X`)
+   - Click the `···` menu at the top-right of the panel
+   - Choose **Install from VSIX…**
+   - Select `vscode-ext/dmacro-0.1.0.vsix`
+
+4. Reload VS Code when prompted.
+
+**Settings** (VS Code `settings.json`):
+
+| Setting | Default | Description |
+|---|---|---|
+| `dmacro.cliPath` | `""` | Absolute path to the `dmacro` CLI binary. Leave empty to use `dart run bin/dmacro.dart` |
+| `dmacro.formatOnCompile` | `true` | Run `dart format` on the generated `.dart` file after each compile |
+
+**Try it in development** (no build needed):
+
+```bash
+cd vscode-ext && npm install
+# open vscode-ext/ in VS Code, then press F5 — launches an Extension Development Host
+```
 
 ---
 
