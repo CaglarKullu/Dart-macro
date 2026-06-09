@@ -145,11 +145,7 @@ void _registerDataClass() {
     }
     final values = rawValues.map((v) => v.toString()).toList();
     registerEnum(name);
-    if (values.isEmpty) return 'enum $name {}';
-    final valueList = values.join(',\n  ');
-    return 'enum $name {\n  $valueList;\n\n'
-        '  factory $name.fromJson(String s) => $name.values.byName(s);\n'
-        '  String toJson() => name;\n}';
+    return genEnumSource(name, values);
   });
 
   // (defrecord Name [Type field] [Type field] ...)

@@ -297,11 +297,7 @@ String emit(Node node, [int indent = 0]) {
       final name = args[0] as String;
       final values =
           (args[1] as List<dynamic>).map((v) => v.toString()).toList();
-      if (values.isEmpty) return 'enum $name {}';
-      final valueList = values.join(',\n  ');
-      return 'enum $name {\n  $valueList;\n\n'
-          '  factory $name.fromJson(String s) => $name.values.byName(s);\n'
-          '  String toJson() => name;\n}';
+      return genEnumSource(name, values);
 
     // ── Per-element origin marker (emitted as an inline comment)
     case '__origin__':
@@ -598,6 +594,17 @@ int _dmHash(Object? v) {
   }
   return v.hashCode;
 }''';
+
+/// Generates the Dart source for an enum with fromJson/toJson.
+/// Called by both the [emit] `defenum` case and the `defenum` macro so the
+/// string is generated in exactly one place.
+String genEnumSource(String name, List<String> values) {
+  if (values.isEmpty) return 'enum $name {}';
+  final valueList = values.join(',\n  ');
+  return 'enum $name {\n  $valueList;\n\n'
+      '  factory $name.fromJson(String s) => $name.values.byName(s);\n'
+      '  String toJson() => name;\n}';
+}
 
 /// Joins emitted top-level [forms] and appends any runtime helpers the body
 /// actually references (sentinel, `_dmEq`, `_dmHash`) — emitted at most once,

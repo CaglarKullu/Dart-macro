@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.2.0
+
+### Bug fixes
+
+- **`withRetry`**: body now runs exactly once on success. Previously it ran N
+  times regardless of outcome because the `for` loop had no `break` after the
+  successful attempt.
+- **`assertThat`**: `\` and `"` in the expression source are now escaped before
+  embedding in the error string. Expressions containing string literals (e.g.
+  `assertThat(email.contains("@"))`) previously generated invalid Dart.
+- **`defunion`** variants now include `copyWith`, `==`, `hashCode`, and
+  `toString` — matching what the README already claimed and what `defrecord`
+  provides. The `==` check correctly uses the variant class name
+  (`other is Circle`), not the sealed parent name.
+- **`once`** macro: the temp variable now uses `gensym` instead of
+  `_once_$name`, eliminating collisions when the same variable is bound twice.
+- **`copyWith` with no fields**: emits `copyWith()` instead of `copyWith({})`
+  (empty named-parameter block is invalid Dart).
+- **`==` with no fields**: no longer emits a dangling `&&` for zero-field
+  classes/variants.
+
+### New features
+
+- **`defFromJsonSchema` supports `$defs` / `definitions`**: schemas that
+  declare local types in a `$defs` or `definitions` block now have those
+  types generated before the main record. `$ref` fields pointing to `$defs`
+  enums get enum-aware serialization automatically.
+- **`trace` CLI command**: `dart run dmacro:dmacro trace <file>` prints each
+  macro expansion step — useful for understanding what generated code
+  corresponds to which macro call.
+
+### Internal
+
+- `genEnumSource()` shared helper eliminates the duplicated enum-generation
+  string between the `defenum` macro and the `emit()` switch case.
+
 ## 0.1.0
 
 Initial public release.

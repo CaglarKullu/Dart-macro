@@ -47,7 +47,8 @@ void registerSchemaMacros() {
     }
 
     // Clear stale registry, then pre-scan to register top-level enum schemas
-    // before processing fields that might $ref them.
+    // and any enums declared inside $defs sections before processing fields
+    // that might $ref them.
     _knownEnumNames.clear();
     for (final file in files) {
       final json =
@@ -56,6 +57,7 @@ void registerSchemaMacros() {
       if (title != null && json['enum'] != null) {
         _knownEnumNames.add(title);
       }
+      _prescannDefs(json);
     }
 
     final records = <Node>[];
@@ -131,6 +133,42 @@ void registerSchemaMacros() {
 /// Used by [_dartType] to emit `enum:Name` signal for `$ref` fields.
 final _knownEnumNames = <String>{};
 
+/// Pre-scans the `$defs` / `definitions` block of [schema] and registers any
+/// enum type names in [_knownEnumNames]. Must be called before generating
+/// types so that `$ref` fields resolve correctly.
+void _prescannDefs(Map<String, dynamic> schema) {
+  final defs = (schema[r'$defs'] ?? schema['definitions']) as Map<String, dynamic>?;
+  if (defs == null) return;
+  for (final entry in defs.entries) {
+    final defSchema = entry.value as Map<String, dynamic>;
+    if (defSchema['enum'] != null) {
+      final defName = (defSchema['title'] as String?) ?? entry.key;
+      _knownEnumNames.add(defName);
+    }
+  }
+}
+
+/// Generates type nodes for all entries in the `$defs` / `definitions` block
+/// of [schema]. Returns an empty list when no such block exists.
+List<Node> _generateDefNodes(Map<String, dynamic> schema) {
+  final defs = (schema[r'$defs'] ?? schema['definitions']) as Map<String, dynamic>?;
+  if (defs == null) return const [];
+
+  final nodes = <Node>[];
+  for (final entry in defs.entries) {
+    final defSchema = entry.value as Map<String, dynamic>;
+    final defName = (defSchema['title'] as String?) ?? entry.key;
+    final enumValues = defSchema['enum'] as List?;
+
+    if (enumValues != null) {
+      nodes.add(['defenum', defName, enumValues.map((v) => v.toString()).toList()]);
+    } else if (defSchema['type'] == 'object' || defSchema['properties'] != null) {
+      nodes.add(_defrecordFromSchema(defName, defSchema));
+    }
+  }
+  return nodes;
+}
+
 Future<Node> _defrecordFromSchemaFile(
   String path, {
   required String callerMacro,
@@ -150,6 +188,9 @@ Future<Node> _defrecordFromSchemaFile(
 
   final title = json['title'] as String;
 
+  // Pre-scan $defs so $ref fields inside the main schema resolve correctly.
+  _prescannDefs(json);
+
   // Top-level enum schema: `{"title": "Status", "enum": ["a", "b"]}`
   final enumValues = json['enum'] as List?;
   if (enumValues != null) {
@@ -157,7 +198,12 @@ Future<Node> _defrecordFromSchemaFile(
     return ['defenum', title, enumValues.map((v) => v.toString()).toList()];
   }
 
-  return _defrecordFromSchema(title, json);
+  final defNodes = _generateDefNodes(json);
+  final record = _defrecordFromSchema(title, json);
+
+  if (defNodes.isEmpty) return record;
+  // Emit $defs types before the main record so they're in scope for $ref fields.
+  return ['do', ...defNodes, record];
 }
 
 Node _defrecordFromSchema(String name, Map<String, dynamic> schema) {
@@ -199,7 +245,7 @@ Node _defrecordFromSchema(String name, Map<String, dynamic> schema) {
 // ─── Type mapping ─────────────────────────────────────────────────────────────
 
 String _dartType(Map<String, dynamic> schema) {
-  // OpenAPI $ref: '#/components/schemas/Money' → 'Money'
+  // JSON Schema $ref: '#/$defs/Money' or OpenAPI '#/components/schemas/Money' → 'Money'
   final ref = schema[r'$ref'] as String?;
   if (ref != null) {
     final refName = ref.split('/').last;

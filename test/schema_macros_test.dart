@@ -628,4 +628,104 @@ void main() {
       expect('${r.stdout}'.trim(), 'ok');
     });
   });
+
+  // ─── $defs / local references ─────────────────────────────────────────────
+
+  group(r'defFromJsonSchema — $defs support', () {
+    late Directory tmpDir;
+    setUp(() => tmpDir = Directory.systemTemp.createTempSync('dmacro_defs_'));
+    tearDown(() => tmpDir.deleteSync(recursive: true));
+
+    test(r'schema with $defs enum generates the enum before the record', () async {
+      File('${tmpDir.path}/order.json').writeAsStringSync(jsonEncode({
+        'title': 'Order',
+        'type': 'object',
+        'required': ['id'],
+        'properties': {
+          'id': {'type': 'string'},
+          'status': {r'$ref': r'#/$defs/Status'},
+        },
+        r'$defs': {
+          'Status': {'enum': ['pending', 'shipped', 'delivered']},
+        },
+      }));
+      final code = await asyncCompileDartLike(
+        'defFromJsonSchema("${tmpDir.path}/order.json");',
+      );
+      expect(code, contains('enum Status {'));
+      expect(code, contains('pending'));
+      expect(code, contains('class Order'));
+    });
+
+    test(r'$ref to $defs enum gets enum-aware serialization', () async {
+      File('${tmpDir.path}/order.json').writeAsStringSync(jsonEncode({
+        'title': 'Order',
+        'type': 'object',
+        'required': ['id', 'status'],
+        'properties': {
+          'id': {'type': 'string'},
+          'status': {r'$ref': r'#/$defs/Status'},
+        },
+        r'$defs': {
+          'Status': {'enum': ['pending', 'shipped']},
+        },
+      }));
+      final code = await asyncCompileDartLike(
+        'defFromJsonSchema("${tmpDir.path}/order.json");',
+      );
+      // Enum-aware from/to JSON
+      expect(code, contains('Status.values.byName('));
+      expect(code, contains('status.name'));
+    });
+
+    test(r'schema with $defs record generates the nested type', () async {
+      File('${tmpDir.path}/order.json').writeAsStringSync(jsonEncode({
+        'title': 'Order',
+        'type': 'object',
+        'required': ['id'],
+        'properties': {
+          'id': {'type': 'string'},
+          'address': {r'$ref': r'#/$defs/Address'},
+        },
+        r'$defs': {
+          'Address': {
+            'title': 'Address',
+            'type': 'object',
+            'required': ['city'],
+            'properties': {
+              'city': {'type': 'string'},
+              'zip': {'type': 'string'},
+            },
+          },
+        },
+      }));
+      final code = await asyncCompileDartLike(
+        'defFromJsonSchema("${tmpDir.path}/order.json");',
+      );
+      expect(code, contains('class Address'));
+      expect(code, contains('class Order'));
+      // $ref to Address treated as a nested record (not an enum)
+      expect(code, contains('Address.fromJson('));
+    });
+
+    test(r'older "definitions" key also works', () async {
+      File('${tmpDir.path}/item.json').writeAsStringSync(jsonEncode({
+        'title': 'Item',
+        'type': 'object',
+        'required': ['name'],
+        'properties': {
+          'name': {'type': 'string'},
+          'kind': {r'$ref': '#/definitions/Kind'},
+        },
+        'definitions': {
+          'Kind': {'enum': ['physical', 'digital']},
+        },
+      }));
+      final code = await asyncCompileDartLike(
+        'defFromJsonSchema("${tmpDir.path}/item.json");',
+      );
+      expect(code, contains('enum Kind {'));
+      expect(code, contains('Kind.values.byName('));
+    });
+  });
 }

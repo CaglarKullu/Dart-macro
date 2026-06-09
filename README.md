@@ -317,6 +317,13 @@ dart run bin/dmacro.dart compile lib/ --check
 # exits non-zero if any .dart is out of date
 ```
 
+### Trace macro expansions
+
+```bash
+dart run bin/dmacro.dart trace models.dmacro
+# prints each macro expansion step — useful for debugging generated code
+```
+
 ### VS Code extension
 
 The `vscode-ext/` directory contains a VS Code extension that gives you:
@@ -352,6 +359,8 @@ The `vscode-ext/` directory contains a VS Code extension that gives you:
 |---|---|---|
 | `dmacro.cliPath` | `""` | Absolute path to the `dmacro` CLI binary. Leave empty to use `dart run bin/dmacro.dart` |
 | `dmacro.formatOnCompile` | `true` | Run `dart format` on the generated `.dart` file after each compile |
+| `dmacro.analyzeOnCompile` | `true` | Run `dart analyze` after compile and surface errors as VS Code diagnostics |
+| `dmacro.hotReloadOnCompile` | `true` | Trigger Flutter hot reload 500 ms after a successful compile (requires an active debug session) |
 
 **Try it in development** (no build needed):
 
@@ -404,7 +413,7 @@ The **async expander** is why `defFromJsonSchema` works: macros run at compile t
 
 ```
 bin/
-  dmacro.dart             CLI: compile / watch / repl / --check
+  dmacro.dart             CLI: compile / watch / repl / trace / --check
 lib/src/
   core.dart               Node type, expand(), emit()
   async_expand.dart       Async macro expander (enables compile-time I/O)
