@@ -43,6 +43,28 @@ class Reader {
     return forms;
   }
 
+  /// Like [readAll] but also returns the 1-based source line of each form.
+  List<(Node node, int line)> readAllSpanned() {
+    final result = <(Node, int)>[];
+    _skip();
+    while (_pos < source.length) {
+      final line = _lineAt(_pos);
+      result.add((_read(), line));
+      _skip();
+    }
+    return result;
+  }
+
+  /// Converts a character offset to a 1-based line number.
+  int _lineAt(int offset) {
+    var line = 1;
+    final end = offset < source.length ? offset : source.length;
+    for (var i = 0; i < end; i++) {
+      if (source[i] == '\n') line++;
+    }
+    return line;
+  }
+
   /// Reads a single form.
   Node readOne() {
     _skip();

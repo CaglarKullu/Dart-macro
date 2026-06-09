@@ -63,6 +63,16 @@
           "type": "boolean",
           "default": true,
           "description": "Run dart format on generated .dart files"
+        },
+        "dmacro.analyzeOnCompile": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run dart analyze on the generated .dart after each compile and show any warnings/errors as diagnostics mapped back to the .dmacro source"
+        },
+        "dmacro.hotReloadOnCompile": {
+          "type": "boolean",
+          "default": true,
+          "description": "Send a Flutter hot-reload request after each successful compile (requires an active Flutter debug session)"
         }
       }
     }

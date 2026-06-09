@@ -84,3 +84,38 @@ Future<String> asyncCompileDartLike(String source) async {
   }
   return assembleOutput(results);
 }
+
+// ─── Origin-tracking variants ─────────────────────────────────────────────────
+//
+// These embed `// @dmacro-origin: <path>:<line>` comments before each top-level
+// form so that post-compile tools (analyzer integration, IDE extensions) can map
+// generated `.dart` line numbers back to the source `.dmacro`/`.sexp` location.
+
+/// Like [asyncCompileDartLike] but prefixes each emitted form with an origin
+/// comment: `// @dmacro-origin: <sourcePath>:<line>`.
+Future<String> asyncCompileDartLikeWithOrigins(
+    String source, String sourcePath) async {
+  resetGensym();
+  final tokens = Tokenizer(source).tokenize();
+  final spanned = DartLikeParser(tokens).parseProgramSpanned();
+  final results = <String>[];
+  for (final (form, line) in spanned) {
+    final emitted = emit(await asyncExpand(form));
+    results.add('// @dmacro-origin: $sourcePath:$line\n$emitted');
+  }
+  return assembleOutput(results);
+}
+
+/// Like [asyncCompile] (.sexp) but prefixes each emitted form with an origin
+/// comment: `// @dmacro-origin: <sourcePath>:<line>`.
+Future<String> asyncCompileWithOrigins(
+    String source, String sourcePath) async {
+  resetGensym();
+  final spanned = Reader(source).readAllSpanned();
+  final results = <String>[];
+  for (final (form, line) in spanned) {
+    final emitted = emit(await asyncExpand(form));
+    results.add('// @dmacro-origin: $sourcePath:$line\n$emitted');
+  }
+  return assembleOutput(results);
+}

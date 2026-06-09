@@ -40,6 +40,17 @@ class DartLikeParser {
     return nodes;
   }
 
+  /// Like [parseProgram] but also returns the 1-based source line of each form.
+  /// Used by origin-tracking compile functions to embed `@dmacro-origin` comments.
+  List<(Node node, int line)> parseProgramSpanned() {
+    final result = <(Node, int)>[];
+    while (!_atEnd()) {
+      final startLine = _peek().line;
+      result.add((_declaration(), startLine));
+    }
+    return result;
+  }
+
   // ─── Declarations ────────────────────────────────────────────────────────────
 
   Node _declaration() {

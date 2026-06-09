@@ -20,6 +20,7 @@ import 'dart:io';
 import 'package:dart_macros/src/builtins.dart';
 import 'package:dart_macros/src/schema_macros.dart';
 import 'package:dart_macros/src/async_expand.dart';
+import 'dart:convert' show jsonDecode;
 
 void main(List<String> args) async {
   registerBuiltins();
@@ -113,9 +114,11 @@ Future<bool> _compileSingle(String inputPath,
   String dart;
 
   try {
+    // Origin-tracking variants embed `// @dmacro-origin: file:line` markers so
+    // post-compile analyzer errors can be mapped back to source positions.
     dart = inputPath.endsWith('.dmacro')
-        ? await asyncCompileDartLike(source)
-        : await asyncCompile(source);
+        ? await asyncCompileDartLikeWithOrigins(source, inputPath)
+        : await asyncCompileWithOrigins(source, inputPath);
   } catch (e) {
     stderr.writeln('$inputPath: $e'); exit(1);
   }
@@ -158,9 +161,11 @@ String _outputPath(String srcPath) =>
 
 Future<void> _watchCmd(List<String> args) async {
   final path = args.isEmpty ? '.' : args.first;
-  final doFormat = !args.contains('--no-format');
+  final doFormat    = !args.contains('--no-format');
+  final withAnalyze =  args.contains('--with-analyze');
 
-  print('dmacro — watching $path … (Ctrl+C to stop)');
+  print('dmacro — watching $path … (Ctrl+C to stop)'
+      '${withAnalyze ? "  [analyzer on]" : ""}');
 
   // Initial full build.
   await _compileDir(path, doFormat: doFormat);
@@ -178,6 +183,7 @@ Future<void> _watchCmd(List<String> args) async {
       try {
         final outFile = _outputPath(p);
         await _compileSingle(p, outputPath: outFile, doFormat: doFormat);
+        if (withAnalyze) await _analyzeOutput(outFile, p);
       } catch (e) {
         stderr.writeln('✗ $p: $e');
       }
@@ -186,6 +192,74 @@ Future<void> _watchCmd(List<String> args) async {
 
   // Keep the process alive.
   await Completer<void>().future;
+}
+
+// ─── Analyzer integration ─────────────────────────────────────────────────────
+
+/// Runs `dart analyze` on [dartPath] and prints any issues with source
+/// locations mapped back to the `.dmacro`/`.sexp` origin using the
+/// `@dmacro-origin` comments embedded in the generated file.
+Future<void> _analyzeOutput(String dartPath, String sourcePath) async {
+  // Use --format json for reliable machine-parseable output.
+  final result = Process.runSync(
+    Platform.resolvedExecutable,
+    ['analyze', '--format', 'json', dartPath],
+    stdoutEncoding: systemEncoding,
+    stderrEncoding: systemEncoding,
+  );
+
+  final raw = result.stdout.toString().trim();
+  if (raw.isEmpty) return;
+
+  Map<String, dynamic> json;
+  try {
+    json = jsonDecode(raw) as Map<String, dynamic>;
+  } catch (_) {
+    return; // Non-JSON output (e.g., "No issues found!") — nothing to do.
+  }
+
+  final diagnostics = json['diagnostics'] as List<dynamic>? ?? [];
+  if (diagnostics.isEmpty) return;
+
+  // Build origin map from the generated file so we can map dart line numbers
+  // back to source positions.
+  final originMap = _buildOriginMap(dartPath);
+
+  for (final d in diagnostics) {
+    final diag  = d as Map<String, dynamic>;
+    final sev   = (diag['severity'] as String? ?? 'info').toLowerCase();
+    final msg   = diag['problemMessage'] as String? ?? '';
+    final loc   = diag['location'] as Map<String, dynamic>? ?? {};
+    final range = loc['range'] as Map<String, dynamic>? ?? {};
+    final start = range['start'] as Map<String, dynamic>? ?? {};
+    final dartLine = (start['line'] as int? ?? 0) + 1; // json is 0-indexed
+
+    final sourceRef = _lookupOrigin(originMap, dartLine) ?? '$sourcePath:?';
+    stderr.writeln('  analyzer $sev: $sourceRef: $msg');
+  }
+}
+
+/// Reads a generated `.dart` file and extracts `@dmacro-origin` comments.
+/// Returns a list of (dartLine, sourceRef) sorted by dartLine.
+List<(int dartLine, String sourceRef)> _buildOriginMap(String dartPath) {
+  final result = <(int, String)>[];
+  final lines = File(dartPath).readAsLinesSync();
+  final pattern = RegExp(r'// @dmacro-origin: (.+)');
+  for (var i = 0; i < lines.length; i++) {
+    final m = pattern.firstMatch(lines[i]);
+    if (m != null) result.add((i + 1, m.group(1)!));
+  }
+  return result;
+}
+
+/// Returns the closest source reference for a generated Dart line number.
+String? _lookupOrigin(List<(int, String)> origins, int dartLine) {
+  String? best;
+  for (final (line, ref) in origins) {
+    if (line <= dartLine) { best = ref; }
+    else { break; }
+  }
+  return best;
 }
 
 // ─── REPL ────────────────────────────────────────────────────────────────────
@@ -246,6 +320,7 @@ Usage:
   dart run bin/dmacro.dart compile <dir> --check              CI: exit non-zero if stale
   dart run bin/dmacro.dart compile <file> --no-format         Skip dart format
   dart run bin/dmacro.dart watch <path>                       Watch and recompile on save
+  dart run bin/dmacro.dart watch <path> --with-analyze        Watch + run dart analyze after each compile
   dart run bin/dmacro.dart repl                               Interactive REPL
 
 Dart-like syntax (.dmacro):
