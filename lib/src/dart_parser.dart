@@ -57,6 +57,9 @@ class DartLikeParser {
     if (_check(TK.ident, 'defenum')) return _defenum();
     if (_check(TK.ident, 'defrecord')) return _defrecord();
     if (_check(TK.ident, 'defunion')) return _defunion();
+    if (_check(TK.ident, 'defmacro') && _peek2().kind == TK.ident) {
+      return _defmacroDecl();
+    }
     // Top-level macro call: ident ( args... ) ;
     // Distinguished from a function declaration (type name ( ) { }) by looking
     // ahead: ident immediately followed by lparen → call, not declaration.
@@ -127,6 +130,20 @@ class DartLikeParser {
     }
     _expect(TK.rbrace);
     return ['defunion', name, ...variants];
+  }
+
+  Node _defmacroDecl() {
+    _expect(TK.ident, 'defmacro');
+    final name = _expect(TK.ident).value as String;
+    _expect(TK.lparen);
+    final params = <String>[];
+    while (!_check(TK.rparen)) {
+      params.add(_expect(TK.ident).value as String);
+      if (!_check(TK.rparen)) _match(TK.comma);
+    }
+    _expect(TK.rparen);
+    final body = _blockAsNode();
+    return ['defmacro', name, params, body];
   }
 
   Node _fnDecl() {

@@ -20,6 +20,7 @@ void registerBuiltins() {
   _registerControlFlow();
   _registerBinding();
   _registerDataClass();
+  _registerUserMacros();
 }
 
 // ─── Control flow ─────────────────────────────────────────────────────────────
@@ -221,4 +222,35 @@ void _registerDataClass() {
     return $do(
         ['sealed class $name {\n  const $name();\n}', ...variantClasses]);
   });
+}
+
+// ─── User-definable macros ────────────────────────────────────────────────────
+
+void _registerUserMacros() {
+  defmacro('defmacro', (args) {
+    final name = args[0] as String;
+    if (args.length < 3) {
+      throw ArgumentError('defmacro $name: expected (name params body)');
+    }
+    final params = (args[1] as List).cast<String>();
+    final body = args.length == 3 ? args[2] : ['do', ...args.sublist(2)];
+    defmacro(name, (callArgs) {
+      if (callArgs.length != params.length) {
+        throw ArgumentError(
+          '$name: expected ${params.length} arg(s), got ${callArgs.length}',
+        );
+      }
+      final bindings = Map.fromIterables(params, callArgs);
+      return _substitute(body, bindings);
+    });
+    return '';
+  });
+}
+
+Node _substitute(Node template, Map<String, Node> bindings) {
+  if (template is String && bindings.containsKey(template)) {
+    return bindings[template]!;
+  }
+  if (template is! List) return template;
+  return template.map((n) => _substitute(n, bindings)).toList();
 }

@@ -290,4 +290,63 @@ void main() {
       expect(out, contains('return true'));
     });
   });
+
+  // ─── defmacro ────────────────────────────────────────────────────────────────
+
+  group('DartLikeParser — defmacro', () {
+    setUp(resetGensym);
+
+    test('parses defmacro declaration', () {
+      const src = '''
+        defmacro double(x) {
+          return x * 2;
+        }
+      ''';
+      final tokens = Tokenizer(src).tokenize();
+      final forms = DartLikeParser(tokens).parseProgram();
+      expect(forms.length, equals(1));
+      final form = forms[0] as List;
+      expect(form[0], equals('defmacro'));
+      expect(form[1], equals('double'));
+      expect(form[2], equals(['x']));
+    });
+
+    test('defmacro registers and expands in compileDartLike', () {
+      const src = '''
+        defmacro twice(x) {
+          return x + x;
+        }
+        int foo(int n) {
+          twice(n);
+        }
+      ''';
+      final out = compileDartLike(src);
+      expect(out, contains('n + n'));
+      expect(out, isNot(contains('class')));
+    });
+
+    test('defmacro with multiple params', () {
+      const src = '''
+        defmacro add(a, b) {
+          return a + b;
+        }
+        int bar(int x, int y) {
+          add(x, y);
+        }
+      ''';
+      final out = compileDartLike(src);
+      expect(out, contains('x + y'));
+    });
+
+    test('defmacro produces no Dart output for its own declaration', () {
+      const src = '''
+        defmacro noop(x) {
+          return x;
+        }
+      ''';
+      final out = compileDartLike(src);
+      // The defmacro declaration itself produces no Dart output
+      expect(out.trim(), isEmpty);
+    });
+  });
 }

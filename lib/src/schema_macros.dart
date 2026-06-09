@@ -9,6 +9,7 @@ import 'dart:io';
 
 import 'async_expand.dart';
 import 'core.dart';
+import 'yaml_parser.dart';
 
 /// Registers schema-reading macros. Call this alongside [registerBuiltins].
 void registerSchemaMacros() {
@@ -86,13 +87,18 @@ void registerSchemaMacros() {
       );
     }
 
+    final content = await file.readAsString();
     Map<String, dynamic> spec;
     try {
-      spec = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+      if (path.endsWith('.yaml') || path.endsWith('.yml')) {
+        spec = parseYaml(content) as Map<String, dynamic>;
+      } else {
+        spec = jsonDecode(content) as Map<String, dynamic>;
+      }
     } catch (e) {
       throw StateError(
-        'defFromOpenApi: failed to parse $path as JSON: $e\n'
-        '  Only JSON-format OpenAPI specs are supported (not YAML).',
+        'defFromOpenApi: failed to parse $path: $e\n'
+        '  Supported formats: JSON (.json) and YAML (.yaml / .yml).',
       );
     }
 
@@ -207,6 +213,12 @@ Future<Node> _defrecordFromSchemaFile(
 }
 
 Node _defrecordFromSchema(String name, Map<String, dynamic> schema) {
+  // oneOf → sealed class hierarchy (defunion)
+  final oneOf = schema['oneOf'] as List?;
+  if (oneOf != null) {
+    return _defunionFromOneOf(name, oneOf.cast<Map<String, dynamic>>());
+  }
+
   final props = (schema['properties'] as Map<String, dynamic>? ?? const {})
       .cast<String, dynamic>();
   final required =
@@ -240,6 +252,40 @@ Node _defrecordFromSchema(String name, Map<String, dynamic> schema) {
   if (inlineEnums.isEmpty) return record;
   // Wrap in 'do' so both the enum declaration(s) and the record are emitted.
   return ['do', ...inlineEnums, record];
+}
+
+// ─── oneOf → defunion ─────────────────────────────────────────────────────────
+
+Node _defunionFromOneOf(
+    String name, List<Map<String, dynamic>> variantSchemas) {
+  final variants = <Node>[];
+  for (final vs in variantSchemas) {
+    // Variant name: prefer 'title', fall back to last segment of '$ref'.
+    final String variantName;
+    if (vs['title'] != null) {
+      variantName = vs['title'] as String;
+    } else if (vs[r'$ref'] != null) {
+      variantName = (vs[r'$ref'] as String).split('/').last;
+    } else {
+      continue; // skip nameless variants
+    }
+
+    final props =
+        (vs['properties'] as Map<String, dynamic>? ?? const {}).cast<String, dynamic>();
+    final required =
+        ((vs['required'] as List?) ?? const []).cast<String>();
+    final fields = <List<String>>[];
+
+    for (final entry in props.entries) {
+      final propSchema = entry.value as Map<String, dynamic>;
+      var type = _dartType(propSchema);
+      if (!required.contains(entry.key)) type = '$type?';
+      fields.add([type, entry.key]);
+    }
+
+    variants.add([variantName, ...fields]);
+  }
+  return ['defunion', name, ...variants];
 }
 
 // ─── Type mapping ─────────────────────────────────────────────────────────────

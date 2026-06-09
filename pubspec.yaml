@@ -3,7 +3,7 @@ description: >-
   Lisp-style macro preprocessor for Dart. Write defrecord, defunion, defenum and
   custom macros; compile .dmacro files to plain .dart with no build_runner, no
   Flutter constraints, and no external dependencies — pure Dart SDK.
-version: 0.2.0
+version: 0.3.0
 repository: https://github.com/caglarkullu/dart-macro
 issue_tracker: https://github.com/caglarkullu/dart-macro/issues
 

@@ -728,4 +728,194 @@ void main() {
       expect(code, contains('Kind.values.byName('));
     });
   });
+
+  // ─── oneOf → defunion ────────────────────────────────────────────────────────
+
+  group('defFromJsonSchema — oneOf', () {
+    late Directory tmpDir;
+    setUp(() => tmpDir = Directory.systemTemp.createTempSync('dmacro_oneof_'));
+    tearDown(() => tmpDir.deleteSync(recursive: true));
+
+    test('oneOf generates a sealed defunion', () async {
+      File('${tmpDir.path}/shape.json').writeAsStringSync(jsonEncode({
+        'title': 'Shape',
+        'oneOf': [
+          {
+            'title': 'Circle',
+            'type': 'object',
+            'required': ['radius'],
+            'properties': {
+              'radius': {'type': 'number'},
+            },
+          },
+          {
+            'title': 'Rectangle',
+            'type': 'object',
+            'required': ['width', 'height'],
+            'properties': {
+              'width': {'type': 'number'},
+              'height': {'type': 'number'},
+            },
+          },
+        ],
+      }));
+      final code = await asyncCompileDartLike(
+        'defFromJsonSchema("${tmpDir.path}/shape.json");',
+      );
+      expect(code, contains('sealed class Shape'));
+      expect(code, contains('class Circle extends Shape'));
+      expect(code, contains('class Rectangle extends Shape'));
+      expect(code, contains('final double radius;'));
+      expect(code, contains('final double width;'));
+      expect(code, contains('final double height;'));
+    });
+
+    test('oneOf required vs optional fields', () async {
+      File('${tmpDir.path}/msg.json').writeAsStringSync(jsonEncode({
+        'title': 'Message',
+        'oneOf': [
+          {
+            'title': 'TextMessage',
+            'type': 'object',
+            'required': ['body'],
+            'properties': {
+              'body': {'type': 'string'},
+              'subject': {'type': 'string'},
+            },
+          },
+        ],
+      }));
+      final code = await asyncCompileDartLike(
+        'defFromJsonSchema("${tmpDir.path}/msg.json");',
+      );
+      expect(code, contains('final String body;'));
+      expect(code, contains('final String? subject;'));
+    });
+
+    test('oneOf variant names fall back to \$ref last segment', () async {
+      final spec = jsonEncode({
+        'components': {
+          'schemas': {
+            'Dog': {
+              'type': 'object',
+              'properties': {'breed': 'string'},
+            },
+            'Animal': {
+              'title': 'Animal',
+              'oneOf': [
+                {r'$ref': '#/components/schemas/Dog'},
+              ],
+            },
+          },
+        },
+      });
+      final f = File('${tmpDir.path}/spec.json')..writeAsStringSync(spec);
+      final code = await asyncCompileDartLike(
+        'defFromOpenApi("${f.path}", "Animal");',
+      );
+      expect(code, contains('sealed class Animal'));
+      expect(code, contains('class Dog extends Animal'));
+    });
+  });
+
+  // ─── YAML OpenAPI support ─────────────────────────────────────────────────────
+
+  group('defFromOpenApi — YAML format', () {
+    test('reads petstore.yaml and generates Pet class', () async {
+      final result = await asyncExpand([
+        'defFromOpenApi',
+        '"example/openapi_demo/petstore.yaml"',
+        '"Pet"',
+      ]) as List;
+      final out = emit(result);
+      expect(out, contains('class Pet'));
+      expect(out, contains('final int id;'));
+      expect(out, contains('final String name;'));
+    });
+
+    test('YAML optional fields are nullable', () async {
+      final result = await asyncExpand([
+        'defFromOpenApi',
+        '"example/openapi_demo/petstore.yaml"',
+        '"Pet"',
+      ]) as List;
+      final out = emit(result);
+      expect(out, contains('final String? tag;'));
+    });
+
+    test('YAML \$ref field maps to type name', () async {
+      final result = await asyncExpand([
+        'defFromOpenApi',
+        '"example/openapi_demo/petstore.yaml"',
+        '"Pet"',
+      ]) as List;
+      final out = emit(result);
+      expect(out, contains('Category?'));
+    });
+
+    test('YAML can extract different schemas from the same file', () async {
+      final result = await asyncExpand([
+        'defFromOpenApi',
+        '"example/openapi_demo/petstore.yaml"',
+        '"Category"',
+      ]) as List;
+      final out = emit(result);
+      expect(out, contains('class Category'));
+      expect(out, contains('final String name;'));
+    });
+
+    test('YAML output matches JSON output for the same spec', () async {
+      resetGensym();
+      final fromJson = emit(await asyncExpand([
+        'defFromOpenApi',
+        '"example/openapi_demo/petstore.json"',
+        '"Category"',
+      ]));
+      resetGensym();
+      final fromYaml = emit(await asyncExpand([
+        'defFromOpenApi',
+        '"example/openapi_demo/petstore.yaml"',
+        '"Category"',
+      ]));
+      expect(fromYaml, equals(fromJson));
+    });
+
+    test('YAML compiles through asyncCompileDartLike', () async {
+      final out = await asyncCompileDartLike(
+        'defFromOpenApi("example/openapi_demo/petstore.yaml", "Category");',
+      );
+      expect(out, contains('class Category'));
+    });
+
+    test('inline required: [id, name] flow sequence works', () async {
+      late Directory tmpDir;
+      tmpDir = Directory.systemTemp.createTempSync('dmacro_yaml_');
+      addTearDown(() => tmpDir.deleteSync(recursive: true));
+
+      File('${tmpDir.path}/spec.yaml').writeAsStringSync('''
+openapi: "3.0.0"
+components:
+  schemas:
+    Item:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        tag:
+          type: string
+''');
+      final result = await asyncExpand([
+        'defFromOpenApi',
+        '"${tmpDir.path}/spec.yaml"',
+        '"Item"',
+      ]) as List;
+      final out = emit(result);
+      expect(out, contains('final int id;'));
+      expect(out, contains('final String name;'));
+      expect(out, contains('final String? tag;'));
+    });
+  });
 }

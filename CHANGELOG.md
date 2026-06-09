@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0
+
+### New features
+
+- **User-definable macros in `.dmacro` syntax**: `defmacro name(params) { body }` now parses,
+  registers, and expands as a template macro. Param names are substituted with call-site
+  arguments throughout the body. Works in both `.dmacro` and `.sexp` formats.
+- **`oneOf` → `defunion`**: JSON Schema / OpenAPI `oneOf` arrays are automatically mapped to
+  sealed class hierarchies. Each variant must have a `title` or `$ref` for its name; required
+  vs optional fields are preserved.
+- **YAML OpenAPI support**: `defFromOpenApi` now accepts `.yaml` and `.yml` files in addition
+  to `.json`. A built-in zero-dependency YAML parser handles block/flow mappings and sequences,
+  quoted scalars, block scalars (`|`/`>`), and comments — the full subset needed for
+  OpenAPI specs.
+
 ## 0.2.0
 
 ### Bug fixes
