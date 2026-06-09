@@ -18,7 +18,7 @@ analyzer-clean, and it shows what an in-place generated block looks like.
 
 For the full reasoning — scored on evolution/effectiveness, usability, and
 maintenance complexity — see
-[`docs/ANNOTATIONS_VS_PREPROCESSOR.md`](../../docs/ANNOTATIONS_VS_PREPROCESSOR.md).
+[`doc/ANNOTATIONS_VS_PREPROCESSOR.md`](../../doc/ANNOTATIONS_VS_PREPROCESSOR.md).
 
 ## The one-line summary
 

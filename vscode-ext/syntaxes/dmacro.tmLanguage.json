@@ -27,7 +27,7 @@
     },
     "macro-keywords": {
       "name": "keyword.control.macro.dmacro",
-      "match": "\\b(defrecord|defunion|defFromJsonSchema|unless|when|swap!|assert-that|with-retry|and-let|once)\\b"
+      "match": "\\b(defrecord|defunion|defenum|defFromJsonSchema|defFromOpenApi|defAllFromJsonSchema|unless|when|swap!|assertThat|withRetry)\\b"
     },
     "dart-keywords": {
       "name": "keyword.control.dmacro",

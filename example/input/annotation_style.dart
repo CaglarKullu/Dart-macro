@@ -3,7 +3,7 @@
 // FROZEN ILLUSTRATION — this is the annotation / build_runner shape that this
 // project evaluated and rejected. There is no annotation tool in this repo; the
 // "generated" block below is hand-frozen to show what in-place injection looks
-// like. See docs/ANNOTATIONS_VS_PREPROCESSOR.md for the full comparison.
+// like. See doc/ANNOTATIONS_VS_PREPROCESSOR.md for the full comparison.
 //
 // Contrast with preprocessor_style.dmacro, which expresses the same model and is
 // regenerated as a whole .dart file by `dmacro compile`.

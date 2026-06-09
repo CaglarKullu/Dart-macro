@@ -7,7 +7,7 @@ Guidance for Claude Code working on the `dmacro` project.
 `dmacro` is a Lisp-style macro system for Dart. Code is represented as data
 (nested lists), macros are pure Dart functions that transform that data, and the
 final output is plain Dart source. It is a **preprocessor**, not a compiler plugin
-— this is a deliberate architectural choice (see `docs/ARCHITECTURE.md`).
+— this is a deliberate architectural choice (see `doc/ARCHITECTURE.md`).
 
 The pipeline is:
 
@@ -30,7 +30,7 @@ Do not try to integrate into the Dart compiler. The whole advantage is being out
 
 The core engine logic (`expand`, `emit`, reader, tokenizer, parser) has already been
 **validated in Python** and ported to Dart. The reference logic lives in
-`docs/VALIDATED_LOGIC.md`. When in doubt about expected behaviour, that document is
+`doc/VALIDATED_LOGIC.md`. When in doubt about expected behaviour, that document is
 authoritative — match its output exactly.
 
 ## Working rules
@@ -80,7 +80,7 @@ test/
   *_test.dart               One test file per source file
 example/
   *.dmacro / *.sexp         Example sources
-docs/                       Architecture, validated logic, roadmap
+doc/                        Architecture, validated logic, roadmap
 specs/                      Per-phase specifications
 backlog/                    Task tracking
 ```

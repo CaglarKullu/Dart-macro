@@ -9,7 +9,7 @@ complete, typed, immutable Dart class from it.
 **Why it matters:** every existing Dart code-gen tool transforms code that already exists.
 None can read an external *source of truth* (schema, spec, DB) because their execution
 environments forbid I/O. A preprocessor with async macros can. This is the experiment that
-determines whether the project has product value beyond learning. See `docs/ARCHITECTURE.md`
+determines whether the project has product value beyond learning. See `doc/ARCHITECTURE.md`
 §"The preprocessor advantage".
 
 **Prerequisite:** Phase 1 complete (`gensym`, `$splice`).
@@ -151,7 +151,7 @@ String _unquote(String s) =>
 ### Acceptance criteria
 1. Given `schemas/payment.json` above, `defFromJsonSchema("schemas/payment.json");`
    compiles to the **same** `Payment` class as the hand-written `defrecord` in
-   `docs/VALIDATED_LOGIC.md` (amount/currency required → non-null; reference optional →
+   `doc/VALIDATED_LOGIC.md` (amount/currency required → non-null; reference optional →
    `String?`).
 2. The emitted Dart passes `dart format` and `dart analyze` with no warnings.
 3. A nested array property (`"tags": {"type":"array","items":{"type":"string"}}`) maps to

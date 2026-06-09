@@ -16,10 +16,10 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked/needs dec
 - [x] `nodes.dart` — typed constructors (`$if`, `$not`, …)
 - [x] `builtins.dart` — `unless`, `when`, `swap!`, `assertThat`, `withRetry`, `defrecord`, `defunion`
 - [x] `bin/dmacro.dart` — `compile` + `repl`
-- [x] Validated end-to-end (see `docs/VALIDATED_LOGIC.md`)
+- [x] Validated end-to-end (see `doc/VALIDATED_LOGIC.md`)
 
 > Port note: Phase 0 logic is validated. First implementation task is to ensure the Dart
-> port reproduces `docs/VALIDATED_LOGIC.md` exactly, then write `test/` coverage for it
+> port reproduces `doc/VALIDATED_LOGIC.md` exactly, then write `test/` coverage for it
 > before starting Phase 1.
 
 - [x] `test/core_test.dart` — expand/emit regression against VALIDATED_LOGIC
@@ -182,6 +182,7 @@ correctness bugs. Prioritised by user-facing impact.
 - [x] `LICENSE` (MIT) added — was the only hard error in `dart pub publish --dry-run`
 - [x] `dart pub publish --dry-run` passes with 0 errors; 1 potential issue (docs/ → doc/
       convention, noted in CHANGELOG, non-blocking) and 1 hint (see below)
+- [x] `docs/` → `doc/` rename completed; dry-run potential issue resolved
 - [x] Package renamed from `dart_macros` → `dmacro` (name was taken on pub.dev at 1.0.2)
 - [ ] Smoke test: `dart pub add dmacro` in a fresh project
 - [ ] Actual `dart pub publish`

@@ -5,7 +5,7 @@ A linear path with one hard decision gate. Each phase has its own spec in `specs
 ```
 Phase 0  ─────────────  Foundation (DONE)
   core engine · reader · tokenizer · parser · typed API · builtins · CLI
-  validated end-to-end (see docs/VALIDATED_LOGIC.md)
+  validated end-to-end (see doc/VALIDATED_LOGIC.md)
         │
         ▼
 Phase 1  ─────────────  Correctness          [small]

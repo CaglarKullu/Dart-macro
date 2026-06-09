@@ -6,7 +6,7 @@ macros correct rather than merely impressive.
 
 **Prerequisite:** the ported Dart engine (`core.dart`, `reader.dart`, `tokenizer.dart`,
 `dart_parser.dart`, `nodes.dart`, `builtins.dart`) compiles and reproduces the output in
-`docs/VALIDATED_LOGIC.md`.
+`doc/VALIDATED_LOGIC.md`.
 
 ---
 
@@ -128,5 +128,5 @@ it did not).
 - All builtins that introduce temporaries use `gensym`.
 - `swap!` uses `$splice` and works in all three contexts above.
 - `test/gensym_test.dart` and `test/splice_test.dart` pass.
-- `docs/VALIDATED_LOGIC.md` regression example still matches (with updated temp names).
+- `doc/VALIDATED_LOGIC.md` regression example still matches (with updated temp names).
 - `backlog/BACKLOG.md` Phase 1 tasks marked done; any deviations noted in this file.

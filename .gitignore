@@ -7,6 +7,9 @@ build/
 *.js
 *.js.map
 *.dart.js
+vscode-ext/node_modules/
+vscode-ext/out/
+vscode-ext/*.vsix
 
 # IDE
 .idea/

@@ -37,5 +37,4 @@ Initial public release.
   statements, or generics in function bodies. Use `.sexp` syntax for those cases.
 - `defenum` must precede any `defrecord` that references it in the same file
   (no forward declaration).
-- The `docs/` directory is named contrary to the pub.dev `doc/` convention;
-  this will be corrected in a future release.
+- The `doc/` directory follows the pub.dev convention (renamed from `docs/` in 0.1.0).
