@@ -201,21 +201,22 @@ field type strings IS that signal. `_resolveType()` strips it at emit time;
 declare `Status status;` and get enum-aware serialization without going through the
 schema path. The emitter still has no signal for hand-declared enum fields.
 
-### 7.3 `defenum` — manual enum declaration in .dmacro files (P1)
+### 7.3 `defenum` — manual enum declaration in .dmacro files (DONE)
 
-Prerequisite for 7.1 to be feature-complete. Scope is intentionally minimal.
-
-- [ ] `defenum` macro: `defenum Status { active, inactive, pending }` emits
-      Dart `enum Status { active, inactive, pending }`
-- [ ] Enum registry: `defenum` registers its name in a file-scoped set so subsequent
-      `defrecord` invocations know which bare-identifier field types are enums
-      (mirrors the `'enum:TypeName'` signal from schema macros)
-- [ ] `defrecord` with a `defenum`-registered field type: `fromJson` / `toJson`
-      use `values.byName(...)` / `.name` for that field
-- [ ] Ordering: `defenum` must precede the `defrecord` that references it in the
-      same file (no forward-declaration needed for the initial cut — document the constraint)
-- [ ] Tests: `defenum` node shape, emitter output, `defrecord` with defenum field,
-      JSON round-trip, nullable defenum field
+- [x] `defenum` macro (`builtins.dart`): registers enum name, emits Dart string atom
+      (raw string avoids re-triggering expand; handles both flat parser form and
+      pre-wrapped `$defEnum` / schema-macro form via `args.length == 2 && args[1] is List`)
+- [x] Enum registry in `core.dart`: `registerEnum`, `isRegisteredEnum`, `resetEnumRegistry`
+- [x] `defrecord` macro checks `isRegisteredEnum(base)` per field; adds `enum:` prefix
+      for registered types so `_fromJsonExpr`/`_toJsonExpr` use `values.byName` / `.name`
+- [x] Parser (`dart_parser.dart`): `_defenum()` handles `defenum Name { val, val, ... }`
+      syntax and produces flat node `['defenum', name, val1, val2, ...]`
+- [x] All compile functions reset enum registry alongside gensym
+- [x] Constraint: `defenum` must precede `defrecord` in same file (documented)
+- [x] `test/defenum_test.dart`: 17 tests covering macro output, emitter, parser, registry,
+      defrecord integration, nullable enum, compile round-trip, .sexp path
+- [x] schema_macros_test.dart updated: node-shape test replaced with string-content check
+      (the `defenum` macro now fully expands the node to a Dart string)
 
 ### 7.4 Analyzer awareness + watch ↔ hot-reload (archived — fully implemented)
 

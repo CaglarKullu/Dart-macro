@@ -54,6 +54,7 @@ class DartLikeParser {
   // ─── Declarations ────────────────────────────────────────────────────────────
 
   Node _declaration() {
+    if (_check(TK.ident, 'defenum')) return _defenum();
     if (_check(TK.ident, 'defrecord')) return _defrecord();
     if (_check(TK.ident, 'defunion')) return _defunion();
     // Top-level macro call: ident ( args... ) ;
@@ -72,6 +73,20 @@ class DartLikeParser {
     _expect(TK.rparen);
     _expect(TK.semi);
     return [name, ...args];
+  }
+
+  Node _defenum() {
+    _expect(TK.ident, 'defenum');
+    final name = _expect(TK.ident).value as String;
+    _expect(TK.lbrace);
+    final values = <String>[];
+    while (!_check(TK.rbrace)) {
+      values.add(_expect(TK.ident).value as String);
+      if (!_check(TK.rbrace)) _match(TK.comma);
+    }
+    _expect(TK.rbrace);
+    // Flat form: ['defenum', name, val1, val2, ...] — consumed by the defenum macro.
+    return ['defenum', name, ...values];
   }
 
   Node _defrecord() {
@@ -570,6 +585,7 @@ class DartLikeParser {
 /// Calls [resetGensym] first for deterministic output.
 String compileDartLike(String source) {
   resetGensym();
+  resetEnumRegistry();
   final tokens = Tokenizer(source).tokenize();
   final forms = DartLikeParser(tokens).parseProgram();
   return assembleOutput(forms.map((f) => emit(expand(f))));

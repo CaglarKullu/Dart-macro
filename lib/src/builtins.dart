@@ -120,6 +120,34 @@ void _registerBinding() {
 // ─── Data class generation ────────────────────────────────────────────────────
 
 void _registerDataClass() {
+  // (defenum Name value1 value2 ...)
+  //
+  // Registers Name as a known enum type so subsequent defrecord declarations
+  // in the same file can emit enum-aware fromJson/toJson for fields typed Name.
+  // defenum must precede any defrecord that references it.
+  //
+  // Returns a raw Dart string atom (not a node) to prevent expand() from
+  // re-invoking this macro on the returned value.
+  defmacro('defenum', (args) {
+    final name = args[0] as String;
+    // Two call forms:
+    //   flat:     ['defenum', 'Status', 'active', 'inactive']  (parser/reader)
+    //   wrapped:  ['defenum', 'Status', ['active', 'inactive']] ($defEnum/schema macros)
+    final List<dynamic> rawValues;
+    if (args.length == 2 && args[1] is List) {
+      rawValues = args[1] as List;
+    } else {
+      rawValues = args.sublist(1);
+    }
+    final values = rawValues.map((v) => v.toString()).toList();
+    registerEnum(name);
+    if (values.isEmpty) return 'enum $name {}';
+    final valueList = values.join(',\n  ');
+    return 'enum $name {\n  $valueList;\n\n'
+        '  factory $name.fromJson(String s) => $name.values.byName(s);\n'
+        '  String toJson() => name;\n}';
+  });
+
   // (defrecord Name [Type field] [Type field] ...)
   //
   // Generates a COMPLETE immutable data class from a compact spec.
@@ -129,10 +157,19 @@ void _registerDataClass() {
   // One line of macro code replaces ~40 lines of Dart boilerplate.
   defmacro('defrecord', (args) {
     final name = args[0] as String;
-    final fields = args
-        .sublist(1)
-        .map((f) => Field((f as List)[0] as String, f[1] as String))
-        .toList();
+    final fields = args.sublist(1).map((f) {
+      final fList = f as List;
+      var type = fList[0] as String;
+      final fname = fList[1] as String;
+      // If the field type is a defenum-registered name, add the enum: signal
+      // so the emitter generates values.byName / .name serialization.
+      final nullable = type.endsWith('?');
+      final base = nullable ? type.substring(0, type.length - 1) : type;
+      if (isRegisteredEnum(base)) {
+        type = nullable ? 'enum:$base?' : 'enum:$base';
+      }
+      return Field(type, fname);
+    }).toList();
 
     return $class(name, [
       ...fields.map((f) => $field(f.type, f.name)),

@@ -64,6 +64,7 @@ Future<Node> asyncExpand(Node node) async {
 /// Calls [resetGensym] first for deterministic output.
 Future<String> asyncCompile(String source) async {
   resetGensym();
+  resetEnumRegistry();
   final forms = Reader(source).readAll();
   final results = <String>[];
   for (final f in forms) {
@@ -76,6 +77,7 @@ Future<String> asyncCompile(String source) async {
 /// Calls [resetGensym] first for deterministic output.
 Future<String> asyncCompileDartLike(String source) async {
   resetGensym();
+  resetEnumRegistry();
   final tokens = Tokenizer(source).tokenize();
   final forms = DartLikeParser(tokens).parseProgram();
   final results = <String>[];
@@ -96,6 +98,7 @@ Future<String> asyncCompileDartLike(String source) async {
 Future<String> asyncCompileDartLikeWithOrigins(
     String source, String sourcePath) async {
   resetGensym();
+  resetEnumRegistry();
   final tokens = Tokenizer(source).tokenize();
   final spanned = DartLikeParser(tokens).parseProgramSpanned();
   final results = <String>[];
@@ -111,6 +114,7 @@ Future<String> asyncCompileDartLikeWithOrigins(
 Future<String> asyncCompileWithOrigins(
     String source, String sourcePath) async {
   resetGensym();
+  resetEnumRegistry();
   final spanned = Reader(source).readAllSpanned();
   final results = <String>[];
   for (final (form, line) in spanned) {
