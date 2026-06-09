@@ -9,14 +9,47 @@ class Product {
   final int stock;
   final String category;
   final String? imageUrl;
-  const Product({required this.id, required this.name, required this.description, required this.price, required this.stock, required this.category, this.imageUrl});
-  Product copyWith({String? id, String? name, String? description, double? price, int? stock, String? category, String? imageUrl}) => Product(id: id ?? this.id, name: name ?? this.name, description: description ?? this.description, price: price ?? this.price, stock: stock ?? this.stock, category: category ?? this.category, imageUrl: imageUrl ?? this.imageUrl);
+  const Product(
+      {required this.id,
+      required this.name,
+      required this.description,
+      required this.price,
+      required this.stock,
+      required this.category,
+      this.imageUrl});
+  Product copyWith(
+          {String? id,
+          String? name,
+          String? description,
+          double? price,
+          int? stock,
+          String? category,
+          String? imageUrl}) =>
+      Product(
+          id: id ?? this.id,
+          name: name ?? this.name,
+          description: description ?? this.description,
+          price: price ?? this.price,
+          stock: stock ?? this.stock,
+          category: category ?? this.category,
+          imageUrl: imageUrl ?? this.imageUrl);
   @override
-  bool operator ==(Object other) => identical(this, other) || other is Product && other.id == id && other.name == name && other.description == description && other.price == price && other.stock == stock && other.category == category && other.imageUrl == imageUrl;
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Product &&
+          other.id == id &&
+          other.name == name &&
+          other.description == description &&
+          other.price == price &&
+          other.stock == stock &&
+          other.category == category &&
+          other.imageUrl == imageUrl;
   @override
-  int get hashCode => Object.hash(id, name, description, price, stock, category, imageUrl);
+  int get hashCode =>
+      Object.hash(id, name, description, price, stock, category, imageUrl);
   @override
-  String toString() => 'Product(id: $id, name: $name, description: $description, price: $price, stock: $stock, category: $category, imageUrl: $imageUrl)';
+  String toString() =>
+      'Product(id: $id, name: $name, description: $description, price: $price, stock: $stock, category: $category, imageUrl: $imageUrl)';
 }
 
 class CartItem {
@@ -24,14 +57,34 @@ class CartItem {
   final String productName;
   final double unitPrice;
   final int quantity;
-  const CartItem({required this.productId, required this.productName, required this.unitPrice, required this.quantity});
-  CartItem copyWith({String? productId, String? productName, double? unitPrice, int? quantity}) => CartItem(productId: productId ?? this.productId, productName: productName ?? this.productName, unitPrice: unitPrice ?? this.unitPrice, quantity: quantity ?? this.quantity);
+  const CartItem(
+      {required this.productId,
+      required this.productName,
+      required this.unitPrice,
+      required this.quantity});
+  CartItem copyWith(
+          {String? productId,
+          String? productName,
+          double? unitPrice,
+          int? quantity}) =>
+      CartItem(
+          productId: productId ?? this.productId,
+          productName: productName ?? this.productName,
+          unitPrice: unitPrice ?? this.unitPrice,
+          quantity: quantity ?? this.quantity);
   @override
-  bool operator ==(Object other) => identical(this, other) || other is CartItem && other.productId == productId && other.productName == productName && other.unitPrice == unitPrice && other.quantity == quantity;
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CartItem &&
+          other.productId == productId &&
+          other.productName == productName &&
+          other.unitPrice == unitPrice &&
+          other.quantity == quantity;
   @override
   int get hashCode => Object.hash(productId, productName, unitPrice, quantity);
   @override
-  String toString() => 'CartItem(productId: $productId, productName: $productName, unitPrice: $unitPrice, quantity: $quantity)';
+  String toString() =>
+      'CartItem(productId: $productId, productName: $productName, unitPrice: $unitPrice, quantity: $quantity)';
 }
 
 class ShippingAddress {
@@ -41,14 +94,43 @@ class ShippingAddress {
   final String city;
   final String country;
   final String postcode;
-  const ShippingAddress({required this.fullName, required this.line1, this.line2, required this.city, required this.country, required this.postcode});
-  ShippingAddress copyWith({String? fullName, String? line1, String? line2, String? city, String? country, String? postcode}) => ShippingAddress(fullName: fullName ?? this.fullName, line1: line1 ?? this.line1, line2: line2 ?? this.line2, city: city ?? this.city, country: country ?? this.country, postcode: postcode ?? this.postcode);
+  const ShippingAddress(
+      {required this.fullName,
+      required this.line1,
+      this.line2,
+      required this.city,
+      required this.country,
+      required this.postcode});
+  ShippingAddress copyWith(
+          {String? fullName,
+          String? line1,
+          String? line2,
+          String? city,
+          String? country,
+          String? postcode}) =>
+      ShippingAddress(
+          fullName: fullName ?? this.fullName,
+          line1: line1 ?? this.line1,
+          line2: line2 ?? this.line2,
+          city: city ?? this.city,
+          country: country ?? this.country,
+          postcode: postcode ?? this.postcode);
   @override
-  bool operator ==(Object other) => identical(this, other) || other is ShippingAddress && other.fullName == fullName && other.line1 == line1 && other.line2 == line2 && other.city == city && other.country == country && other.postcode == postcode;
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ShippingAddress &&
+          other.fullName == fullName &&
+          other.line1 == line1 &&
+          other.line2 == line2 &&
+          other.city == city &&
+          other.country == country &&
+          other.postcode == postcode;
   @override
-  int get hashCode => Object.hash(fullName, line1, line2, city, country, postcode);
+  int get hashCode =>
+      Object.hash(fullName, line1, line2, city, country, postcode);
   @override
-  String toString() => 'ShippingAddress(fullName: $fullName, line1: $line1, line2: $line2, city: $city, country: $country, postcode: $postcode)';
+  String toString() =>
+      'ShippingAddress(fullName: $fullName, line1: $line1, line2: $line2, city: $city, country: $country, postcode: $postcode)';
 }
 
 class Order {
@@ -60,61 +142,115 @@ class Order {
   final double total;
   final ShippingAddress shippingAddress;
   final String createdAt;
-  const Order({required this.id, required this.customerId, required this.items, required this.subtotal, required this.shippingCost, required this.total, required this.shippingAddress, required this.createdAt});
-  Order copyWith({String? id, String? customerId, List<CartItem>? items, double? subtotal, double? shippingCost, double? total, ShippingAddress? shippingAddress, String? createdAt}) => Order(id: id ?? this.id, customerId: customerId ?? this.customerId, items: items ?? this.items, subtotal: subtotal ?? this.subtotal, shippingCost: shippingCost ?? this.shippingCost, total: total ?? this.total, shippingAddress: shippingAddress ?? this.shippingAddress, createdAt: createdAt ?? this.createdAt);
+  const Order(
+      {required this.id,
+      required this.customerId,
+      required this.items,
+      required this.subtotal,
+      required this.shippingCost,
+      required this.total,
+      required this.shippingAddress,
+      required this.createdAt});
+  Order copyWith(
+          {String? id,
+          String? customerId,
+          List<CartItem>? items,
+          double? subtotal,
+          double? shippingCost,
+          double? total,
+          ShippingAddress? shippingAddress,
+          String? createdAt}) =>
+      Order(
+          id: id ?? this.id,
+          customerId: customerId ?? this.customerId,
+          items: items ?? this.items,
+          subtotal: subtotal ?? this.subtotal,
+          shippingCost: shippingCost ?? this.shippingCost,
+          total: total ?? this.total,
+          shippingAddress: shippingAddress ?? this.shippingAddress,
+          createdAt: createdAt ?? this.createdAt);
   @override
-  bool operator ==(Object other) => identical(this, other) || other is Order && other.id == id && other.customerId == customerId && other.items == items && other.subtotal == subtotal && other.shippingCost == shippingCost && other.total == total && other.shippingAddress == shippingAddress && other.createdAt == createdAt;
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Order &&
+          other.id == id &&
+          other.customerId == customerId &&
+          other.items == items &&
+          other.subtotal == subtotal &&
+          other.shippingCost == shippingCost &&
+          other.total == total &&
+          other.shippingAddress == shippingAddress &&
+          other.createdAt == createdAt;
   @override
-  int get hashCode => Object.hash(id, customerId, items, subtotal, shippingCost, total, shippingAddress, createdAt);
+  int get hashCode => Object.hash(id, customerId, items, subtotal, shippingCost,
+      total, shippingAddress, createdAt);
   @override
-  String toString() => 'Order(id: $id, customerId: $customerId, items: $items, subtotal: $subtotal, shippingCost: $shippingCost, total: $total, shippingAddress: $shippingAddress, createdAt: $createdAt)';
+  String toString() =>
+      'Order(id: $id, customerId: $customerId, items: $items, subtotal: $subtotal, shippingCost: $shippingCost, total: $total, shippingAddress: $shippingAddress, createdAt: $createdAt)';
 }
 
-sealed class OrderStatus {};
+sealed class OrderStatus {
+  const OrderStatus();
+}
+
 class Pending extends OrderStatus {
-  const Pending({});
-};
+  const Pending();
+}
+
 class Processing extends OrderStatus {
   final String paymentRef;
   const Processing({required this.paymentRef});
-};
+}
+
 class Shipped extends OrderStatus {
   final String trackingId;
   final String carrier;
   final String estimatedDelivery;
-  const Shipped({required this.trackingId, required this.carrier, required this.estimatedDelivery});
-};
+  const Shipped(
+      {required this.trackingId,
+      required this.carrier,
+      required this.estimatedDelivery});
+}
+
 class Delivered extends OrderStatus {
   final String deliveredAt;
   const Delivered({required this.deliveredAt});
-};
+}
+
 class Cancelled extends OrderStatus {
   final String reason;
   final String cancelledAt;
   const Cancelled({required this.reason, required this.cancelledAt});
-};
+}
+
 class Refunded extends OrderStatus {
   final String reason;
   final double amount;
   const Refunded({required this.reason, required this.amount});
-};
+}
 
 bool validateCartItem(String productId, int quantity, double price) {
   if (!productId.isNotEmpty) {
-    throw Exception("Product ID must not be empty")
-  };
+    throw Exception("Product ID must not be empty");
+  }
   if (!(quantity > 0)) {
-    throw Exception("Quantity must be at least 1")
-  };
-  assertThat((price >= 0));
+    throw Exception("Quantity must be at least 1");
+  }
+  if (!(price >= 0)) {
+    throw AssertionError("Expected: (price >= 0), got false");
+  }
   return true;
 }
 
 bool validateOrder(double total, int itemCount) {
-  assertThat((total > 0));
-  assertThat((itemCount > 0));
+  if (!(total > 0)) {
+    throw AssertionError("Expected: (total > 0), got false");
+  }
+  if (!(itemCount > 0)) {
+    throw AssertionError("Expected: (itemCount > 0), got false");
+  }
   if (!(total < 100000)) {
-    throw Exception("Order total exceeds limit")
-  };
+    throw Exception("Order total exceeds limit");
+  }
   return true;
 }

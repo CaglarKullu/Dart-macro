@@ -164,20 +164,20 @@ String emit(Node node, [int indent = 0]) {
       if (args.length <= 2) {
         // Normal path: [if, cond] or [if, cond, then]
         if (args.length < 2) return 'if ($cond) {}';
-        final then = emit(args[1], indent + 1);
+        final then = _emitStmt(args[1], indent + 1);
         return 'if ($cond) {\n$pad  $then\n$pad}';
       }
       if (args.length == 3) {
         // Could be [if, cond, then, else] — the standard form
-        final then  = emit(args[1], indent + 1);
-        final else_ = emit(args[2], indent + 1);
+        final then  = _emitStmt(args[1], indent + 1);
+        final else_ = _emitStmt(args[2], indent + 1);
         return 'if ($cond) {\n$pad  $then\n$pad} else {\n$pad  $else_\n$pad}';
       }
       // More than 3 args: splice injected multiple then-statements.
       // Emit all as block statements.
       {
         final stmts = args.sublist(1)
-            .map((s) => '$pad  ${emit(s, indent + 1)};')
+            .map((s) => '$pad  ${_emitStmt(s, indent + 1)}')
             .join('\n');
         return 'if ($cond) {\n$stmts\n$pad}';
       }
@@ -186,34 +186,35 @@ String emit(Node node, [int indent = 0]) {
       if (args.length > 2) {
         // Splice injected multiple body statements
         final stmts = args.sublist(1)
-            .map((s) => '$pad  ${emit(s, indent + 1)};')
+            .map((s) => '$pad  ${_emitStmt(s, indent + 1)}')
             .join('\n');
         return 'while (${emit(args[0], indent)}) {\n$stmts\n$pad}';
       }
-      return 'while (${emit(args[0], indent)}) {\n$pad  ${emit(args[1], indent + 1)}\n$pad}';
+      return 'while (${emit(args[0], indent)}) '
+             '{\n$pad  ${_emitStmt(args[1], indent + 1)}\n$pad}';
 
     case 'for-in':
       if (args.length > 3) {
         // Splice injected multiple body statements
         final stmts = args.sublist(2)
-            .map((s) => '$pad  ${emit(s, indent + 1)};')
+            .map((s) => '$pad  ${_emitStmt(s, indent + 1)}')
             .join('\n');
         return 'for (final ${args[0]} in ${emit(args[1], indent)}) {\n$stmts\n$pad}';
       }
       return 'for (final ${args[0]} in ${emit(args[1], indent)}) '
-             '{\n$pad  ${emit(args[2], indent + 1)}\n$pad}';
+             '{\n$pad  ${_emitStmt(args[2], indent + 1)}\n$pad}';
 
     case 'return': return 'return ${emit(args[0], indent)}';
     case 'throw':  return 'throw ${emit(args[0], indent)}';
 
     // ── Sequence of statements
     case 'do':
-      return args.map((a) => '${emit(a, indent)};').join('\n$pad');
+      return args.map((a) => _emitStmt(a, indent)).join('\n$pad');
 
     // ── Try/catch
     case 'try':
-      return 'try {\n$pad  ${emit(args[0], indent + 1)}\n$pad}'
-             ' catch (${args[1]}) {\n$pad  ${emit(args[2], indent + 1)}\n$pad}';
+      return 'try {\n$pad  ${_emitStmt(args[0], indent + 1)}\n$pad}'
+             ' catch (${args[1]}) {\n$pad  ${_emitStmt(args[2], indent + 1)}\n$pad}';
 
     // ── Function definition
     case 'defn':
@@ -232,7 +233,7 @@ String emit(Node node, [int indent = 0]) {
         return '$retType $name($params)$asyncKw => ${emit(rest[1], indent)};';
       }
       final body = rest
-          .map((s) => '${emit(s, indent + 1)};')
+          .map((s) => _emitStmt(s, indent + 1))
           .join('\n  ');
       return '$retType $name($params)$asyncKw {\n  $body\n}';
 
@@ -248,7 +249,9 @@ String emit(Node node, [int indent = 0]) {
 
     case 'ctor':
       final name   = args[0] as String;
-      final params = (args[1] as List<dynamic>).map((p) {
+      final fields = args[1] as List<dynamic>;
+      if (fields.isEmpty) return 'const $name();';
+      final params = fields.map((p) {
         final type = (p as List)[0] as String;
         final pname = p[1] as String;
         return type.endsWith('?') ? 'this.$pname' : 'required this.$pname';
@@ -318,3 +321,28 @@ String emit(Node node, [int indent = 0]) {
 
 /// Strips a trailing `?` for use as param type in copyWith.
 String _nullableType(String t) => t.endsWith('?') ? t.substring(0, t.length - 1) : t;
+
+/// Heads whose emitted form is a block or declaration. As a statement they
+/// carry their own braces and must NOT receive a trailing `;`.
+const _blockHeads = <String>{
+  'if', 'while', 'for-in', 'try', 'defn', 'defclass', 'do',
+};
+
+/// True if [node] emits a block or declaration (so it should not be terminated
+/// with a trailing `;` when used as a statement).
+bool _isBlock(Node node) {
+  if (node is List && node.isNotEmpty && node[0] is String) {
+    return _blockHeads.contains(node[0]);
+  }
+  // Raw source fragment that is itself a declaration/block — e.g. the
+  // `sealed class X { ... }` parent emitted by defunion.
+  if (node is String) return node.trimRight().endsWith('}');
+  return false;
+}
+
+/// Emits [node] as a complete statement: terminated with `;` unless it is a
+/// block or declaration (which already carries its own braces).
+String _emitStmt(Node node, int indent) {
+  final code = emit(node, indent);
+  return _isBlock(node) ? code : '$code;';
+}

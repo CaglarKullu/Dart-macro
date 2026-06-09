@@ -5,9 +5,12 @@ class Category {
   final int? id;
   final String name;
   const Category({this.id, required this.name});
-  Category copyWith({int? id, String? name}) => Category(id: id ?? this.id, name: name ?? this.name);
+  Category copyWith({int? id, String? name}) =>
+      Category(id: id ?? this.id, name: name ?? this.name);
   @override
-  bool operator ==(Object other) => identical(this, other) || other is Category && other.id == id && other.name == name;
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Category && other.id == id && other.name == name;
   @override
   int get hashCode => Object.hash(id, name);
   @override
@@ -20,11 +23,22 @@ class Pet {
   final String? tag;
   final Category? category;
   const Pet({required this.id, required this.name, this.tag, this.category});
-  Pet copyWith({int? id, String? name, String? tag, Category? category}) => Pet(id: id ?? this.id, name: name ?? this.name, tag: tag ?? this.tag, category: category ?? this.category);
+  Pet copyWith({int? id, String? name, String? tag, Category? category}) => Pet(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      tag: tag ?? this.tag,
+      category: category ?? this.category);
   @override
-  bool operator ==(Object other) => identical(this, other) || other is Pet && other.id == id && other.name == name && other.tag == tag && other.category == category;
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Pet &&
+          other.id == id &&
+          other.name == name &&
+          other.tag == tag &&
+          other.category == category;
   @override
   int get hashCode => Object.hash(id, name, tag, category);
   @override
-  String toString() => 'Pet(id: $id, name: $name, tag: $tag, category: $category)';
+  String toString() =>
+      'Pet(id: $id, name: $name, tag: $tag, category: $category)';
 }

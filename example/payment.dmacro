@@ -52,6 +52,10 @@ bool validatePayment(double amount, String currency) {
 // The _attempt variable is injected into the caller's scope —
 // impossible with a higher-order function.
 
+void sendToApi(String endpoint, Payment payment) {
+  print("POST $endpoint amount=");
+}
+
 void processPayment(Payment payment, String endpoint) {
   withRetry(3, sendToApi(endpoint, payment));
 }

@@ -35,6 +35,9 @@
 ;; with-retry generates a stateful for-loop with try/catch inline.
 ;; Impossible as a higher-order function because _attempt leaks into the body.
 
+(defn void postJson ((String endpoint) (Payment payment))
+  (print "POST"))
+
 (defn void processPayment ((Payment payment) (String endpoint))
   (with-retry 3
     (postJson endpoint payment)))

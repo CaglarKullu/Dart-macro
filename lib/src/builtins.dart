@@ -38,7 +38,8 @@ void _registerControlFlow() {
   // (with-retry n body)
   // Generates a stateful retry loop. The variable _attempt is injected
   // into the caller's scope — impossible with a higher-order function.
-  defmacro('with-retry', (args) {
+  // Registered under both the kebab-case (.sexp) and camelCase (.dmacro) names.
+  Node withRetry(List<Node> args) {
     final n       = args[0];
     final body    = args[1];
     final attempt = gensym('attempt');
@@ -51,15 +52,20 @@ void _registerControlFlow() {
         ),
       ),
     );
-  });
+  }
+  defmacro('with-retry', withRetry);
+  defmacro('withRetry', withRetry);
 
   // (assert-that expr)
   // Generates an error message that CONTAINS THE SOURCE OF THE EXPRESSION.
   // A function receives a value — it can never know what expression produced it.
-  defmacro('assert-that', (args) => $if(
+  // Registered under both the kebab-case (.sexp) and camelCase (.dmacro) names.
+  Node assertThat(List<Node> args) => $if(
     $not(args[0]),
     $throw('AssertionError("Expected: ${emit(args[0])}, got false")'),
-  ));
+  );
+  defmacro('assert-that', assertThat);
+  defmacro('assertThat', assertThat);
 }
 
 // ─── Binding ──────────────────────────────────────────────────────────────────
@@ -151,6 +157,8 @@ void _registerDataClass() {
       ]);
     }).toList();
 
-    return $do(['sealed class $name {}', ...variantClasses]);
+    // The parent carries a const constructor so the variant subclasses (which
+    // use `const`) can call a const super constructor.
+    return $do(['sealed class $name {\n  const $name();\n}', ...variantClasses]);
   });
 }
