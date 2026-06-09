@@ -1,0 +1,7 @@
+// api_from_schema/models.dmacro
+// Compile: dart run bin/dmacro.dart compile example/api_from_schema/models.dmacro
+//
+// One line generates a complete Dart class for every .json schema in the folder.
+// Add a schema file → recompile → new class appears. No other changes needed.
+
+defAllFromJsonSchema("example/api_from_schema/schemas/");

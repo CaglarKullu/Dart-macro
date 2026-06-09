@@ -1,0 +1,85 @@
+// ecommerce/models.dmacro
+// Compile: dart run bin/dmacro.dart compile example/ecommerce/models.dmacro
+//
+// A realistic e-commerce domain model.
+// Each defrecord generates ~50 lines of boilerplate Dart.
+// Each defunion generates a sealed class hierarchy.
+// Total here: ~8 declarations → ~350 lines of hand-written Dart, avoided.
+
+// ── Products ───────────────────────────────────────────────────────────────
+
+defrecord Product {
+  String  id;
+  String  name;
+  String  description;
+  double  price;
+  int     stock;
+  String  category;
+  String? imageUrl;
+}
+
+defrecord CartItem {
+  String  productId;
+  String  productName;
+  double  unitPrice;
+  int     quantity;
+}
+
+// ── Orders ─────────────────────────────────────────────────────────────────
+
+defrecord ShippingAddress {
+  String  fullName;
+  String  line1;
+  String? line2;
+  String  city;
+  String  country;
+  String  postcode;
+}
+
+defrecord Order {
+  String          id;
+  String          customerId;
+  List<CartItem>  items;
+  double          subtotal;
+  double          shippingCost;
+  double          total;
+  ShippingAddress shippingAddress;
+  String          createdAt;
+}
+
+// ── State machine ──────────────────────────────────────────────────────────
+// defunion generates a sealed class with one concrete subtype per variant.
+// Use Dart's pattern matching to handle each case exhaustively.
+
+defunion OrderStatus {
+  Pending    {}
+  Processing { String paymentRef; }
+  Shipped    { String trackingId; String carrier; String estimatedDelivery; }
+  Delivered  { String deliveredAt; }
+  Cancelled  { String reason; String cancelledAt; }
+  Refunded   { String reason; double amount; }
+}
+
+// ── Validation ─────────────────────────────────────────────────────────────
+// unless and assertThat are macros — they expand to plain if/throw at
+// compile time. Zero runtime overhead. No closure allocation.
+
+bool validateCartItem(String productId, int quantity, double price) {
+  unless (productId.isNotEmpty) {
+    throw Exception("Product ID must not be empty");
+  }
+  unless (quantity > 0) {
+    throw Exception("Quantity must be at least 1");
+  }
+  assertThat(price >= 0);
+  return true;
+}
+
+bool validateOrder(double total, int itemCount) {
+  assertThat(total > 0);
+  assertThat(itemCount > 0);
+  unless (total < 100000) {
+    throw Exception("Order total exceeds limit");
+  }
+  return true;
+}

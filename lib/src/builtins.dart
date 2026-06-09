@@ -126,7 +126,7 @@ void _registerDataClass() {
 
     return $class(name, [
       ...fields.map((f) => $field(f.type, f.name)),
-      $ctor(name, fields.map((f) => f.name).toList()),
+      $ctor(name, fields.map((f) => [f.type, f.name]).toList()),
       $copyWith(name, fields),
       $equality(name, fields),
       $hashCode(fields),
@@ -147,7 +147,7 @@ void _registerDataClass() {
           .toList();
       return $class('$variantName extends $name', [
         ...variantFields.map((f) => $field(f.type, f.name)),
-        $ctor(variantName, variantFields.map((f) => f.name).toList()),
+        $ctor(variantName, variantFields.map((f) => [f.type, f.name]).toList()),
       ]);
     }).toList();
 

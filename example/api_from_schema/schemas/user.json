@@ -1,0 +1,13 @@
+{
+  "title": "User",
+  "type": "object",
+  "required": ["id", "email", "createdAt"],
+  "properties": {
+    "id":          { "type": "string" },
+    "email":       { "type": "string" },
+    "displayName": { "type": "string" },
+    "avatarUrl":   { "type": "string" },
+    "isVerified":  { "type": "boolean" },
+    "createdAt":   { "type": "string" }
+  }
+}

@@ -278,10 +278,17 @@ void main() {
 
   group('emit — ctor', () {
     test('emits const constructor with required named params', () {
-      final out = emit(['ctor', 'Point', ['x', 'y']]);
+      final out = emit(['ctor', 'Point', [['int', 'x'], ['int', 'y']]]);
       expect(out, contains('const Point('));
       expect(out, contains('required this.x'));
       expect(out, contains('required this.y'));
+    });
+
+    test('nullable fields are optional (no required keyword)', () {
+      final out = emit(['ctor', 'Box', [['String', 'id'], ['String?', 'label']]]);
+      expect(out, contains('required this.id'));
+      expect(out, isNot(contains('required this.label')));
+      expect(out, contains('this.label'));
     });
   });
 

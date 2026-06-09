@@ -83,7 +83,7 @@ Node $defn({
 // ─── Class building ───────────────────────────────────────────────────────────
 
 Node $field(String type, String name)     => ['field', type, name];
-Node $ctor(String name, List<String> paramNames) => ['ctor', name, paramNames];
+Node $ctor(String name, List<List<String>> params) => ['ctor', name, params];
 Node $class(String name, List<Node> members) => ['defclass', name, ...members];
 
 Node $copyWith(String name, List<Field> fields) =>

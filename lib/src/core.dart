@@ -248,9 +248,11 @@ String emit(Node node, [int indent = 0]) {
 
     case 'ctor':
       final name   = args[0] as String;
-      final params = (args[1] as List<dynamic>)
-          .map((p) => 'required this.$p')
-          .join(', ');
+      final params = (args[1] as List<dynamic>).map((p) {
+        final type = (p as List)[0] as String;
+        final pname = p[1] as String;
+        return type.endsWith('?') ? 'this.$pname' : 'required this.$pname';
+      }).join(', ');
       return 'const $name({$params});';
 
     case 'copywith':

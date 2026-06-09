@@ -1,0 +1,14 @@
+{
+  "title": "Notification",
+  "type": "object",
+  "required": ["id", "userId", "type", "createdAt"],
+  "properties": {
+    "id":        { "type": "string" },
+    "userId":    { "type": "string" },
+    "type":      { "type": "string" },
+    "title":     { "type": "string" },
+    "body":      { "type": "string" },
+    "isRead":    { "type": "boolean" },
+    "createdAt": { "type": "string" }
+  }
+}
