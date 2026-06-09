@@ -1,7 +1,7 @@
-/// dart_macros — compile-time macro preprocessor for Dart.
+/// dmacro — compile-time macro preprocessor for Dart.
 ///
 /// S-expression / Lisp-style macros:
-library dart_macros;
+library dmacro;
 
 export 'src/core.dart';
 export 'src/nodes.dart';

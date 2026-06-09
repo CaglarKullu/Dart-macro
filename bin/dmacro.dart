@@ -17,9 +17,9 @@ library;
 import 'dart:async';
 import 'dart:io';
 
-import 'package:dart_macros/src/builtins.dart';
-import 'package:dart_macros/src/schema_macros.dart';
-import 'package:dart_macros/src/async_expand.dart';
+import 'package:dmacro/src/builtins.dart';
+import 'package:dmacro/src/schema_macros.dart';
+import 'package:dmacro/src/async_expand.dart';
 import 'dart:convert' show jsonDecode;
 
 void main(List<String> args) async {

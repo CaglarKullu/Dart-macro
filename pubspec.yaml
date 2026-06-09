@@ -1,7 +1,20 @@
-name: dart_macros
-description: A compile-time macro preprocessor for Dart. No build_runner, no Flutter constraints, no external dependencies — pure Dart SDK.
+name: dmacro
+description: >-
+  Lisp-style macro preprocessor for Dart. Write defrecord, defunion, defenum and
+  custom macros; compile .dmacro files to plain .dart with no build_runner, no
+  Flutter constraints, and no external dependencies — pure Dart SDK.
 version: 0.1.0
 repository: https://github.com/caglarkullu/dart-macro
+issue_tracker: https://github.com/caglarkullu/dart-macro/issues
+
+topics:
+  - codegen
+  - macros
+  - preprocessor
+  - build
+
+executables:
+  dmacro: dmacro
 
 environment:
   sdk: '>=3.5.0 <4.0.0'
