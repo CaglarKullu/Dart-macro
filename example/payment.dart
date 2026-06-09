@@ -6,74 +6,120 @@ class Payment {
   final String currency;
   final String? reference;
   const Payment({required this.amount, required this.currency, this.reference});
-  Payment copyWith({double? amount, String? currency, String? reference}) => Payment(amount: amount ?? this.amount, currency: currency ?? this.currency, reference: reference ?? this.reference);
+  Payment copyWith({double? amount, String? currency, String? reference}) =>
+      Payment(
+          amount: amount ?? this.amount,
+          currency: currency ?? this.currency,
+          reference: reference ?? this.reference);
   @override
-  bool operator ==(Object other) => identical(this, other) || other is Payment && other.amount == amount && other.currency == currency && other.reference == reference;
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Payment &&
+          other.amount == amount &&
+          other.currency == currency &&
+          other.reference == reference;
   @override
   int get hashCode => Object.hash(amount, currency, reference);
   @override
-  String toString() => 'Payment(amount: $amount, currency: $currency, reference: $reference)';
+  String toString() =>
+      'Payment(amount: $amount, currency: $currency, reference: $reference)';
 }
 
 class TransferRequest {
   final Payment payment;
   final String fromAccount;
   final String toAccount;
-  const TransferRequest({required this.payment, required this.fromAccount, required this.toAccount});
-  TransferRequest copyWith({Payment? payment, String? fromAccount, String? toAccount}) => TransferRequest(payment: payment ?? this.payment, fromAccount: fromAccount ?? this.fromAccount, toAccount: toAccount ?? this.toAccount);
+  const TransferRequest(
+      {required this.payment,
+      required this.fromAccount,
+      required this.toAccount});
+  TransferRequest copyWith(
+          {Payment? payment, String? fromAccount, String? toAccount}) =>
+      TransferRequest(
+          payment: payment ?? this.payment,
+          fromAccount: fromAccount ?? this.fromAccount,
+          toAccount: toAccount ?? this.toAccount);
   @override
-  bool operator ==(Object other) => identical(this, other) || other is TransferRequest && other.payment == payment && other.fromAccount == fromAccount && other.toAccount == toAccount;
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TransferRequest &&
+          other.payment == payment &&
+          other.fromAccount == fromAccount &&
+          other.toAccount == toAccount;
   @override
   int get hashCode => Object.hash(payment, fromAccount, toAccount);
   @override
-  String toString() => 'TransferRequest(payment: $payment, fromAccount: $fromAccount, toAccount: $toAccount)';
+  String toString() =>
+      'TransferRequest(payment: $payment, fromAccount: $fromAccount, toAccount: $toAccount)';
 }
 
-sealed class PaymentState {};
+sealed class PaymentState {
+  const PaymentState();
+}
+
 class Idle extends PaymentState {
-  const Idle({});
-};
+  const Idle();
+}
+
 class Loading extends PaymentState {
-  const Loading({});
-};
+  const Loading();
+}
+
 class Success extends PaymentState {
   final Payment payment;
   const Success({required this.payment});
-};
+}
+
 class Failure extends PaymentState {
   final String error;
   const Failure({required this.error});
-};
+}
 
 bool validatePayment(double amount, String currency) {
   if (!(amount > 0)) {
-    throw Exception("Amount must be positive")
-  };
+    throw Exception("Amount must be positive");
+  }
   if (!(currency != "")) {
-    throw Exception("Currency must not be empty")
-  };
-  assertThat((amount <= 1000000));
+    throw Exception("Currency must not be empty");
+  }
+  if (!(amount <= 1000000)) {
+    throw AssertionError("Expected: (amount <= 1000000), got false");
+  }
   return true;
 }
 
+void sendToApi(String endpoint, Payment payment) {
+  print("POST $endpoint amount=");
+}
+
 void processPayment(Payment payment, String endpoint) {
-  withRetry(3, sendToApi(endpoint, payment));
+  for (final __attempt_0 in Iterable.generate(3)) {
+    try {
+      sendToApi(endpoint, payment);
+    } catch (__err_1) {
+      if ((__attempt_0 == (3 - 1))) {
+        throw __err_1;
+      } else {
+        print("Retrying...");
+      }
+    }
+  }
 }
 
 void normalise(double a, double b) {
   if ((a > b)) {
-    final __swap_0 = a;
+    final __swap_2 = a;
     a = b;
-    b = __swap_0;
-  };
+    b = __swap_2;
+  }
 }
 
 String describeAmount(double amount) {
   if ((amount < 0)) {
-    return "negative"
-  };
+    return "negative";
+  }
   if ((amount > 10000)) {
-    return "large"
-  };
+    return "large";
+  }
   return "normal";
 }

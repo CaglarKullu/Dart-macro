@@ -8,15 +8,44 @@ class Address {
   final String? state;
   final String? postcode;
   final String country;
-  const Address({required this.line1, this.line2, required this.city, this.state, this.postcode, required this.country});
-  Address copyWith({String? line1, String? line2, String? city, String? state, String? postcode, String? country}) => Address(line1: line1 ?? this.line1, line2: line2 ?? this.line2, city: city ?? this.city, state: state ?? this.state, postcode: postcode ?? this.postcode, country: country ?? this.country);
+  const Address(
+      {required this.line1,
+      this.line2,
+      required this.city,
+      this.state,
+      this.postcode,
+      required this.country});
+  Address copyWith(
+          {String? line1,
+          String? line2,
+          String? city,
+          String? state,
+          String? postcode,
+          String? country}) =>
+      Address(
+          line1: line1 ?? this.line1,
+          line2: line2 ?? this.line2,
+          city: city ?? this.city,
+          state: state ?? this.state,
+          postcode: postcode ?? this.postcode,
+          country: country ?? this.country);
   @override
-  bool operator ==(Object other) => identical(this, other) || other is Address && other.line1 == line1 && other.line2 == line2 && other.city == city && other.state == state && other.postcode == postcode && other.country == country;
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Address &&
+          other.line1 == line1 &&
+          other.line2 == line2 &&
+          other.city == city &&
+          other.state == state &&
+          other.postcode == postcode &&
+          other.country == country;
   @override
   int get hashCode => Object.hash(line1, line2, city, state, postcode, country);
   @override
-  String toString() => 'Address(line1: $line1, line2: $line2, city: $city, state: $state, postcode: $postcode, country: $country)';
-};
+  String toString() =>
+      'Address(line1: $line1, line2: $line2, city: $city, state: $state, postcode: $postcode, country: $country)';
+}
+
 class Notification {
   final String id;
   final String userId;
@@ -25,15 +54,49 @@ class Notification {
   final String? body;
   final bool? isRead;
   final String createdAt;
-  const Notification({required this.id, required this.userId, required this.type, this.title, this.body, this.isRead, required this.createdAt});
-  Notification copyWith({String? id, String? userId, String? type, String? title, String? body, bool? isRead, String? createdAt}) => Notification(id: id ?? this.id, userId: userId ?? this.userId, type: type ?? this.type, title: title ?? this.title, body: body ?? this.body, isRead: isRead ?? this.isRead, createdAt: createdAt ?? this.createdAt);
+  const Notification(
+      {required this.id,
+      required this.userId,
+      required this.type,
+      this.title,
+      this.body,
+      this.isRead,
+      required this.createdAt});
+  Notification copyWith(
+          {String? id,
+          String? userId,
+          String? type,
+          String? title,
+          String? body,
+          bool? isRead,
+          String? createdAt}) =>
+      Notification(
+          id: id ?? this.id,
+          userId: userId ?? this.userId,
+          type: type ?? this.type,
+          title: title ?? this.title,
+          body: body ?? this.body,
+          isRead: isRead ?? this.isRead,
+          createdAt: createdAt ?? this.createdAt);
   @override
-  bool operator ==(Object other) => identical(this, other) || other is Notification && other.id == id && other.userId == userId && other.type == type && other.title == title && other.body == body && other.isRead == isRead && other.createdAt == createdAt;
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Notification &&
+          other.id == id &&
+          other.userId == userId &&
+          other.type == type &&
+          other.title == title &&
+          other.body == body &&
+          other.isRead == isRead &&
+          other.createdAt == createdAt;
   @override
-  int get hashCode => Object.hash(id, userId, type, title, body, isRead, createdAt);
+  int get hashCode =>
+      Object.hash(id, userId, type, title, body, isRead, createdAt);
   @override
-  String toString() => 'Notification(id: $id, userId: $userId, type: $type, title: $title, body: $body, isRead: $isRead, createdAt: $createdAt)';
-};
+  String toString() =>
+      'Notification(id: $id, userId: $userId, type: $type, title: $title, body: $body, isRead: $isRead, createdAt: $createdAt)';
+}
+
 class User {
   final String id;
   final String email;
@@ -41,12 +104,41 @@ class User {
   final String? avatarUrl;
   final bool? isVerified;
   final String createdAt;
-  const User({required this.id, required this.email, this.displayName, this.avatarUrl, this.isVerified, required this.createdAt});
-  User copyWith({String? id, String? email, String? displayName, String? avatarUrl, bool? isVerified, String? createdAt}) => User(id: id ?? this.id, email: email ?? this.email, displayName: displayName ?? this.displayName, avatarUrl: avatarUrl ?? this.avatarUrl, isVerified: isVerified ?? this.isVerified, createdAt: createdAt ?? this.createdAt);
+  const User(
+      {required this.id,
+      required this.email,
+      this.displayName,
+      this.avatarUrl,
+      this.isVerified,
+      required this.createdAt});
+  User copyWith(
+          {String? id,
+          String? email,
+          String? displayName,
+          String? avatarUrl,
+          bool? isVerified,
+          String? createdAt}) =>
+      User(
+          id: id ?? this.id,
+          email: email ?? this.email,
+          displayName: displayName ?? this.displayName,
+          avatarUrl: avatarUrl ?? this.avatarUrl,
+          isVerified: isVerified ?? this.isVerified,
+          createdAt: createdAt ?? this.createdAt);
   @override
-  bool operator ==(Object other) => identical(this, other) || other is User && other.id == id && other.email == email && other.displayName == displayName && other.avatarUrl == avatarUrl && other.isVerified == isVerified && other.createdAt == createdAt;
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is User &&
+          other.id == id &&
+          other.email == email &&
+          other.displayName == displayName &&
+          other.avatarUrl == avatarUrl &&
+          other.isVerified == isVerified &&
+          other.createdAt == createdAt;
   @override
-  int get hashCode => Object.hash(id, email, displayName, avatarUrl, isVerified, createdAt);
+  int get hashCode =>
+      Object.hash(id, email, displayName, avatarUrl, isVerified, createdAt);
   @override
-  String toString() => 'User(id: $id, email: $email, displayName: $displayName, avatarUrl: $avatarUrl, isVerified: $isVerified, createdAt: $createdAt)';
-};
+  String toString() =>
+      'User(id: $id, email: $email, displayName: $displayName, avatarUrl: $avatarUrl, isVerified: $isVerified, createdAt: $createdAt)';
+}

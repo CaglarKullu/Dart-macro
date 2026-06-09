@@ -36,7 +36,7 @@ Emits Dart from an expanded AST. Validated rules:
 | `['set!', name, v]` | `name = v` |
 | `['return', v]` | `return v` |
 | `['throw', v]` | `throw v` |
-| `['do', s1, s2, …]` | statements joined with `;` |
+| `['do', s1, s2, …]` | statements each terminated with `;` — except block/declaration children (`if`/`while`/`for-in`/`try`/`defn`/`defclass`/nested `do`, and raw fragments ending in `}`), which carry their own braces |
 | `['if', c, then]` | `if (c) { then }` |
 | `['if', c, then, else]` | `if (c) { then } else { else }` |
 | `['while', c, body]` | `while (c) { body }` |
@@ -45,7 +45,7 @@ Emits Dart from an expanded AST. Validated rules:
 | `['defn', ret, name, params, …body]` | function declaration |
 | `['defclass', name, …members]` | `class name { members }` |
 | `['field', type, name]` | `final type name;` |
-| `['ctor', name, [[type,p]…]]` | `const name({required this.p, …});` — nullable types omit `required` |
+| `['ctor', name, [[type,p]…]]` | `const name({required this.p, …});` — nullable types omit `required`; empty field list emits `const name();` |
 | `['copywith', name, [[type,name]…]]` | a `copyWith` method |
 | `['equalop', name, fields]` | `operator ==` override |
 | `['hashop', _, fields]` | `hashCode` override |
@@ -56,6 +56,14 @@ Emits Dart from an expanded AST. Validated rules:
 
 The `defn` emitter **splices top-level `do` blocks** into the function body (a Phase 1
 `$splice` generalizes this).
+
+**Statement termination.** Block bodies (`if`/`while`/`for-in`/`try`) and the `defn`
+body terminate each child statement with `;` *unless* the child is itself a block or
+declaration — so `if (c) { throw x }` emits the inner `throw x;` and never appends a
+stray `;` after a `}`. This keeps emitted output analyzer-clean for nested control flow
+and for macros (`defunion`, `defAllFromJsonSchema`) that emit multiple declarations via a
+single `do`. `defunion`'s sealed parent carries a `const Name();` constructor so the
+variant subclasses can be `const`.
 
 ## Validated macro definitions
 
