@@ -143,10 +143,14 @@ de-facto stack (`freezed` + `json_serializable` / `Equatable`).
 
 ### 6.4 Schema coverage (P1)
 - [x] `format: date-time` / `date` (string) → `DateTime` (+ round-trip test)
-- [!] `enum` → generated Dart `enum`. Deferred: requires the emitter to distinguish an
-      enum-typed field from a nested-record field (both are bare identifiers) so fromJson
-      can pick `Values.byName(...)` vs `T.fromJson(...)`. Needs an explicit enum-type
-      signal threaded from schema → defrecord → emitter. Scoped as its own task.
+- [x] `enum` → generated Dart `enum`. Solution: `'enum:TypeName'` prefix in field type
+      strings threads an explicit signal from schema mapper → `defrecord` → emitter.
+      `_resolveType()` strips it when emitting type identifiers; `_fromJsonExpr`/
+      `_toJsonExpr` detect it to emit `values.byName(...)` / `.name`.
+      Supports: top-level enum schemas, inline enum properties, `$ref` to known enums
+      (via pre-scan in `defAllFromJsonSchema` / `defFromOpenApi`).
+      Tests: node shape, emitter output, inline enum + record, $ref resolution,
+      nullable sentinel copyWith, JSON round-trip (dart run).
 
 ---
 

@@ -250,6 +250,17 @@ String emit(Node node, [int indent = 0]) {
       final body = rest.map((s) => _emitStmt(s, indent + 1)).join('\n  ');
       return '$retType $name($params)$asyncKw {\n  $body\n}';
 
+    // ── Enum definition
+    case 'defenum':
+      final name = args[0] as String;
+      final values =
+          (args[1] as List<dynamic>).map((v) => v.toString()).toList();
+      if (values.isEmpty) return 'enum $name {}';
+      final valueList = values.join(',\n  ');
+      return 'enum $name {\n  $valueList;\n\n'
+          '  factory $name.fromJson(String s) => $name.values.byName(s);\n'
+          '  String toJson() => name;\n}';
+
     // ── Class definition
     case 'defclass':
       final name = args[0] as String;
@@ -258,7 +269,7 @@ String emit(Node node, [int indent = 0]) {
       return 'class $name {\n  $body\n}';
 
     case 'field':
-      return 'final ${args[0]} ${args[1]};';
+      return 'final ${_resolveType(args[0] as String)} ${args[1]};';
 
     case 'ctor':
       final name = args[0] as String;
@@ -280,13 +291,13 @@ String emit(Node node, [int indent = 0]) {
         final type = (f as List)[0] as String;
         return type.endsWith('?')
             ? 'Object? ${f[1]} = _dmUndefined'
-            : '$type? ${f[1]}';
+            : '${_resolveType(type)}? ${f[1]}';
       }).join(', ');
       final fwds = fields.map((f) {
         final type = (f as List)[0] as String;
         final fname = f[1] as String;
         return type.endsWith('?')
-            ? '$fname: identical($fname, _dmUndefined) ? this.$fname : $fname as $type'
+            ? '$fname: identical($fname, _dmUndefined) ? this.$fname : $fname as ${_resolveType(type)}'
             : '$fname: $fname ?? this.$fname';
       }).join(', ');
       return '$name copyWith({$params}) => $name($fwds);';
@@ -379,6 +390,7 @@ const _blockHeads = <String>{
   'defn',
   'defclass',
   'do',
+  'defenum',
 };
 
 /// True if [node] emits a block or declaration (so it should not be terminated
@@ -401,6 +413,16 @@ String _emitStmt(Node node, int indent) {
 }
 
 // ─── JSON / value-semantics support ─────────────────────────────────────────
+
+/// Strips the `enum:` type-signal prefix added by schema macros, preserving
+/// any trailing `?` nullability marker. Non-enum types are returned unchanged.
+String _resolveType(String type) {
+  final nullable = type.endsWith('?');
+  final base = nullable ? type.substring(0, type.length - 1) : type;
+  if (!base.startsWith('enum:')) return type;
+  final resolved = base.substring(5);
+  return nullable ? '$resolved?' : resolved;
+}
 
 /// Scalar types that pass through JSON unchanged.
 const _jsonScalars = {'String', 'int', 'num', 'bool', 'dynamic', 'Object'};
@@ -426,6 +448,10 @@ String _fromJsonExpr(String type, String access) {
   String guard(String expr) =>
       nullable ? '$access == null ? null : $expr' : expr;
 
+  if (base.startsWith('enum:')) {
+    final enumName = base.substring(5);
+    return guard('$enumName.values.byName($access as String)');
+  }
   if (base.startsWith('List<') || base.startsWith('Set<')) {
     final elem = _elementType(base);
     final to = base.startsWith('Set<') ? 'toSet' : 'toList';
@@ -451,6 +477,9 @@ String _toJsonExpr(String type, String fname) {
   final base = nullable ? type.substring(0, type.length - 1) : type;
   final q = nullable ? '?' : '';
 
+  if (base.startsWith('enum:')) {
+    return '$fname$q.name';
+  }
   if (base.startsWith('List<') || base.startsWith('Set<')) {
     final elem = _elementType(base);
     if (_jsonScalars.contains(elem) || elem == 'double') {

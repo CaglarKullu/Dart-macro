@@ -117,6 +117,9 @@ Node $toString(String name, List<Field> fields) => [
       fields.map((f) => [f.type, f.name]).toList()
     ];
 
+/// Enum definition: `enum Name { val1, val2, ... }` with fromJson/toJson.
+Node $defEnum(String name, List<String> values) => ['defenum', name, values];
+
 Node $fromJson(String name, List<Field> fields) => [
       'fromjson',
       name,
