@@ -170,21 +170,24 @@ compelling, but three adoption-friction items stand between the current state an
 team being able to `dart pub add` and ship with it. These are polish tasks, not
 correctness bugs. Prioritised by user-facing impact.
 
-### 7.1 pub.dev packaging (P0 — blocks any real adoption)
+### 7.1 pub.dev packaging
 
-Without this, users vendor the repo rather than taking a normal dependency. The
-`pubspec.yaml` scaffold is already in place; what follows is the publish checklist.
-
-- [ ] Add `topics: [codegen, macros, preprocessor]` to pubspec.yaml (pub.dev search)
-- [ ] Add `executables: { dmacro: dmacro }` so `dart pub global activate dart_macros`
+- [x] `topics: [codegen, macros, preprocessor, build]` added to pubspec.yaml
+- [x] `executables: { dmacro: dmacro }` — `dart pub global activate dart_macros`
       installs the CLI
-- [ ] `CHANGELOG.md` with 0.1.0 entry: list stable features, flag async I/O and
-      schema macros as experimental/preview
-- [ ] `dart pub publish --dry-run` passes with 0 warnings (fixes any missing fields)
-- [ ] Smoke test: `dart pub add dart_macros` in a fresh project; confirm
-      `import 'package:dart_macros/dart_macros.dart'` resolves correctly
-- [ ] Decision gate: publish as public beta (0.1.0) once 7.3 is done, or publish
-      sooner with a known-gap note in CHANGELOG
+- [x] `issue_tracker:` URL added
+- [x] Description expanded (multi-line, more specific)
+- [x] `CHANGELOG.md` with 0.1.0 entry: stable features listed, experimental/preview
+      features called out, known limitations documented
+- [x] `LICENSE` (MIT) added — was the only hard error in `dart pub publish --dry-run`
+- [x] `dart pub publish --dry-run` passes with 0 errors; 1 potential issue (docs/ → doc/
+      convention, noted in CHANGELOG, non-blocking) and 1 hint (see below)
+- [!] **Package name conflict**: `dart_macros` is already published on pub.dev at v1.0.2
+      by another author. Must resolve before publishing:
+      Option A — verify you own that pub.dev account and bump the version above 1.0.2.
+      Option B — rename the package (e.g. `dmacro`) and update all imports.
+- [ ] Smoke test: `dart pub add dart_macros` (or new name) in a fresh project
+- [ ] Actual `dart pub publish` once name conflict is resolved
 
 ### 7.2 Enum generation (design archived — schema path done, hand-authored gap open)
 
