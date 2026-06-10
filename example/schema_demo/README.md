@@ -1,8 +1,10 @@
 # Schema Demo
 
-This example shows **async compile-time I/O** — a macro reads a JSON Schema
-at build time and generates a complete, typed, immutable Dart class with no
-build_runner required.
+This example shows **async I/O during macro expansion** — when you run
+`dmacro compile`, the macro reads a JSON Schema from disk and generates a
+complete, typed, immutable Dart class. The Dart compiler never sees the
+`.dmacro` source; it only compiles the generated `.dart` output. No
+`build_runner` required.
 
 ## Input
 

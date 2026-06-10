@@ -26,7 +26,7 @@ dart run bin/dmacro.dart compile example/ecommerce/models.dmacro
 
 Generate a Dart class for every JSON Schema in a directory — one macro call.
 
-**What to notice:** The macro reads the filesystem **at compile time** — no runtime I/O, no registered types, no annotations needed. This is impossible with `build_runner` (which requires annotated source files to exist first) and was explicitly ruled out for the official Dart macros (async I/O breaks incremental compilation).
+**What to notice:** The macro reads the filesystem **during the dmacro generation step** — no runtime I/O, no registered types, no annotations needed. The Dart compiler only ever sees the generated `.dart` files; it never runs any macro code. This is impossible with `build_runner` (which requires annotated source files to exist first) and was explicitly ruled out for the official Dart macros (async I/O during incremental compilation breaks hot reload).
 
 Demonstrates: `defAllFromJsonSchema`
 
