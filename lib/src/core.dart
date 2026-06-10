@@ -61,6 +61,26 @@ void setEmitterFieldOrigins(bool v) => _emitterFieldOrigins = v;
 /// Returns true when per-field origin markers are enabled for this compile.
 bool getEmitterFieldOrigins() => _emitterFieldOrigins;
 
+// ─── Macro-author helpers ────────────────────────────────────────────────────
+
+/// Strips the surrounding double quotes from a string-literal node.
+///
+/// String literals in source reach macros with their quotes embedded:
+/// `defwidget("MyButton")` passes the Dart value `'"MyButton"'` as the
+/// argument. Use this in your macros to get the bare text:
+///
+/// ```dart
+/// defAsyncMacro('defwidget', (args) async {
+///   final name = unquote(args[0] as String); // MyButton
+///   ...
+/// });
+/// ```
+///
+/// Non-string-literal atoms (identifiers, numbers already converted) pass
+/// through unchanged, so it is safe to call unconditionally.
+String unquote(String s) =>
+    (s.startsWith('"') && s.endsWith('"')) ? s.substring(1, s.length - 1) : s;
+
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
 final _macros = <String, MacroFn>{};
@@ -398,7 +418,8 @@ String emit(Node node, [int indent = 0]) {
         final type = fList[0] as String;
         final fname = fList[1] as String;
         final explicitKey = fList.length > 2 ? fList[2] as String? : null;
-        final key = explicitKey ?? (snakeCaseJson ? _camelToSnake(fname) : fname);
+        final key =
+            explicitKey ?? (snakeCaseJson ? _camelToSnake(fname) : fname);
         return '$fname: ${_fromJsonExpr(type, "json['$key']")}';
       }).join(', ');
       return 'factory $name.fromJson(Map<String, dynamic> json) => '
@@ -412,7 +433,8 @@ String emit(Node node, [int indent = 0]) {
         final type = fList[0] as String;
         final fname = fList[1] as String;
         final explicitKey = fList.length > 2 ? fList[2] as String? : null;
-        final key = explicitKey ?? (snakeCaseJson ? _camelToSnake(fname) : fname);
+        final key =
+            explicitKey ?? (snakeCaseJson ? _camelToSnake(fname) : fname);
         return "'$key': ${_toJsonExpr(type, fname)}";
       }).join(', ');
       return 'Map<String, dynamic> toJson() => {$entries};';

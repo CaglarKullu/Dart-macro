@@ -13,7 +13,8 @@ int _counter = 0;
 ///
 /// Examples: `dmSwap_0`, `dmAttempt_1`, `dmG_2`
 String gensym([String prefix = 'g']) {
-  final cap = prefix.isEmpty ? '' : prefix[0].toUpperCase() + prefix.substring(1);
+  final cap =
+      prefix.isEmpty ? '' : prefix[0].toUpperCase() + prefix.substring(1);
   return 'dm${cap}_${_counter++}';
 }
 

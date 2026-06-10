@@ -19,14 +19,14 @@ void registerSchemaMacros() {
 
   defAsyncMacro('defFromJsonSchema', (args) async {
     _knownEnumNames.clear();
-    final path = _unquote(args[0] as String);
+    final path = unquote(args[0] as String);
     return _defrecordFromSchemaFile(path, callerMacro: 'defFromJsonSchema');
   });
 
   // ─── defAllFromJsonSchema ───────────────────────────────────────────────────
 
   defAsyncMacro('defAllFromJsonSchema', (args) async {
-    final dirPath = _unquote(args[0] as String);
+    final dirPath = unquote(args[0] as String);
     final dir = Directory(dirPath);
     if (!dir.existsSync()) {
       throw StateError(
@@ -81,8 +81,8 @@ void registerSchemaMacros() {
   // ─── defFromOpenApi ─────────────────────────────────────────────────────────
 
   defAsyncMacro('defFromOpenApi', (args) async {
-    final path = _unquote(args[0] as String);
-    final schemaName = _unquote(args[1] as String);
+    final path = unquote(args[0] as String);
+    final schemaName = unquote(args[1] as String);
 
     final file = File(path);
     if (!file.existsSync()) {
@@ -201,7 +201,7 @@ void registerSchemaMacros() {
   //   importMacros("package:mymacros/macros.dmacro");  // pub package path
 
   defAsyncMacro('importMacros', (args) async {
-    var importPath = _unquote(args[0] as String);
+    var importPath = unquote(args[0] as String);
 
     // Resolve package: URIs relative to the pub cache / package root if possible,
     // otherwise treat as a plain path relative to the working directory.
@@ -270,8 +270,8 @@ void _validateMacroOutput(String name, String type, String emitted) {
     case 'declaration':
       final startsWithDecl =
           _declarationStarters.any((kw) => trimmed.startsWith(kw)) ||
-          RegExp(r'^[A-Za-z_][A-Za-z0-9_<>?,\s]*\s+[a-zA-Z_]\w*\s*\(')
-              .hasMatch(trimmed);
+              RegExp(r'^[A-Za-z_][A-Za-z0-9_<>?,\s]*\s+[a-zA-Z_]\w*\s*\(')
+                  .hasMatch(trimmed);
       if (!startsWithDecl) {
         throw ArgumentError(
           '$name (defmacro(declaration)): output does not look like a declaration.\n'
@@ -307,8 +307,7 @@ Future<String?> _resolvePackageUri(Uri packageUri) async {
   // Search up from the working directory for package_config.json.
   var dir = Directory.current;
   for (var i = 0; i < 10; i++) {
-    final configFile =
-        File('${dir.path}/.dart_tool/package_config.json');
+    final configFile = File('${dir.path}/.dart_tool/package_config.json');
     if (configFile.existsSync()) {
       try {
         final config =
@@ -544,5 +543,5 @@ String _toPascalCase(String s) => s
         (part) => part.isEmpty ? '' : part[0].toUpperCase() + part.substring(1))
     .join('');
 
-String _unquote(String s) =>
-    (s.startsWith('"') && s.endsWith('"')) ? s.substring(1, s.length - 1) : s;
+// String-literal unquoting now lives in core.dart as the public `unquote`
+// helper (macro authors need it too); imported via `core.dart` above.

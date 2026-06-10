@@ -178,20 +178,60 @@ A complete, **JSON-serializable, value-equal** model. No annotations. No `*.g.da
 
 ## Quick start
 
-```bash
-# 1. Clone
-git clone https://github.com/caglarkullu/dart-macro && cd dart-macro
+### In your own project (the normal way)
 
-# 2. Install deps
+```yaml
+# pubspec.yaml
+dev_dependencies:
+  dmacro:
+    git: https://github.com/caglarkullu/dart-macro
+```
+
+```bash
 dart pub get
 
-# 3a. Compile a .dmacro file → generates a .dart file
+# Compile a .dmacro file → generates a sibling .dart file
+dart run dmacro compile lib/models.dmacro
+
+# Expand inline @@dmacro blocks inside a regular .dart file
+dart run dmacro compile lib/models.dart
+
+# Watch mode / CI staleness check / expansion tracing
+dart run dmacro watch lib/
+dart run dmacro compile lib/ --check
+dart run dmacro trace lib/models.dmacro
+```
+
+### Write your own macro (the point of the package)
+
+One file in your project gives you the full CLI with your macros loaded:
+
+```dart
+// tool/dmacro.dart
+import 'package:dmacro/dmacro.dart';
+
+void main(List<String> args) => runDmacro(args, registerMacros: () {
+      defAsyncMacro('defwidget', (args) async {
+        final name = unquote(args[0] as String);
+        return 'class $name extends StatelessWidget { /* ... */ }';
+      });
+    });
+```
+
+```bash
+dart run tool/dmacro.dart compile lib/widgets.dmacro
+```
+
+Your macros run with the same API the built-ins use — including async I/O at
+generation time. See [`doc/WRITING_MACROS.md`](doc/WRITING_MACROS.md) for the
+full guide.
+
+### Hacking on dmacro itself
+
+```bash
+git clone https://github.com/caglarkullu/dart-macro && cd dart-macro
+dart pub get
 dart run bin/dmacro.dart compile example/ecommerce/models.dmacro
-
-# 3b. Or expand inline blocks inside a regular .dart file
-dart run bin/dmacro.dart compile example/inline_demo.dart
-
-# 4. Or try the REPL
 dart run bin/dmacro.dart repl
 ```
 
@@ -664,17 +704,21 @@ The generated `.dart` files are plain Dart — they work with `Provider`, `River
 
 ### Installation
 
-```bash
-# From pub.dev (after publish — use dart pub global for CLI access):
-dart pub global activate dmacro
-
-# From source:
-git clone https://github.com/caglarkullu/dart-macro
-cd dart-macro && dart pub get
-dart run bin/dmacro.dart compile <file>
+```yaml
+# pubspec.yaml — git dependency (pub.dev publish is tracked in the backlog)
+dev_dependencies:
+  dmacro:
+    git: https://github.com/caglarkullu/dart-macro
 ```
 
-> **Note:** dmacro is not yet published to pub.dev. The pub.dev publish step is tracked in the backlog. Until then, install from source or pin a git dependency in `pubspec.yaml`.
+```bash
+dart pub get
+dart run dmacro compile <file>     # the executable comes with the dependency
+```
+
+To register your own macros, add a `tool/dmacro.dart` entry point calling
+`runDmacro` — see [Quick start](#quick-start) above and
+[`doc/WRITING_MACROS.md`](doc/WRITING_MACROS.md).
 
 ### Watch mode (recompiles on every save)
 

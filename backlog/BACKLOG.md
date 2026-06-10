@@ -415,18 +415,21 @@ from a user's own project. **Reuse the engine as-is; this is framing + one new l
 
 ### 10.1 Reframe built-ins as a standard library (docs only, no behavior change)
 - [ ] Header comment on `builtins.dart` / `schema_macros.dart`: "this is the standard library, written with the public API; write your own the same way"
-- [ ] `doc/WRITING_MACROS.md` — authoring guide, one worked example per tier; tier-3 example builds a tiny `defpair` end to end
-- [ ] README headline rewritten around "write your own generator"; schema/OpenAPI demoted to flagship examples
-- [ ] All existing tests still pass unchanged (no engine edits)
+- [x] `doc/WRITING_MACROS.md` — authoring guide: setup, tiers, arg-shape table, sync/async worked examples, error guidance, honest limitations, distribution pattern
+- [~] README: Quick start + Installation rewritten dependency-first (`dart run dmacro compile`, `runDmacro` entry point); full headline rewrite still open
+- [x] All existing tests still pass unchanged
 
 ### 10.2 Loadable user macros (keystone)
 - [x] Decide loader mechanism — **DECISION: ship (c) user-owned entry point now (validated end-to-end with zero engine changes); build (a) bootstrap later as pure UX sugar.** See spec for the validation run + findings.
 - [x] In-process contract test: `test/user_macro_test.dart` — user registers `defwidget` / `guarded` / async-I/O macro through the public barrel only and compiles source using them
-- [ ] Document the user-owned entry point pattern (`tool/generate.dart` — NOT root `build.dart`, which Dart treats as a native-assets hook) in `doc/WRITING_MACROS.md`
+- [x] **`runDmacro(args, {registerMacros})` public API** — the full CLI as a library (`lib/src/cli.dart`, exported from the barrel); `bin/dmacro.dart` is now a thin shim. A consumer's 5-line `tool/dmacro.dart` gets compile/watch/trace/--check/repl with their macros loaded. Verified end-to-end from an external project: `dart run dmacro compile` (built-ins via executable) AND `dart run tool/dmacro.dart compile` (custom `defwidget`), plus `--check` round-trip
+- [x] `unquote` exported from core (10.2c) — schema_macros' private copy removed; covered by tests
+- [x] Bug fixed en route: origin path embedded in generated output depended on CLI path spelling (`models.dmacro` vs `./models.dmacro`), causing false `--check` staleness across invocation styles; paths now normalized in `_compileSingle`
+- [x] Document the user-owned entry point pattern (`tool/dmacro.dart` — NOT root `build.dart`, which Dart treats as a native-assets hook) in `doc/WRITING_MACROS.md`
 - [ ] (UX layer) `dmacro.yaml` lists user Dart macro files exposing `registerMacros()`; CLI bootstrap loads them before compiling
 - [ ] `importMacros("package:foo/bar.dart")` extended to load Dart macro files (reuse resolver)
 - [ ] **10.2b** Generic block syntax: `defwidget MyButton { … }` for user macros (parser currently hardcodes `defrecord`/`defunion` at `dart_parser.dart:58-59`; user macros are call-syntax only)
-- [ ] **10.2c** Export an `unquote` helper — string args reach macros with embedded quotes; every author rewrites the same stripper
+- [x] **10.2c** Export an `unquote` helper — done (see above; lives in `core.dart`, documented in WRITING_MACROS.md)
 - [ ] Parser finding (from validation): `throw expr` in argument position emits bare `throw;` — fold into parser-hardening follow-ups
 
 ### 10.3 Tier-2 decision gate

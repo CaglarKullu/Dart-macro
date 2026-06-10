@@ -101,8 +101,7 @@ Future<String> asyncCompileDartLike(String source) async {
 /// Per-field markers are only emitted when [fieldOrigins] is true (off by
 /// default — enable with `--field-origins` on the CLI).
 /// Wraps expansion errors as [MacroExpansionError] with the source location.
-Future<String> asyncCompileDartLikeWithOrigins(
-    String source, String sourcePath,
+Future<String> asyncCompileDartLikeWithOrigins(String source, String sourcePath,
     {bool fieldOrigins = false}) async {
   resetGensym();
   resetEnumRegistry();
