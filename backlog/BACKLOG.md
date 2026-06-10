@@ -407,6 +407,46 @@ Allow `.dmacro` files to import macro definitions from other files or pub packag
 
 ---
 
+## Phase 10 — Macro authoring as the product (THE PIVOT, active)
+
+See `specs/phase-10-macro-authoring.md` and `doc/VISION.md`. Reframe the built-ins as
+a standard library and close the gap: user-authored Dart-function macros, loadable
+from a user's own project. **Reuse the engine as-is; this is framing + one new loader.**
+
+### 10.1 Reframe built-ins as a standard library (docs only, no behavior change)
+- [ ] Header comment on `builtins.dart` / `schema_macros.dart`: "this is the standard library, written with the public API; write your own the same way"
+- [ ] `doc/WRITING_MACROS.md` — authoring guide, one worked example per tier; tier-3 example builds a tiny `defpair` end to end
+- [ ] README headline rewritten around "write your own generator"; schema/OpenAPI demoted to flagship examples
+- [ ] All existing tests still pass unchanged (no engine edits)
+
+### 10.2 Loadable user macros (keystone)
+- [ ] Decide loader mechanism (spawned-isolate bootstrap [recommended] vs `spawnUri` vs user-owned entry point) — record decision in the spec
+- [ ] `dmacro.yaml` (or `pubspec` key) lists user Dart macro files exposing `registerMacros()`
+- [ ] CLI loads + runs `registerMacros()` before compiling
+- [ ] `importMacros("package:foo/bar.dart")` extended to load Dart macro files (reuse resolver)
+- [ ] Fixture `test/fixtures/user_macros/`: user-defined `defpair` compiles with zero edits to `lib/`
+
+### 10.3 Tier-2 decision gate
+- [ ] Spike `$map` over record fields
+- [ ] DECISION: ship Tier 2 (computed templates) or route iteration needs to Tier 3 — record here
+
+### 10.4 Macro-author error attribution
+- [ ] Tag emitted subtrees with the producing macro's name (reuse origin plumbing)
+- [ ] Emit/parse failures name the macro first: `macro "X" produced invalid Dart at …`
+- [ ] `defMacro` wrapper catches in-macro exceptions and reattributes with call-site origin
+- [ ] `trace` reworked for authors: per-step macro name + input args + output node, indented
+- [ ] Fixture: a broken macro yields an error whose first line names the macro and `file:line`
+
+### 10.5 Distribution
+- [ ] Document the "macro library package" pattern (pub package depending on `dmacro`, exports `registerMacros()`)
+- [ ] `package:` resolution for Dart macro files (extend existing resolver)
+- [ ] Fixture: a second package provides a macro consumed by the first
+
+### Phase 10 acceptance
+- [ ] End-to-end: user authors a Dart-function macro in their own project, lists it, compiles a source that uses it — **without touching `lib/`**
+
+---
+
 ## Cross-cutting (apply throughout)
 
 - [x] `dart analyze` clean across `lib/` (0 errors)

@@ -15,14 +15,30 @@ The pipeline is:
 source → Reader/Parser → List<Node> → Expander → Emitter → Dart source
 ```
 
+## The product (read `doc/VISION.md` — this is the current north star)
+
+The product is **the kit for writing your own Dart code generators**, not the
+fixed set of built-in generators. A macro is one function — `(List<Node>) → Node`
+— and that contract is general. The built-ins (`defrecord`, `defunion`,
+`defFromJsonSchema`, …) are a **standard library**: worked examples of what any
+user can write with the public `defMacro` / `defAsyncMacro` API. The strategic
+goal (Phase 10, `specs/phase-10-macro-authoring.md`) is letting users register
+**their own** Dart-function macros from **their own** project — no fork, no
+published package. When that works, `defrecord` is just the first page of a
+cookbook, and freezed is something a user can re-create in an afternoon.
+
+Do not regress to "we ship a menu of generators." We ship the means to write them.
+
 ## The core insight (do not lose this)
 
 The Dart team cancelled language-level macros in Jan 2025 because compile-time code
 execution collided with their incremental-compilation and hot-reload guarantees.
 **We sidestep that wall by being a preprocessor** — we regenerate files, so we never
 need to be incremental. This is why we can do things the official macro system could
-not, including the headline feature: **async compile-time evaluation** (compile-time
-I/O — generating Dart types from JSON schemas, OpenAPI specs, etc.).
+not, including **async generation-time evaluation** (generation-time I/O — building
+Dart types from JSON schemas, OpenAPI specs, etc.). Note: dmacro runs as a separate
+step *before* the Dart compiler — say "generation-time," not "compile-time," in
+docs; "compile-time" implies the Dart compiler is involved, which is false.
 
 Do not try to integrate into the Dart compiler. The whole advantage is being outside it.
 

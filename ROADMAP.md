@@ -1,5 +1,13 @@
 # Roadmap
 
+> **North-star update (current):** the product is **the kit for writing your own
+> Dart code generators**, not the fixed set of built-in generators. The built-ins
+> (`defrecord`, `defunion`, `defFromJsonSchema`, …) are now positioned as a
+> **standard library** — worked examples of what any user can write with the public
+> `(args) → Node` API. See `doc/VISION.md`. Phases 0–9 below are the foundation that
+> made this possible and are **DONE**; **Phase 10** (`specs/phase-10-macro-authoring.md`)
+> is the pivot and the current headline work.
+
 A linear path with one hard decision gate. Each phase has its own spec in `specs/`.
 
 ```
@@ -37,7 +45,25 @@ Phase 4  ─────────────  Developer experience  [medium]
         ▼
 Phase 5  ─────────────  IDE integration       [large, stretch]
   VS Code: compile-on-save · highlighting · diagnostics
+        │
+        ▼
+Phase 10 ═════════════  Macro authoring as the product   [medium]  ◀── THE PIVOT
+  built-ins → standard library · loadable user Dart macros ·
+  macro-author error attribution · WRITING_MACROS.md
+  (Phases 6–9 — pub packaging, schema hardening, Swift-lessons
+   improvements — are DONE; folded into the foundation.)
 ```
+
+## The pivot (Phase 10)
+
+The first nine phases proved the engine: code-as-data, an expander, an emitter, and
+a set of built-in generators that demonstrate the model. The strategic realization
+is that **the built-ins were never the product — the ability to write them is.**
+
+Phase 10 closes the one gap between "we ship generators" and "you write generators":
+user-authored Dart-function macros, loadable from a user's own project without
+forking this repo. When that works, `defrecord` stops being special and becomes the
+first page of a cookbook. See `specs/phase-10-macro-authoring.md`.
 
 ## Sequencing rationale
 
@@ -61,14 +87,20 @@ Phase 5  ─────────────  IDE integration       [large, 
 
 ## What "done" means for the whole project
 
-There are two acceptable terminal states, decided at the Phase 2 gate:
+The Phase 2 gate has been passed; the schema-to-types demo was compelling enough to
+continue, and Phases 3–9 shipped. The terminal state has been re-chosen at the
+**Phase 10 pivot**:
 
-1. **Learning artifact** (stop after 2): a working, validated, novel exploration with a
-   clear write-up of why language-level macros defeated the Dart team and how a
-   preprocessor sidesteps that. Complete and worthwhile on its own.
+> **Adoptable tool, repositioned:** a zero-dependency code-generation *kit* whose
+> wedge is "write your own generator in your own project, no `build_runner`, no
+> package to publish." The built-in generators are the proof, not the point.
 
-2. **Adoptable tool** (through 4, ideally 5): a zero-dependency compile-time code generator
-   whose wedge is "types from your source of truth, no build_runner". Requires the DX and,
-   ultimately, the IDE integration to overcome ecosystem inertia.
+The project is "done" in this framing when the Phase 10 acceptance holds: a user
+authors a Dart-function macro in their own project and compiles a source that uses
+it **without editing `lib/`**. Until then, Phase 10 is the only active work.
 
-Pick deliberately at the gate. Do not drift past it on momentum alone.
+### Earlier terminal options (for the record)
+
+1. **Learning artifact** (stop after Phase 2): a validated exploration of why
+   language-level macros defeated the Dart team and how a preprocessor sidesteps it.
+   Was a complete outcome; we chose to continue past it.
