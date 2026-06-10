@@ -33,7 +33,11 @@ jobs:
 
       - name: Verify examples compile
         run: |
+          dart --version
           for f in example/**/*.dmacro example/*.dmacro; do
+            dart run bin/dmacro.dart compile "$f" -o /tmp/ci_gen.dart
+            echo "=== diff $f ==="
+            diff /tmp/ci_gen.dart "${f%.dmacro}.dart" || true
             dart run bin/dmacro.dart compile "$f" --check || exit 1
           done
 
