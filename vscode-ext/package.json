@@ -54,6 +54,10 @@
       {
         "command": "dmacro.jumpToSource",
         "title": "dmacro: Jump to Source"
+      },
+      {
+        "command": "dmacro.expandMacro",
+        "title": "dmacro: Expand Macro at Cursor"
       }
     ],
     "configuration": {

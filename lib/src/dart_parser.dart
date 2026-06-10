@@ -57,8 +57,13 @@ class DartLikeParser {
     if (_check(TK.ident, 'defenum')) return _defenum();
     if (_check(TK.ident, 'defrecord')) return _defrecord();
     if (_check(TK.ident, 'defunion')) return _defunion();
-    if (_check(TK.ident, 'defmacro') && _peek2().kind == TK.ident) {
-      return _defmacroDecl();
+    // defmacro name(params) { ... }         — untyped macro
+    // defmacro(declaration) name(params)    — validates output is a declaration
+    // defmacro(expression) name(params)     — validates output is an expression
+    // defmacro(statement) name(params)      — validates output is a statement
+    if (_check(TK.ident, 'defmacro')) {
+      if (_peek2().kind == TK.ident) return _defmacroDecl();
+      if (_peek2().kind == TK.lparen) return _defmacroDecl();
     }
     // Top-level macro call: ident ( args... ) ;
     // Distinguished from a function declaration (type name ( ) { }) by looking
@@ -152,6 +157,14 @@ class DartLikeParser {
 
   Node _defmacroDecl() {
     _expect(TK.ident, 'defmacro');
+    // Optional output-type qualifier: defmacro(declaration), defmacro(expression),
+    // defmacro(statement). Parsed as an extra arg so builtins.dart can validate.
+    String? outputType;
+    if (_check(TK.lparen)) {
+      _advance(); // consume (
+      outputType = _expect(TK.ident).value as String;
+      _expect(TK.rparen);
+    }
     final name = _expect(TK.ident).value as String;
     _expect(TK.lparen);
     final params = <String>[];
@@ -161,6 +174,9 @@ class DartLikeParser {
     }
     _expect(TK.rparen);
     final body = _blockAsNode();
+    if (outputType != null) {
+      return ['defmacro_typed', outputType, name, params, body];
+    }
     return ['defmacro', name, params, body];
   }
 

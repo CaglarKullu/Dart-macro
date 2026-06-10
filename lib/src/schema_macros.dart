@@ -7,7 +7,9 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
-import 'async_expand.dart';
+import 'async_expand.dart'
+    show defAsyncMacro, asyncCompile, asyncCompileDartLike, asyncExpand;
+import 'builtins.dart' show substituteBindings;
 import 'core.dart';
 import 'yaml_parser.dart';
 
@@ -134,6 +136,203 @@ void registerSchemaMacros() {
 
     return _defrecordFromSchema(schemaName, schema);
   });
+
+  // ─── defmacro_typed ──────────────────────────────────────────────────────────
+  //
+  // Emitted by the parser for `defmacro(declaration)`, `defmacro(expression)`,
+  // and `defmacro(statement)`. Registers the named macro and wraps each call
+  // in a post-expansion validator so the declared output type is enforced.
+  //
+  // args: [outputType, name, params, body]
+  //
+  // Example:
+  //   defmacro(declaration) makeConfig(name) {
+  //     defrecord name { String host; int port; }
+  //   }
+  //   makeConfig(AppConfig);   // ← validated to be a declaration
+  //
+  // If the macro's expanded output does not match the declared type, an
+  // [ArgumentError] is thrown at call time with a clear diagnostic.
+
+  defAsyncMacro('defmacro_typed', (args) async {
+    final outputType = args[0] as String;
+    final name = args[1] as String;
+    if (args.length < 4) {
+      throw ArgumentError(
+          'defmacro($outputType) $name: expected (type name params body)');
+    }
+    final params = (args[2] as List).cast<String>();
+    final body = args.length == 4 ? args[3] : ['do', ...args.sublist(3)];
+
+    const validTypes = {'declaration', 'expression', 'statement'};
+    if (!validTypes.contains(outputType)) {
+      throw ArgumentError(
+        'defmacro($outputType) $name: unknown output type "$outputType".\n'
+        '  Valid types: ${validTypes.join(", ")}',
+      );
+    }
+
+    // Register as async so we can expand → emit → validate before returning.
+    defAsyncMacro(name, (callArgs) async {
+      if (callArgs.length != params.length) {
+        throw ArgumentError(
+          '$name: expected ${params.length} arg(s), got ${callArgs.length}',
+        );
+      }
+      final bindings = Map.fromIterables(params, callArgs);
+      final substituted = substituteBindings(body, bindings);
+      final expanded = await asyncExpand(substituted);
+      final emitted = emit(expanded);
+      _validateMacroOutput(name, outputType, emitted);
+      return expanded;
+    });
+
+    return '';
+  });
+
+  // ─── importMacros ────────────────────────────────────────────────────────────
+  //
+  // Loads macro definitions from another .dmacro file and registers them in the
+  // current session. The imported file's output is discarded — only side-effects
+  // (defmacro registrations) carry over.
+  //
+  // Usage in .dmacro file:
+  //   importMacros("path/to/macros.dmacro");
+  //   importMacros("package:mymacros/macros.dmacro");  // pub package path
+
+  defAsyncMacro('importMacros', (args) async {
+    var importPath = _unquote(args[0] as String);
+
+    // Resolve package: URIs relative to the pub cache / package root if possible,
+    // otherwise treat as a plain path relative to the working directory.
+    if (importPath.startsWith('package:')) {
+      final packageUri = Uri.parse(importPath);
+      // Strip 'package:' prefix and attempt to find the file via pub's layout.
+      // pub layout: .dart_tool/package_config.json lists rootUri for each package.
+      final resolved = await _resolvePackageUri(packageUri);
+      if (resolved == null) {
+        throw StateError(
+          'importMacros: could not resolve $importPath\n'
+          '  Make sure `dart pub get` has been run in the project root.',
+        );
+      }
+      importPath = resolved;
+    }
+
+    final file = File(importPath);
+    if (!file.existsSync()) {
+      throw StateError(
+        'importMacros: file not found: $importPath\n'
+        '  (resolved from working directory: ${Directory.current.path})',
+      );
+    }
+
+    // Parse and expand the imported file. Any defmacro calls inside register
+    // macros as a side effect. Output is intentionally discarded.
+    final source = await file.readAsString();
+    if (importPath.endsWith('.dmacro')) {
+      await asyncCompileDartLike(source);
+    } else if (importPath.endsWith('.sexp')) {
+      await asyncCompile(source);
+    } else {
+      throw StateError(
+        'importMacros: unsupported file type for $importPath\n'
+        '  Only .dmacro and .sexp files can be imported.',
+      );
+    }
+
+    // Return empty string — no Dart output from an import statement.
+    return '';
+  });
+}
+
+// ─── defmacro_typed helpers ───────────────────────────────────────────────────
+
+const _declarationStarters = {
+  'class ',
+  'abstract ',
+  'enum ',
+  'typedef ',
+  'extension ',
+  'mixin ',
+  'sealed ',
+};
+
+void _validateMacroOutput(String name, String type, String emitted) {
+  final trimmed = emitted.trim();
+  if (trimmed.isEmpty) {
+    throw ArgumentError(
+      '$name (defmacro($type)): macro produced empty output.\n'
+      '  A "$type" macro must produce non-empty Dart code.',
+    );
+  }
+  switch (type) {
+    case 'declaration':
+      final startsWithDecl =
+          _declarationStarters.any((kw) => trimmed.startsWith(kw)) ||
+          RegExp(r'^[A-Za-z_][A-Za-z0-9_<>?,\s]*\s+[a-zA-Z_]\w*\s*\(')
+              .hasMatch(trimmed);
+      if (!startsWithDecl) {
+        throw ArgumentError(
+          '$name (defmacro(declaration)): output does not look like a declaration.\n'
+          '  Expected a class, enum, typedef, or function declaration.\n'
+          '  Got: ${trimmed.length > 80 ? '${trimmed.substring(0, 80)}…' : trimmed}',
+        );
+      }
+    case 'expression':
+      if (trimmed.endsWith(';')) {
+        throw ArgumentError(
+          '$name (defmacro(expression)): output ends with ";" — looks like a statement.\n'
+          '  An "expression" macro should produce a value, not a statement.\n'
+          '  Got: ${trimmed.length > 80 ? '${trimmed.substring(0, 80)}…' : trimmed}',
+        );
+      }
+    case 'statement':
+      if (!trimmed.endsWith(';') && !trimmed.endsWith('}')) {
+        throw ArgumentError(
+          '$name (defmacro(statement)): output does not look like a statement.\n'
+          '  A "statement" macro should end with ";" or "}".\n'
+          '  Got: ${trimmed.length > 80 ? '${trimmed.substring(0, 80)}…' : trimmed}',
+        );
+      }
+  }
+}
+
+/// Resolves a `package:name/path.dmacro` URI to an absolute filesystem path
+/// using the `.dart_tool/package_config.json` written by `dart pub get`.
+Future<String?> _resolvePackageUri(Uri packageUri) async {
+  final packageName = packageUri.pathSegments[0];
+  final relativePath = packageUri.pathSegments.sublist(1).join('/');
+
+  // Search up from the working directory for package_config.json.
+  var dir = Directory.current;
+  for (var i = 0; i < 10; i++) {
+    final configFile =
+        File('${dir.path}/.dart_tool/package_config.json');
+    if (configFile.existsSync()) {
+      try {
+        final config =
+            jsonDecode(configFile.readAsStringSync()) as Map<String, dynamic>;
+        final packages = (config['packages'] as List<dynamic>?) ?? [];
+        for (final pkg in packages) {
+          final p = pkg as Map<String, dynamic>;
+          if (p['name'] == packageName) {
+            final rootUri = Uri.parse(p['rootUri'] as String);
+            final absRoot = rootUri.isAbsolute
+                ? rootUri.toFilePath()
+                : '${dir.path}/${rootUri.path}';
+            return '$absRoot/$relativePath';
+          }
+        }
+      } catch (_) {
+        return null;
+      }
+    }
+    final parent = dir.parent;
+    if (parent.path == dir.path) break;
+    dir = parent;
+  }
+  return null;
 }
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
