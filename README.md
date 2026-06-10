@@ -9,6 +9,39 @@ Write a short declaration — get a complete, typed, immutable class back. Read 
 
 ---
 
+## What is a macro? (And why is it different from code generation?)
+
+If you've used `build_runner`, `json_serializable`, or `freezed`, you've used **code generation** — a tool that reads your Dart files and writes new ones. That's a separate process that runs before compilation. Useful, but limited: it can only see what's already written.
+
+A **macro** is different in one crucial way: it runs *inside* the compilation of the file being processed. It doesn't just read the source — it receives the unevaluated code as a data structure, transforms it, and the transformed version is what the compiler actually sees.
+
+The practical consequence: a macro can inspect **the structure of the code**, not just its value.
+
+```dart
+// A regular function receives the result of evaluating the expression:
+assert_that(amount > 0);
+//          ↑ the function receives `false` — it has no idea what was compared
+
+// A macro receives the unevaluated expression as a data structure:
+assertThat(amount > 0);
+//          ↑ the macro receives ['>', 'amount', 0] — it can read the operator,
+//            the operands, everything. So it can generate:
+//            if (!(amount > 0)) throw AssertionError("Expected: amount > 0")
+//            That message contains the source expression. A function cannot do this.
+```
+
+The second distinction: macros can **generate declarations**, not just expressions. `json_serializable` can add methods to an existing class, but it cannot create the class itself. `defrecord` creates the class, its fields, constructor, `copyWith`, `==`, `hashCode`, `toString`, `fromJson`, and `toJson` — from a one-line spec. The class doesn't exist before the macro runs.
+
+The third distinction: **compile-time I/O**. `defFromJsonSchema("api.json")` reads your API spec at compile time and generates the matching Dart types. This requires I/O during expansion, which a function cannot do (functions run at runtime) and which the official Dart macro system [explicitly could not support](https://dart.dev/language/macros) without breaking incremental compilation.
+
+In short:
+- **Code generation** (build_runner, freezed): transforms files externally, after they're written.
+- **Macros** (dmacro): transform code structures internally, before the compiler sees them.
+
+Both produce `.dart` output. The difference is what the transformation has access to: the file's text vs. the code's structure.
+
+---
+
 ## The Lisp idea
 
 dmacro is a **Lisp macro system** for Dart. That single sentence is the whole design.
@@ -455,6 +488,14 @@ defrecord User {
   bool    isVerified;
 }
 
+// Use @json_key("name") to override the JSON key for a specific field.
+// Without it, the key matches the Dart field name (or is snake_cased for defrecord(snake_case)).
+defrecord Product {
+  @json_key("product_id")
+  String id;        // reads/writes json['product_id'], Dart field is still `id`
+  String name;      // reads/writes json['name']
+}
+
 defunion AuthState {
   Unauthenticated {}
   Authenticating  {}
@@ -487,6 +528,7 @@ There is also an S-expression syntax (`.sexp`) for the full Lisp experience — 
 |---|---|---|
 | `defrecord Name { ... }` | Immutable class: fields, constructor, `copyWith`, deep `==`/`hashCode`, `toString`, **`fromJson`/`toJson`** with camelCase JSON keys | Functions can't generate class declarations |
 | `defrecord(snake_case) Name { ... }` | Same as `defrecord` but JSON keys are converted to snake_case (`orderId` → `"order_id"`) | Covers the common case where the API uses snake_case and Dart uses camelCase |
+| `@json_key("name") Type field;` | Overrides the JSON key for a single field — takes priority over both camelCase and snake_case defaults | Field-level annotation inside `defrecord` or `defrecord(snake_case)` |
 | `defunion Name { ... }` | Sealed class hierarchy | Same |
 | `defmacro name(params) { ... }` | User-defined template macro, registered for use in the same file | Functions run at call time with values; macros run at expand time with code |
 | `defFromJsonSchema("path")` | `defrecord` from a JSON Schema file; `$defs`/`definitions` blocks and `oneOf` are supported | Functions run at runtime; I/O at build time requires a macro |

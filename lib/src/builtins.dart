@@ -166,6 +166,8 @@ void _registerDataClass() {
       final fname = fList[1] as String;
       // Optional source line number — present when parsed from .dmacro source.
       final fieldLine = fList.length > 2 ? fList[2] as int? : null;
+      // Optional explicit JSON key from @json_key("name") annotation.
+      final jsonKey = fList.length > 3 ? fList[3] as String? : null;
       // If the field type is a defenum-registered name, add the enum: signal
       // so the emitter generates values.byName / .name serialization.
       final nullable = type.endsWith('?');
@@ -173,7 +175,7 @@ void _registerDataClass() {
       if (isRegisteredEnum(base)) {
         type = nullable ? 'enum:$base?' : 'enum:$base';
       }
-      return Field(type, fname, line: fieldLine);
+      return Field(type, fname, line: fieldLine, jsonKey: jsonKey);
     }).toList();
 
     // Per-field origin markers require both a WithOrigins compile AND the
@@ -207,12 +209,13 @@ void _registerDataClass() {
       var type = fList[0] as String;
       final fname = fList[1] as String;
       final fieldLine = fList.length > 2 ? fList[2] as int? : null;
+      final jsonKey = fList.length > 3 ? fList[3] as String? : null;
       final nullable = type.endsWith('?');
       final base = nullable ? type.substring(0, type.length - 1) : type;
       if (isRegisteredEnum(base)) {
         type = nullable ? 'enum:$base?' : 'enum:$base';
       }
-      return Field(type, fname, line: fieldLine);
+      return Field(type, fname, line: fieldLine, jsonKey: jsonKey);
     }).toList();
 
     final trackOrigins =

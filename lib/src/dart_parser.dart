@@ -108,10 +108,19 @@ class DartLikeParser {
     while (!_check(TK.rbrace)) {
       final fieldLine =
           _peek().line; // capture source line before consuming type
+      String? jsonKey;
+      if (_check(TK.at)) {
+        _advance(); // consume @
+        _expect(TK.ident, 'json_key');
+        _expect(TK.lparen);
+        final keyToken = _expect(TK.string);
+        jsonKey = (keyToken.value as String).replaceAll('"', '');
+        _expect(TK.rparen);
+      }
       final t = _parseType();
       final n = _expect(TK.ident).value as String;
       _expect(TK.semi);
-      fields.add([t, n, fieldLine]);
+      fields.add([t, n, fieldLine, jsonKey]);
     }
     _expect(TK.rbrace);
     return [macroName, name, ...fields];

@@ -394,9 +394,11 @@ String emit(Node node, [int indent = 0]) {
       final fields = args[1] as List<dynamic>;
       final snakeCaseJson = args.length > 2 && args[2] == true;
       final assigns = fields.map((f) {
-        final type = (f as List)[0] as String;
-        final fname = f[1] as String;
-        final key = snakeCaseJson ? _camelToSnake(fname) : fname;
+        final fList = f as List;
+        final type = fList[0] as String;
+        final fname = fList[1] as String;
+        final explicitKey = fList.length > 2 ? fList[2] as String? : null;
+        final key = explicitKey ?? (snakeCaseJson ? _camelToSnake(fname) : fname);
         return '$fname: ${_fromJsonExpr(type, "json['$key']")}';
       }).join(', ');
       return 'factory $name.fromJson(Map<String, dynamic> json) => '
@@ -406,9 +408,11 @@ String emit(Node node, [int indent = 0]) {
       final fields = args[1] as List<dynamic>;
       final snakeCaseJson = args.length > 2 && args[2] == true;
       final entries = fields.map((f) {
-        final type = (f as List)[0] as String;
-        final fname = f[1] as String;
-        final key = snakeCaseJson ? _camelToSnake(fname) : fname;
+        final fList = f as List;
+        final type = fList[0] as String;
+        final fname = fList[1] as String;
+        final explicitKey = fList.length > 2 ? fList[2] as String? : null;
+        final key = explicitKey ?? (snakeCaseJson ? _camelToSnake(fname) : fname);
         return "'$key': ${_toJsonExpr(type, fname)}";
       }).join(', ');
       return 'Map<String, dynamic> toJson() => {$entries};';

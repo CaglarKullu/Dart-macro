@@ -314,7 +314,7 @@ design. A shared helper package would require a runtime dep. Private per-file
 copies are idiomatic for generated code (same approach as `freezed`'s
 `_$identity` and `_$ProductCopyWithImpl` per class). No action required.
 
-### 8.7 @json_key per-field key override (BACKLOG)
+### 8.7 @json_key per-field key override [x]
 
 Users need a way to specify custom JSON keys for individual fields when
 auto-conversion (camelCase or snake_case) doesn't match the API:
@@ -331,10 +331,12 @@ the key string through `Field` → `$fromJson`/`$toJson` → emitter.
 Design: add optional `String? jsonKey` to `Field` class; parse `@json_key(...)`
 before the type token in `_defrecord()`.
 
-- [ ] `Field` class gains `String? jsonKey`
-- [ ] `_defrecord()` parser detects `@json_key("name")` annotation before type
-- [ ] `$fromJson`/`$toJson` use `field.jsonKey ?? field.name` as the JSON key
-- [ ] `_fromJsonExpr` / `_toJsonExpr` unchanged (key is passed as the access string)
+- [x] `Field` class gains `String? jsonKey`
+- [x] `_defrecord()` parser detects `@json_key("name")` annotation before type
+- [x] `$fromJson`/`$toJson` use `field.jsonKey ?? field.name` as the JSON key
+- [x] `_fromJsonExpr` / `_toJsonExpr` unchanged (key is passed as the access string)
+- [x] Priority: explicit key > snake_case > camelCase (works in `defrecord_snake` too)
+- [x] Tests in `builtins_test.dart` covering all three scenarios
 
 ---
 

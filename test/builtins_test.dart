@@ -781,6 +781,56 @@ defrecord(snake_case) ApiUser {
     });
   });
 
+  // ─── @json_key annotation ────────────────────────────────────────────────────
+
+  group('@json_key', () {
+    test('explicit key overrides default camelCase key', () async {
+      const src = '''
+defrecord Product {
+  @json_key("product_id")
+  String id;
+  String name;
+}
+''';
+      final out = await asyncCompileDartLike(src);
+      expect(out, contains("json['product_id']"));
+      expect(out, contains("'product_id': id"));
+      // non-annotated field still uses camelCase
+      expect(out, contains("json['name']"));
+      // Dart field name unchanged
+      expect(out, contains('final String id'));
+    });
+
+    test('explicit key overrides snake_case default in defrecord_snake', () async {
+      const src = '''
+defrecord(snake_case) ApiEvent {
+  @json_key("evt_ts")
+  int timestamp;
+  String eventName;
+}
+''';
+      final out = await asyncCompileDartLike(src);
+      // @json_key wins over snake_case conversion
+      expect(out, contains("json['evt_ts']"));
+      expect(out, contains("'evt_ts': timestamp"));
+      // non-annotated field still gets snake_case
+      expect(out, contains("json['event_name']"));
+    });
+
+    test('node-level: Field jsonKey propagates into emit', () {
+      final out = emit(expand([
+        'defrecord',
+        'Widget',
+        ['String', 'widgetId', null, 'wid'],
+        ['int', 'count', null, null],
+      ]));
+      expect(out, contains("json['wid']"));
+      expect(out, contains("'wid': widgetId"));
+      // null jsonKey falls back to camelCase
+      expect(out, contains("json['count']"));
+    });
+  });
+
   // ─── assert-that — more cases ────────────────────────────────────────────────
 
   group('assert-that — more cases', () {
