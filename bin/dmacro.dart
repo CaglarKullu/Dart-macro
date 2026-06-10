@@ -144,11 +144,16 @@ Future<void> _compileDir(String dir,
 
 /// Compiles one file. Returns true if the file was stale (only relevant in
 /// check mode).
+///
+/// When [throwOnError] is true, compile errors are re-thrown as a [String]
+/// message rather than calling [exit]. Use this in watch mode so a syntax
+/// error in one file doesn't kill the watcher process.
 Future<bool> _compileSingle(String inputPath,
     {String? outputPath,
     bool checkMode = false,
     bool doFormat = true,
-    bool fieldOrigins = false}) async {
+    bool fieldOrigins = false,
+    bool throwOnError = false}) async {
   final source = await File(inputPath).readAsString();
   String dart;
 
@@ -164,11 +169,11 @@ Future<bool> _compileSingle(String inputPath,
     // MacroExpansionError already contains "file:line: message" — print as-is.
     // Other exceptions (ParseException, TokenizerException) need the input path
     // prepended, and we strip their verbose class-name prefix.
-    if (e is MacroExpansionError) {
-      stderr.writeln(e);
-    } else {
-      stderr.writeln('$inputPath: ${_stripExceptionPrefix(e)}');
-    }
+    final msg = e is MacroExpansionError
+        ? e.toString()
+        : '$inputPath: ${_stripExceptionPrefix(e)}';
+    if (throwOnError) throw msg;
+    stderr.writeln(msg);
     exit(1);
   }
 
@@ -180,9 +185,18 @@ Future<bool> _compileSingle(String inputPath,
   final outFile = outputPath ?? _outputPath(inputPath);
 
   if (checkMode) {
-    // Just check whether the on-disk file matches; don't write.
+    // Compare freshly generated output against what's on disk.
+    // When formatting is enabled, also reformat the on-disk file with the
+    // current formatter before comparing — this makes the check resilient to
+    // formatter version drift between the original generation and now.
     final exists = File(outFile).existsSync();
-    if (!exists || File(outFile).readAsStringSync() != output) {
+    if (!exists) {
+      stderr.writeln('STALE: $outFile');
+      return true;
+    }
+    final onDisk = File(outFile).readAsStringSync();
+    final normalizedOnDisk = doFormat ? _format(onDisk) : onDisk;
+    if (normalizedOnDisk != output) {
       stderr.writeln('STALE: $outFile');
       return true;
     }
@@ -231,10 +245,11 @@ Future<void> _watchCmd(List<String> args) async {
     debounce[p] = Timer(const Duration(milliseconds: 100), () async {
       try {
         final outFile = _outputPath(p);
-        await _compileSingle(p, outputPath: outFile, doFormat: doFormat);
+        await _compileSingle(p,
+            outputPath: outFile, doFormat: doFormat, throwOnError: true);
         if (withAnalyze) await _analyzeOutput(outFile, p);
       } catch (e) {
-        stderr.writeln('✗ $p: $e');
+        stderr.writeln('✗ $e');
       }
     });
   });
