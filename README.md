@@ -52,7 +52,7 @@ defFromOpenApi("api/openapi.yaml", "User");
 defAllFromJsonSchema("schemas/");   // one class per .json file in the folder
 ```
 
-Each line reads the spec **at compile time** and generates a complete immutable class with `fromJson`/`toJson`, `copyWith`, deep `==`/`hashCode`, and `toString`. Update the spec, recompile — done. No annotations. No `.g.dart` files.
+Each line reads the spec **when you run `dmacro compile`** and generates a complete immutable class with `fromJson`/`toJson`, `copyWith`, deep `==`/`hashCode`, and `toString`. Update the spec, rerun dmacro — done. No annotations. No `.g.dart` files.
 
 → See [`example/openapi_demo/`](example/openapi_demo/) and [`example/api_from_schema/`](example/api_from_schema/)
 
@@ -232,7 +232,7 @@ There is also an S-expression syntax (`.sexp`) for the full Lisp experience — 
 | `defenum Name { v1, v2 }` | Dart enum with `fromJson`/`toJson` via `.byName`/`.name` | — |
 | `defunion Name { ... }` | Sealed class hierarchy | Same as defrecord |
 | `defmacro name(params) { ... }` | User-defined template macro | Functions run at call time with values; macros run at expand time with code |
-| `defFromJsonSchema("path")` | `defrecord` from a JSON Schema file; supports `$defs`, `definitions`, `oneOf` | Requires compile-time file I/O |
+| `defFromJsonSchema("path")` | `defrecord` from a JSON Schema file; supports `$defs`, `definitions`, `oneOf` | Reads the file during the dmacro generation step; build_runner can't do this |
 | `defFromOpenApi("path", "Name")` | `defrecord` or `defunion` from an OpenAPI `components/schemas` entry; `.json`, `.yaml`, `.yml` | Same |
 | `defAllFromJsonSchema("dir/")` | One `defrecord` per `.json` file in a directory | Same |
 | `unless (cond) { ... }` | `if (!(cond)) { ... }` | — |
@@ -348,23 +348,32 @@ Then in VS Code: Extensions panel → `···` → **Install from VSIX…** → 
 
 ### Macros vs. code generation
 
-If you've used `build_runner` or `freezed`, you've used **code generation** — a separate process that reads your files and writes new ones. Useful, but limited: it can only see what's already written.
+dmacro is a preprocessor: you run `dmacro compile`, it reads `.dmacro` files, expands macros, and writes `.dart` files. The Dart compiler then compiles those `.dart` files. The Dart compiler never sees `.dmacro` files and never runs any macros.
 
-A **macro** is different in one key way: it runs during the processing of the file itself. It doesn't just read the source — it receives the unevaluated code as a data structure and transforms it before the compiler sees anything.
+In that sense dmacro is similar to `build_runner`: both generate `.dart` files before the Dart compiler runs. The differences are in what the generation step can do:
+
+| | `build_runner` / `freezed` | dmacro |
+|---|---|---|
+| What it reads | Dart source + annotations | Parsed AST of `.dmacro` source |
+| Can inspect code structure | No — annotations only | Yes — operators, operands, variable names |
+| Can generate entire declarations | Partially | Yes — `defrecord` creates the whole class |
+| Generation step can do async I/O | No | Yes — `defFromJsonSchema` reads files during expansion |
+
+The AST point is the key one:
 
 ```dart
-// A function receives the result of evaluating the expression:
-assert_that(amount > 0);   // receives `false` — no idea what was compared
+// build_runner sees @MyAnnotation on a class declaration.
+// It cannot see what's *inside* method bodies.
 
-// A macro receives the unevaluated expression as a data structure:
-assertThat(amount > 0);    // receives ['>', 'amount', 0]
-                           // → can generate: throw AssertionError("Expected: amount > 0")
+// dmacro parses the entire source into a nested list (AST) and runs
+// Dart functions over it. assertThat receives ['>', 'amount', 0] —
+// the actual operator and operands — not just the boolean result:
+assertThat(amount > 0);
+// → generates: if (!(amount > 0)) throw AssertionError("Expected: amount > 0")
+//              the source expression appears in the message automatically
 ```
 
-The three things macros can do that code generation cannot:
-1. **Inspect code structure** — not just values, but operators, operands, variable names.
-2. **Generate declarations** — `json_serializable` adds methods to a class you wrote; `defrecord` creates the class from nothing.
-3. **I/O at expand time** — `defFromJsonSchema` reads your API spec during compilation. Functions run at runtime; code generators don't run inside the compilation pass at all.
+The async I/O capability comes from the same architectural choice: because dmacro is a separate preprocessing step with no incrementality requirement, its expansion phase can freely `await` file reads, HTTP calls, or anything else. The [cancelled official Dart macros](https://dart.dev/language/macros) could not do this — async execution inside an incremental compiler breaks millisecond hot reloads.
 
 ### Why Lisp macros, not C macros
 
@@ -385,7 +394,7 @@ source text  →  List<Node>  →  macro(List<Node>) → List<Node>  →  Dart s
 | Inspect argument structure | No | Yes |
 | Hygienic | No | Yes — `gensym` prevents name collisions |
 | Loop / branch / recurse | No | Yes — it's Dart code |
-| Compile-time I/O | No | Yes — `async` macros allowed |
+| I/O during generation step | No | Yes — `async` macros allowed |
 
 ---
 
@@ -401,9 +410,9 @@ List<Node>            ← fully expanded, no macros remain
 Dart source (.dart)
 ```
 
-The **async expander** is why `defFromJsonSchema` works: macros can `await` file I/O, HTTP requests, or anything else at expansion time. The official Dart macro system [could not support this](https://dart.dev/language/macros) — async execution inside an incremental compiler makes millisecond hot reloads intractable, so the two couldn't be reconciled.
+The **async expander** is why `defFromJsonSchema` works: macros can `await` file I/O, HTTP requests, or anything else during the expansion step. The official Dart macro system [could not support this](https://dart.dev/language/macros) — async execution inside an incremental compiler makes millisecond hot reloads intractable, so the two couldn't be reconciled.
 
-dmacro is not inside the compiler. It transforms `.dmacro` → `.dart` as a separate step, then steps aside. The compiler sees only plain `.dart` files. This costs one extra step (generated files are committed, just like `build_runner` output) but buys the full capability: arbitrary code — including I/O — at expansion time.
+dmacro is not inside the compiler. It transforms `.dmacro` → `.dart` as a separate preprocessing step, then steps aside. The Dart compiler only ever sees the generated `.dart` files and never runs any dmacro code. This costs one extra step (generated files are committed, just like `build_runner` output) but buys the full capability: arbitrary code — including I/O — during expansion.
 
 ---
 
@@ -433,7 +442,7 @@ bin/
   dmacro.dart             CLI: compile / watch / repl / trace / --check
 lib/src/
   core.dart               Node type, expand(), emit()
-  async_expand.dart       Async macro expander (enables compile-time I/O)
+  async_expand.dart       Async macro expander (enables I/O during the generation step)
   schema_macros.dart      defFromJsonSchema, defFromOpenApi, defAllFromJsonSchema
   yaml_parser.dart        Built-in YAML parser (no external deps)
   builtins.dart           unless, when, swap!, assertThat, withRetry, defrecord, defunion, defmacro
