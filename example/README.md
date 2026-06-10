@@ -10,6 +10,18 @@ You can also embed macros directly in regular `.dart` files using `// @@dmacro` 
 
 ---
 
+## [`inline_demo.dart`](inline_demo.dart)
+
+Macros embedded directly in a regular `.dart` file — no separate `.dmacro` file needed. Two `defrecord` blocks live inside `// @@dmacro` / `// @@end` markers. Running `dmacro compile` expands them in-place and preserves the macro source as `//` comments so re-runs are idempotent.
+
+**What to notice:** The file is a normal `.dart` file before and after compilation. The macro source stays as comments (`// defrecord Point { ... }`), the generated class appears below `// @@generated`, and the `main()` function at the bottom uses the generated types directly.
+
+```bash
+dart run bin/dmacro.dart compile example/inline_demo.dart
+```
+
+---
+
 ## [`ecommerce/`](ecommerce/)
 
 A realistic e-commerce domain model — products, orders, cart items, shipping addresses, and an order status state machine.
