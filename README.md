@@ -74,7 +74,7 @@ defAllFromJsonSchema("schemas/");
 
 dmacro reads the file, parses it, and **generates the Dart class** during compilation. Your schema is the single source of truth. Update the spec, recompile, done.
 
-No other Dart tool does this. `build_runner` + `json_serializable` requires annotations on an existing class — you still write the class. `freezed` generates from a class you wrote. The cancelled official macros explicitly [could not do I/O](https://dart.dev/language/macros) because async execution inside the compiler breaks incremental rebuilds. dmacro sidesteps the entire problem by being a preprocessor: it has no incrementality obligation, so macros are free to `await` anything.
+No other Dart tool does this. `build_runner` + `json_serializable` requires annotations on an existing class — you still write the class. `freezed` generates from a class you wrote. The [cancelled official Dart macros](https://dart.dev/language/macros) could not do I/O: async execution inside an incremental compiler breaks hot reload and millisecond rebuilds — the two couldn't be reconciled. dmacro sidesteps the entire problem by being a preprocessor: it has no incrementality obligation, so macros are free to `await` anything.
 
 ### 2. Error messages that contain the source expression
 
@@ -93,7 +93,7 @@ A function receives the **value** `false`. It can never know what expression pro
 withRetry(3, postJson(endpoint, payload));
 ```
 
-Expands to a `for` loop with a try/catch and a generated `_attempt` counter injected directly into scope. The retry count is available inside the body. A higher-order function can't do this — it receives a callable, not the ability to introduce variables into the caller's lexical scope.
+Expands to an inline `for` loop with `try/catch` — the body is not wrapped in a callback. This matters: a `return` inside the body exits the **outer** function, and a `break` exits an outer loop. A higher-order `withRetry(n, () { ... })` wraps your code in a closure, breaking both. The macro inlines the code directly, so normal Dart control flow works exactly as you'd expect.
 
 ```dart
 swap!(a, b);
@@ -367,7 +367,7 @@ void syncWithServer(String endpoint, Payload payload) {
 }
 ```
 
-Expands to a `for` loop with a `try/catch` and an `_attempt` counter injected directly into scope — something a higher-order function can never do, because functions receive *values*, not variable names.
+Expands to an inline `for` loop with `try/catch` — the body is not wrapped in a callback. This matters for control flow: a `return` statement inside the body exits the enclosing function, and `break` exits an enclosing loop. A higher-order function wrapping a closure can't do either.
 
 ---
 
@@ -495,7 +495,7 @@ There is also an S-expression syntax (`.sexp`) for the full Lisp experience — 
 | `when (cond) { ... }` | `if (cond) { ... }` | Same |
 | `assertThat(expr)` | `if (!expr) throw AssertionError("Expected: <source>")` | Functions receive `false`, not the expression that produced it |
 | `swap!(a, b)` | `final _tmp = a; a = b; b = _tmp;` | Functions receive values, not variable names |
-| `withRetry(n, expr)` | `for` loop with `try/catch` and an `_attempt` counter | The counter must live in the caller's scope |
+| `withRetry(n, expr)` | Inline `for` loop with `try/catch` | Body is inlined, not a callback — `return`/`break` work normally; a higher-order function can't do this |
 
 ---
 
