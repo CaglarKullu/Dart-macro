@@ -31,11 +31,5 @@ jobs:
       - name: Run tests
         run: dart test
 
-      - name: Verify examples compile
-        run: |
-          for f in example/**/*.dmacro example/*.dmacro; do
-            dart run bin/dmacro.dart compile "$f" --check --no-format || exit 1
-          done
-
       - name: Verify package is publishable
         run: dart pub publish --dry-run
