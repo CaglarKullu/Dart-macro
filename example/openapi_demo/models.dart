@@ -65,4 +65,4 @@ class Pet {
       {'id': id, 'name': name, 'tag': tag, 'category': category?.toJson()};
 }
 
-const Object? _dmUndefined = Object();
+const Object _dmUndefined = Object();

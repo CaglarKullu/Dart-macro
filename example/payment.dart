@@ -157,13 +157,13 @@ void sendToApi(String endpoint, Payment payment) {
 
 // @dmacro-origin: example/payment.dmacro:59
 void processPayment(Payment payment, String endpoint) {
-  for (final __attempt_0 in Iterable.generate(3)) {
+  for (final dmAttempt_0 in Iterable.generate(3)) {
     try {
       sendToApi(endpoint, payment);
       break;
-    } catch (__err_1) {
-      if ((__attempt_0 == (3 - 1))) {
-        throw __err_1;
+    } catch (dmErr_1) {
+      if ((dmAttempt_0 == (3 - 1))) {
+        rethrow;
       } else {
         print("Retrying...");
       }
@@ -174,9 +174,9 @@ void processPayment(Payment payment, String endpoint) {
 // @dmacro-origin: example/payment.dmacro:67
 void normalise(double a, double b) {
   if ((a > b)) {
-    final __swap_2 = a;
+    final dmSwap_2 = a;
     a = b;
-    b = __swap_2;
+    b = dmSwap_2;
   }
 }
 
@@ -191,4 +191,4 @@ String describeAmount(double amount) {
   return "normal";
 }
 
-const Object? _dmUndefined = Object();
+const Object _dmUndefined = Object();

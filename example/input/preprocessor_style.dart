@@ -3,8 +3,11 @@
 
 // @dmacro-origin: example/input/preprocessor_style.dmacro:12
 class Payment {
+  // @dmacro-origin: example/input/preprocessor_style.dmacro:13
   final double amount;
+  // @dmacro-origin: example/input/preprocessor_style.dmacro:14
   final String currency;
+  // @dmacro-origin: example/input/preprocessor_style.dmacro:15
   final String? reference;
   const Payment({required this.amount, required this.currency, this.reference});
   Payment copyWith(
@@ -37,4 +40,4 @@ class Payment {
       {'amount': amount, 'currency': currency, 'reference': reference};
 }
 
-const Object? _dmUndefined = Object();
+const Object _dmUndefined = Object();
