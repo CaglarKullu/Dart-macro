@@ -420,11 +420,14 @@ from a user's own project. **Reuse the engine as-is; this is framing + one new l
 - [ ] All existing tests still pass unchanged (no engine edits)
 
 ### 10.2 Loadable user macros (keystone)
-- [ ] Decide loader mechanism (spawned-isolate bootstrap [recommended] vs `spawnUri` vs user-owned entry point) — record decision in the spec
-- [ ] `dmacro.yaml` (or `pubspec` key) lists user Dart macro files exposing `registerMacros()`
-- [ ] CLI loads + runs `registerMacros()` before compiling
+- [x] Decide loader mechanism — **DECISION: ship (c) user-owned entry point now (validated end-to-end with zero engine changes); build (a) bootstrap later as pure UX sugar.** See spec for the validation run + findings.
+- [x] In-process contract test: `test/user_macro_test.dart` — user registers `defwidget` / `guarded` / async-I/O macro through the public barrel only and compiles source using them
+- [ ] Document the user-owned entry point pattern (`tool/generate.dart` — NOT root `build.dart`, which Dart treats as a native-assets hook) in `doc/WRITING_MACROS.md`
+- [ ] (UX layer) `dmacro.yaml` lists user Dart macro files exposing `registerMacros()`; CLI bootstrap loads them before compiling
 - [ ] `importMacros("package:foo/bar.dart")` extended to load Dart macro files (reuse resolver)
-- [ ] Fixture `test/fixtures/user_macros/`: user-defined `defpair` compiles with zero edits to `lib/`
+- [ ] **10.2b** Generic block syntax: `defwidget MyButton { … }` for user macros (parser currently hardcodes `defrecord`/`defunion` at `dart_parser.dart:58-59`; user macros are call-syntax only)
+- [ ] **10.2c** Export an `unquote` helper — string args reach macros with embedded quotes; every author rewrites the same stripper
+- [ ] Parser finding (from validation): `throw expr` in argument position emits bare `throw;` — fold into parser-hardening follow-ups
 
 ### 10.3 Tier-2 decision gate
 - [ ] Spike `$map` over record fields

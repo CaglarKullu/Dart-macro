@@ -103,18 +103,48 @@ The mechanism. Recommended design (decide explicitly before building):
       `defMacro` / `defAsyncMacro`.
 - [ ] The CLI, before compiling, loads and runs each `registerMacros()`.
       **Loading-arbitrary-Dart constraint:** the CLI cannot `import` an arbitrary
-      user path at its own compile time. Options, pick one at the gate:
+      user path at its own compile time. Options:
       - (a) **Spawned isolate + generated bootstrap**: CLI writes a tiny
         `.dart_tool/dmacro/bootstrap.dart` that imports the user files and the
         engine, then `dart run`s it to do the actual compile. Reuses the whole
-        engine; the user's macros are real Dart with full power. **Recommended.**
+        engine; the user's macros are real Dart with full power.
       - (b) **`Isolate.spawnUri`** on each macro file. Lighter, but passing the
         macro registry across the isolate boundary is awkward (functions aren't
         sendable).
-      - (c) Require the user to depend on `dmacro` and run *their own* `main`
-        that calls `registerMacros()` then `dmacro`'s `compile()`. Most honest,
+      - (c) Require the user to depend on `dmacro` and run *their own* entry point
+        that calls `registerMacros()` then `asyncCompileDartLike()`. Most honest,
         least magic, no isolate plumbing — but the entry point is the user's file,
         not the `dmacro` binary.
+
+      > **DECISION (validated end-to-end):** **Ship (c) now, build (a) later as UX
+      > sugar over it.** Option (c) was proven working with zero engine changes: a
+      > fresh project with a path dependency on `dmacro` registered a custom
+      > `defwidget` macro via the public `defAsyncMacro` API from its own
+      > `tool/generate.dart` and compiled a `.dmacro` source using it, producing a
+      > complete `StatelessWidget`. The public API already supports the whole
+      > contract. (a) remains desirable so users get the single `dmacro compile`
+      > command + `dmacro.yaml` instead of owning an entry point — it is now a
+      > pure-UX layer, not a blocker for the pivot.
+      >
+      > **Findings from the validation run:**
+      > 1. **Block-declaration syntax is hardcoded.** `dart_parser.dart` only gives
+      >    `Name { fields }` syntax to `defrecord`/`defunion` (lines ~58–59). User
+      >    macros must be called with function syntax:
+      >    `defwidget("MyButton", "String label", …)`. New task 10.2b below.
+      > 2. **`build.dart` at package root is a trap.** Dart treats a root
+      >    `build.dart` as a native-assets build hook and refuses to run the
+      >    project without `--enable-experiment=native-assets`. The documented
+      >    pattern must place the entry point at `tool/generate.dart`.
+      > 3. **String args arrive with embedded quotes** (`'"MyButton"'`). Every
+      >    macro author will write the same `_unquote` helper; export one from the
+      >    public API. New task 10.2c below.
+- [ ] **10.2b — generic block syntax for user macros:** when the parser sees
+      `ident Ident {` and `ident` is not a known declaration keyword, parse the
+      block record-style and desugar to a macro call with field nodes — so user
+      macros get `defwidget MyButton { String label; }` just like `defrecord`.
+      (Today this only works for the hardcoded built-ins.)
+- [ ] **10.2c — export an `unquote` helper** (and document arg shapes) so macro
+      authors don't each rediscover that string literals keep their quotes.
 - [ ] `importMacros("package:foo/bar.dart")` extended to load **Dart** macro files
       (currently only `.dmacro`/`.sexp` template files), reusing the same loader.
 - [ ] Acceptance: a fixture project under `test/fixtures/user_macros/` defines a

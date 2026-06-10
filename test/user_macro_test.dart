@@ -1,0 +1,100 @@
+/// Proves the Phase 10 pivot contract: a USER can author a full-power
+/// Dart-function macro using only the public API (`package:dmacro/dmacro.dart`)
+/// — the same API the built-ins use — and compile source that calls it.
+///
+/// This test deliberately imports nothing from `lib/src/`. If it stops
+/// compiling, the public macro-authoring surface broke.
+///
+/// The same flow was validated cross-package (a separate project with a path
+/// dependency on dmacro, entry point at `tool/generate.dart`) — see
+/// specs/phase-10-macro-authoring.md, decision under 10.2.
+import 'package:dmacro/dmacro.dart';
+import 'package:test/test.dart';
+
+String _unq(String s) =>
+    s.startsWith('"') && s.endsWith('"') ? s.substring(1, s.length - 1) : s;
+
+void main() {
+  setUp(() {
+    registerBuiltins();
+    registerSchemaMacros();
+  });
+
+  group('user-authored Dart-function macros (public API only)', () {
+    test('async macro: defwidget generates a StatelessWidget shell', () async {
+      // A macro dmacro never shipped — written the way a user would write it.
+      defAsyncMacro('defwidget', (args) async {
+        final name = _unq(args[0] as String);
+        final fields = args.skip(1).map((a) {
+          final parts = _unq(a as String).split(' ');
+          return (type: parts[0], name: parts[1]);
+        }).toList();
+
+        final decls =
+            fields.map((f) => '  final ${f.type} ${f.name};').join('\n');
+        final params = fields.map((f) {
+          final req = f.type.endsWith('?') ? '' : 'required ';
+          return '${req}this.${f.name}';
+        }).join(', ');
+
+        return 'class $name extends StatelessWidget {\n'
+            '$decls\n\n'
+            '  const $name({super.key, $params});\n\n'
+            '  @override\n'
+            '  Widget build(BuildContext context) {\n'
+            "    throw UnimplementedError('implement build');\n"
+            '  }\n'
+            '}';
+      });
+
+      final out = await asyncCompileDartLike(
+        'defwidget("MyButton", "String label", '
+        '"VoidCallback onPressed", "Color? color");',
+      );
+
+      expect(out, contains('class MyButton extends StatelessWidget'));
+      expect(out, contains('final String label;'));
+      expect(out, contains('final VoidCallback onPressed;'));
+      expect(out, contains('final Color? color;'));
+      expect(out, contains('required this.label'));
+      // Nullable field must NOT be required.
+      expect(out, isNot(contains('required this.color')));
+      expect(out, contains('Widget build(BuildContext context)'));
+    });
+
+    test('sync macro: user macro composes with built-ins', () async {
+      // A user macro whose output still contains a built-in macro call —
+      // the expander must keep expanding (user macros are not second-class).
+      // The macro builds nodes structurally: code as data.
+      defmacro('guarded', (args) {
+        return ['unless', args[0], ['throw', ['Exception', args[1]]]];
+      });
+
+      final out = await asyncCompileDartLike(
+        'void check(int x) { guarded(x > 0, "bad"); }',
+      );
+
+      expect(out, contains('if (!(x > 0))'));
+      expect(out, contains('throw Exception'));
+      expect(out, contains('bad'));
+    });
+
+    test('user macro can generate from external data (async I/O)', () async {
+      // The differentiator applies to USER macros too, not just the
+      // shipped schema macros: any user macro may await I/O.
+      defAsyncMacro('fromEnvList', (args) async {
+        // Simulates I/O (file read, HTTP, …) with a Future.
+        final names = await Future.value(['alpha', 'beta']);
+        final consts =
+            names.map((n) => "  static const $n = '$n';").join('\n');
+        return 'class Env {\n$consts\n}';
+      });
+
+      final out = await asyncCompileDartLike('fromEnvList();');
+
+      expect(out, contains('class Env'));
+      expect(out, contains("static const alpha = 'alpha';"));
+      expect(out, contains("static const beta = 'beta';"));
+    });
+  });
+}
