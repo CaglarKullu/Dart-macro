@@ -1,8 +1,12 @@
 # Schema Demo
 
-This example shows **async compile-time I/O** — a macro reads a JSON Schema
-at build time and generates a complete, typed, immutable Dart class with no
-build_runner required.
+This example shows how dmacro generates a Dart class from a JSON Schema file
+during the generation step — no annotation class required.
+
+When you run `dmacro compile`, the macro reads the `.json` file and writes a
+complete, typed, immutable `.dart` class. The generated class is static Dart:
+it compiles into your app binary. If the schema changes after deployment, the
+app uses the old types — you update the spec, re-run dmacro, and redeploy.
 
 ## Input
 
@@ -59,11 +63,14 @@ class Payment {
 - **`oneOf`** — generates a sealed `defunion` hierarchy
 - **`format: date-time` / `date`** — mapped to `DateTime` with ISO-8601 serialization
 
-## What this proves
+## How this compares to build_runner
 
-Every existing Dart code-gen tool (build_runner, freezed, json_serializable) transforms
-**code that already exists**. They cannot read an external source of truth at expansion
-time because their execution environments forbid I/O.
+With `build_runner` + `json_serializable`, you write the `Payment` class yourself,
+add `@JsonSerializable()`, run the generator, and it fills in `fromJson`/`toJson`.
+The class must exist before generation runs.
 
-A preprocessor with async macros **can**. One macro call — zero build configuration,
-zero generated annotation boilerplate, and the schema is the single source of truth.
+With dmacro, the JSON Schema is the source. You don't write a `Payment` class —
+the macro creates it. One line replaces ~40 lines of Dart boilerplate.
+
+The runtime behaviour is identical: both approaches produce static Dart types that
+compile into your binary. Neither adapts to schema changes at runtime.

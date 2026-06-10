@@ -123,14 +123,14 @@ Node $defEnum(String name, List<String> values) => ['defenum', name, values];
 Node $fromJson(String name, List<Field> fields, {bool snakeCase = false}) => [
       'fromjson',
       name,
-      fields.map((f) => [f.type, f.name]).toList(),
+      fields.map((f) => [f.type, f.name, f.jsonKey]).toList(),
       if (snakeCase) true,
     ];
 
 Node $toJson(List<Field> fields, {bool snakeCase = false}) => [
       'tojson',
       null,
-      fields.map((f) => [f.type, f.name]).toList(),
+      fields.map((f) => [f.type, f.name, f.jsonKey]).toList(),
       if (snakeCase) true,
     ];
 
@@ -159,7 +159,12 @@ class Field {
   /// Source line in the `.dmacro` file (1-based), if known. Present when the
   /// field was parsed from `.dmacro` source; absent for programmatic/sexp usage.
   final int? line;
-  const Field(this.type, this.name, {this.line});
+
+  /// Explicit JSON key override from `@json_key("name")`. When null, the key
+  /// is derived from [name] (camelCase by default, snake_case for defrecord_snake).
+  final String? jsonKey;
+
+  const Field(this.type, this.name, {this.line, this.jsonKey});
 }
 
 /// Embeds a `// @dmacro-origin: path:line` comment at this position in the

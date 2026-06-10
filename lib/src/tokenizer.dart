@@ -35,6 +35,7 @@ enum TK {
   integer,
   float,
   string,
+  at,
   eof,
 }
 
@@ -207,6 +208,9 @@ class Tokenizer {
       case '=':
         _advance1();
         return Token(TK.assign, '=', startLine, startCol);
+      case '@':
+        _advance1();
+        return Token(TK.at, '@', startLine, startCol);
     }
 
     // String literal

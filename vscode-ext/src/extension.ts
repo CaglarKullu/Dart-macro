@@ -164,7 +164,10 @@ function compileDir(dir: string): void {
  */
 function triggerHotReload(): void {
   const session = vscode.debug.activeDebugSession;
-  if (session?.type !== 'dart') return;
+  if (session?.type !== 'dart') {
+    updateStatusBar('✓ compiled — start flutter run to hot reload');
+    return;
+  }
 
   setTimeout(() => {
     vscode.commands.executeCommand('flutter.hotReload').then(

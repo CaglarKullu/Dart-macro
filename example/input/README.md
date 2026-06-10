@@ -28,5 +28,6 @@ maintenance complexity — see
   a type from, say, a JSON schema.
 - **Preprocessor (this project)**: write a compact declaration, get a complete
   analyzer-clean `.dart` file back. New file format, but no annotation
-  boilerplate, no `*.g.dart`, and macros can run at compile time — including
-  reading external files to synthesize types.
+  boilerplate, no `*.g.dart`, and no annotation class to write first. External
+  spec files (JSON Schema, OpenAPI) can be read during the generation step to
+  produce types without any manual mapping.
