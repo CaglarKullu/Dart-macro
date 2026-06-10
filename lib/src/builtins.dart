@@ -283,7 +283,13 @@ void _registerUserMacros() {
     });
     return '';
   });
+
 }
+
+/// Public entry point for substituting [bindings] into [template].
+/// Used by [defmacro_typed] in schema_macros.dart.
+Node substituteBindings(Node template, Map<String, Node> bindings) =>
+    _substitute(template, bindings);
 
 Node _substitute(Node template, Map<String, Node> bindings) {
   if (template is String && bindings.containsKey(template)) {
@@ -292,3 +298,4 @@ Node _substitute(Node template, Map<String, Node> bindings) {
   if (template is! List) return template;
   return template.map((n) => _substitute(n, bindings)).toList();
 }
+

@@ -1,10 +1,12 @@
 /// dmacro compiler CLI
 ///
-/// Supports two source formats:
+/// Supports three source formats:
 ///   .sexp   — S-expression syntax  (Lisp-style)
 ///   .dmacro — Dart-like syntax     (looks like Dart)
+///   .dart   — Regular Dart with embedded // @@dmacro ... // @@end blocks
 ///
-/// Both compile to the same Dart output via the same macro engine.
+/// Both .sexp and .dmacro compile to a sibling .dart file.
+/// .dart files with @@dmacro blocks are updated in-place.
 ///
 /// Usage:
 ///   dart run bin/dmacro.dart compile <file|dir>         — print/write Dart
@@ -29,6 +31,15 @@ import 'package:dmacro/src/async_expand.dart'
         asyncCompileWithOrigins,
         asyncCompileWithTrace;
 import 'dart:convert' show jsonDecode;
+
+/// Marker that starts an inline dmacro block in a .dart file.
+const _blockStart = '// @@dmacro';
+
+/// Marker that separates macro source (commented out) from generated code.
+const _blockGenerated = '// @@generated';
+
+/// Marker that ends an inline dmacro block.
+const _blockEnd = '// @@end';
 
 void main(List<String> args) async {
   registerBuiltins();
@@ -91,14 +102,24 @@ Future<void> _compileCmd(List<String> args) async {
     await _compileDir(target,
         checkMode: checkMode, doFormat: doFormat, fieldOrigins: fieldOrigins);
   } else if (entity == FileSystemEntityType.file) {
-    final stale = await _compileSingle(target,
-        outputPath: outputPath,
-        checkMode: checkMode,
-        doFormat: doFormat,
-        fieldOrigins: fieldOrigins);
-    if (checkMode && stale) {
-      stderr.writeln('STALE');
-      exit(1);
+    if (target.endsWith('.dart')) {
+      // Inline @@dmacro block mode: expand blocks inside an existing .dart file.
+      final stale = await _compileDartInline(target,
+          checkMode: checkMode, doFormat: doFormat);
+      if (checkMode && stale) {
+        stderr.writeln('STALE');
+        exit(1);
+      }
+    } else {
+      final stale = await _compileSingle(target,
+          outputPath: outputPath,
+          checkMode: checkMode,
+          doFormat: doFormat,
+          fieldOrigins: fieldOrigins);
+      if (checkMode && stale) {
+        stderr.writeln('STALE');
+        exit(1);
+      }
     }
   } else {
     stderr.writeln('Error: $target does not exist');
@@ -110,25 +131,37 @@ Future<void> _compileDir(String dir,
     {bool checkMode = false,
     bool doFormat = true,
     bool fieldOrigins = false}) async {
-  final sources = Directory(dir)
-      .listSync(recursive: true)
-      .whereType<File>()
+  final allFiles = Directory(dir).listSync(recursive: true).whereType<File>();
+
+  final macroSources = allFiles
       .where((f) => f.path.endsWith('.dmacro') || f.path.endsWith('.sexp'))
       .toList();
 
-  if (sources.isEmpty) {
-    stderr.writeln('No .dmacro or .sexp files found under $dir');
+  final inlineDartFiles = allFiles
+      .where((f) =>
+          f.path.endsWith('.dart') &&
+          f.readAsStringSync().contains(_blockStart))
+      .toList();
+
+  if (macroSources.isEmpty && inlineDartFiles.isEmpty) {
+    stderr.writeln('No .dmacro, .sexp, or inline-block .dart files found under $dir');
     return;
   }
 
   var stale = 0;
-  for (final file in sources) {
+  for (final file in macroSources) {
     final outPath = _outputPath(file.path);
     final wasStale = await _compileSingle(file.path,
         outputPath: outPath,
         checkMode: checkMode,
         doFormat: doFormat,
         fieldOrigins: fieldOrigins);
+    if (wasStale) stale++;
+  }
+
+  for (final file in inlineDartFiles) {
+    final wasStale = await _compileDartInline(file.path,
+        checkMode: checkMode, doFormat: doFormat);
     if (wasStale) stale++;
   }
 
@@ -206,6 +239,136 @@ Future<bool> _compileSingle(String inputPath,
 String _outputPath(String srcPath) =>
     srcPath.replaceFirst(RegExp(r'\.(dmacro|sexp)$'), '.dart');
 
+// ─── Inline .dart block processing ───────────────────────────────────────────
+
+/// Processes a `.dart` file containing `// @@dmacro` / `// @@end` inline
+/// blocks, expands each block in-place, and writes the result back.
+///
+/// Block format — initial (user writes this):
+/// ```
+/// // @@dmacro
+/// defrecord Product {
+///   String id;
+/// }
+/// // @@end
+/// ```
+///
+/// Block format after first expansion (file stays analyzer-clean):
+/// ```
+/// // @@dmacro
+/// // defrecord Product {
+/// //   String id;
+/// // }
+/// // @@generated
+/// class Product { ... }
+/// // @@end
+/// ```
+///
+/// Returns true if the file was stale (only meaningful in [checkMode]).
+Future<bool> _compileDartInline(String dartPath,
+    {bool checkMode = false, bool doFormat = true}) async {
+  final original = await File(dartPath).readAsString();
+
+  if (!original.contains(_blockStart)) {
+    stderr.writeln('$dartPath: no // @@dmacro blocks found');
+    return false;
+  }
+
+  String updated;
+  try {
+    updated = await _processInlineBlocks(original, dartPath);
+  } catch (e) {
+    if (e is MacroExpansionError) {
+      stderr.writeln(e);
+    } else {
+      stderr.writeln('$dartPath: ${_stripExceptionPrefix(e)}');
+    }
+    exit(1);
+  }
+
+  // Normalize both sides under the same formatter so re-running an already-
+  // expanded file doesn't produce a false "stale" result.
+  if (doFormat) updated = _format(updated);
+
+  if (checkMode) {
+    if (original != updated) {
+      stderr.writeln('STALE: $dartPath');
+      return true;
+    }
+    return false;
+  }
+
+  if (original != updated) {
+    await File(dartPath).writeAsString(updated);
+    stderr.writeln('✓ $dartPath (inline blocks expanded)');
+  } else {
+    stderr.writeln('✓ $dartPath (no changes)');
+  }
+  return false;
+}
+
+/// Finds all `// @@dmacro` / `// @@end` blocks in [source], expands each, and
+/// returns the modified source with generated code inserted between
+/// `// @@generated` and `// @@end`.
+Future<String> _processInlineBlocks(String source, String sourcePath) async {
+  final buffer = StringBuffer();
+  // Matches from // @@dmacro (at start of a line) through // @@end (at start
+  // of a line), capturing everything in between.
+  final blockRe = RegExp(
+    r'^// @@dmacro\n(.*?)\n// @@end',
+    dotAll: true,
+    multiLine: true,
+  );
+
+  var lastEnd = 0;
+  for (final match in blockRe.allMatches(source)) {
+    // Text before this block — copy verbatim.
+    buffer.write(source.substring(lastEnd, match.start));
+
+    final blockContent = match.group(1)!;
+    String macroSource;
+
+    if (blockContent.contains('\n$_blockGenerated\n') ||
+        blockContent.startsWith('$_blockGenerated\n')) {
+      // Regeneration mode: macro source is commented out above @@generated.
+      final genMarker = blockContent.contains('\n$_blockGenerated\n')
+          ? '\n$_blockGenerated\n'
+          : '$_blockGenerated\n';
+      final sourceSection =
+          blockContent.substring(0, blockContent.indexOf(genMarker));
+      macroSource = sourceSection
+          .split('\n')
+          .map((l) => l.startsWith('// ') ? l.substring(3) : l)
+          .join('\n');
+    } else {
+      // Fresh block: everything between @@dmacro and @@end is macro source.
+      macroSource = blockContent;
+    }
+
+    // Expand the macro source.
+    final expanded = await asyncCompileDartLike(macroSource.trim());
+
+    // Emit: commented source above @@generated, generated code below.
+    final commentedLines = macroSource
+        .trimRight()
+        .split('\n')
+        .map((l) => l.isEmpty ? '//' : '// $l')
+        .join('\n');
+
+    buffer
+      ..write('$_blockStart\n')
+      ..write(commentedLines)
+      ..write('\n$_blockGenerated\n')
+      ..write(expanded.trim())
+      ..write('\n$_blockEnd');
+
+    lastEnd = match.end;
+  }
+
+  buffer.write(source.substring(lastEnd));
+  return buffer.toString();
+}
+
 // ─── watch command ───────────────────────────────────────────────────────────
 
 Future<void> _watchCmd(List<String> args) async {
@@ -224,15 +387,23 @@ Future<void> _watchCmd(List<String> args) async {
 
   Directory(path).watch(recursive: true).listen((event) {
     final p = event.path;
-    if (!(p.endsWith('.dmacro') || p.endsWith('.sexp'))) return;
     if (event.type == FileSystemEvent.delete) return;
+    final isMacroSource = p.endsWith('.dmacro') || p.endsWith('.sexp');
+    final isDart = p.endsWith('.dart');
+    if (!isMacroSource && !isDart) return;
 
     debounce[p]?.cancel();
     debounce[p] = Timer(const Duration(milliseconds: 100), () async {
       try {
-        final outFile = _outputPath(p);
-        await _compileSingle(p, outputPath: outFile, doFormat: doFormat);
-        if (withAnalyze) await _analyzeOutput(outFile, p);
+        if (isDart) {
+          final content = await File(p).readAsString();
+          if (!content.contains(_blockStart)) return;
+          await _compileDartInline(p, doFormat: doFormat);
+        } else {
+          final outFile = _outputPath(p);
+          await _compileSingle(p, outputPath: outFile, doFormat: doFormat);
+          if (withAnalyze) await _analyzeOutput(outFile, p);
+        }
       } catch (e) {
         stderr.writeln('✗ $p: $e');
       }
@@ -422,8 +593,9 @@ dmacro — Lisp-style macros that compile to Dart
 Usage:
   dart run bin/dmacro.dart compile <file.dmacro>              Dart-like → Dart
   dart run bin/dmacro.dart compile <file.sexp>                S-expression → Dart
+  dart run bin/dmacro.dart compile <file.dart>                Expand inline @@dmacro blocks
   dart run bin/dmacro.dart compile <file> -o output.dart      Write to specific file
-  dart run bin/dmacro.dart compile <dir>                      Compile all under dir
+  dart run bin/dmacro.dart compile <dir>                      Compile all sources under dir
   dart run bin/dmacro.dart compile <dir> --check              CI: exit non-zero if stale
   dart run bin/dmacro.dart compile <file> --no-format         Skip dart format
   dart run bin/dmacro.dart watch <path>                       Watch and recompile on save
@@ -439,6 +611,12 @@ Dart-like syntax (.dmacro):
   }
   defFromJsonSchema("schemas/payment.json");
 
+Inline blocks inside existing .dart files:
+  // @@dmacro
+  defrecord Product { String id; String name; double price; }
+  // @@end
+  (run dmacro compile on the .dart file — expands block in-place)
+
 S-expression syntax (.sexp):
   (defrecord Payment (double amount) (String currency))
   (defn bool validate ((double amount))
@@ -452,5 +630,6 @@ Built-in macros (both syntaxes):
   with-retry                  Retry loop with injected state
   defrecord                   Immutable data class with copyWith / == / hashCode
   defunion                    Sealed class hierarchy
-  defFromJsonSchema(path)     Generate class from JSON Schema at compile time
+  defFromJsonSchema(path)     Generate class from JSON Schema during generation step
+  importMacros(path)          Load macro definitions from another .dmacro file
 ''');

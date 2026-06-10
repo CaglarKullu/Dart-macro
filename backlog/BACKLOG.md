@@ -338,6 +338,73 @@ before the type token in `_defrecord()`.
 
 ---
 
+### 8.7 @json_key per-field key override (DONE)
+
+- [x] `Field` class gains `String? jsonKey`
+- [x] `_defrecord()` parser detects `@json_key("name")` annotation before type
+- [x] `$fromJson`/`$toJson` use `field.jsonKey ?? (snakeCaseJson ? snake : camel)` priority
+- [x] Explicit key wins over both camelCase and snake_case defaults
+
+---
+
+## Phase 9 — Swift macros lessons (2026-06)
+
+Four improvements inspired by studying how Swift macros succeed where Dart's failed:
+
+### 9.1 Inline .dart file support (DONE)
+
+Allow dmacro directives embedded in regular `.dart` files via `// @@dmacro` / `// @@end` comment blocks.
+
+- [x] `_processInlineBlocks(source, path)` — regex-based block finder + expander in `bin/dmacro.dart`
+- [x] `_compileDartInline(path, ...)` — reads file, calls `_processInlineBlocks`, formats, writes back
+- [x] `_compileCmd` routes `.dart` files to `_compileDartInline`
+- [x] `_compileDir` scans `.dart` files containing `_blockStart` marker
+- [x] `_watchCmd` watches `.dart` files containing inline blocks
+- [x] Two-section format: macro source commented out above `// @@generated`, live Dart below
+- [x] Idempotent: re-running an already-expanded file detects "no changes"
+- [x] Multiple blocks per file supported
+- [x] Help text updated
+- [x] Tests in `test/improvements_test.dart`
+
+### 9.2 VS Code "Expand Macro" command (DONE)
+
+Show macro expansions in a side panel directly from the editor.
+
+- [x] `dmacro.expandMacro` command registered in `vscode-ext/package.json`
+- [x] `expandAtCursor(editor)` in `vscode-ext/src/extension.ts` — runs `dmacro trace` on active file
+- [x] Output shown in a new read-only Dart document to the side (`ViewColumn.Beside`)
+- [x] Status bar updated during/after expansion
+- [x] README VS Code section updated
+
+### 9.3 Package import system (DONE)
+
+Allow `.dmacro` files to import macro definitions from other files or pub packages.
+
+- [x] `importMacros("path")` async macro in `schema_macros.dart`
+- [x] Resolves relative paths from the working directory
+- [x] `package:name/path.dmacro` resolved via `.dart_tool/package_config.json`
+- [x] Supports `.dmacro` (Dart-like) and `.sexp` source files
+- [x] No Dart output from import statement — macros register as side effects
+- [x] Error messages: file not found, unsupported type, unresolvable package
+- [x] Tests: import produces no output, macros from imported file are usable, error cases
+- [x] README section "Share macros across files" added
+
+### 9.4 Output type declaration on `defmacro` (DONE)
+
+`defmacro(declaration)`, `defmacro(expression)`, `defmacro(statement)` validate output type at call time.
+
+- [x] Parser: `_defmacroDecl()` handles optional `(type)` qualifier; returns `['defmacro_typed', type, name, ...]`
+- [x] `defmacro_typed` registered as async macro in `schema_macros.dart`
+- [x] Post-expansion validator: `_validateMacroOutput(name, type, emitted)` in `schema_macros.dart`
+- [x] Declaration check: starts with `class`, `enum`, `typedef`, `abstract`, `mixin`, etc.
+- [x] Expression check: output doesn't end with `;`
+- [x] Statement check: output ends with `;` or `}`
+- [x] Unknown type throws `ArgumentError` at definition time
+- [x] Tests: define each type, `declaration` rejects non-declaration, unknown type throws
+- [x] README built-in macros table updated with typed variants
+
+---
+
 ## Cross-cutting (apply throughout)
 
 - [x] `dart analyze` clean across `lib/` (0 errors)

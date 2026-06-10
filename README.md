@@ -398,6 +398,109 @@ bool createUser(String email, int age) {
 
 Each `defmacro` registers a template macro: call-site arguments are substituted for parameter names throughout the body. Definitions must appear before the first call, just like `defenum`.
 
+**Typed output annotations** — declare what your macro is supposed to produce:
+
+```dart
+defmacro(declaration) makeConfig(name) {
+  unless(false) { throw Exception("internal"); }
+}
+
+defmacro(expression) doubled(x) {
+  return x;
+}
+
+defmacro(statement) log(msg) {
+  print(msg);
+}
+```
+
+`defmacro(declaration)` validates at call time that the output starts with a class, enum, typedef, or function declaration. If it doesn't — say, a refactor accidentally made the body return a statement instead — you get a clear error pointing to the macro name, not a cryptic Dart parse error downstream. `defmacro(expression)` and `defmacro(statement)` apply analogous checks.
+
+---
+
+### 8. Macros embedded in regular `.dart` files
+
+No `.dmacro` file required. Put macro declarations directly inside an existing `.dart` file using a comment block:
+
+```dart
+// lib/models.dart — a regular Dart file
+
+// @@dmacro
+defrecord Product {
+  String id;
+  String name;
+  double price;
+}
+// @@end
+
+void printProduct(Product p) => print(p);
+```
+
+Run:
+
+```bash
+dart run bin/dmacro.dart compile lib/models.dart
+```
+
+The block is expanded in-place. After the first run, the macro source is preserved as comments so the file stays analyzer-clean and subsequent runs are idempotent:
+
+```dart
+// @@dmacro
+// defrecord Product {
+//   String id;
+//   String name;
+//   double price;
+// }
+// @@generated
+class Product {
+  final String id;
+  final String name;
+  final double price;
+  // ... full generated class
+}
+// @@end
+```
+
+Edit the commented-out source and re-run to regenerate. Multiple `// @@dmacro` / `// @@end` blocks per file are supported. Watch mode and directory compile both discover `.dart` files with inline blocks automatically.
+
+---
+
+### 9. Share macros across files with `importMacros`
+
+Factor out common macro definitions into a library file and import them:
+
+```dart
+// lib/macros/validators.dmacro
+defmacro requireNonEmpty(val, msg) {
+  unless (val.isNotEmpty) { throw Exception(msg); }
+}
+
+defmacro requirePositive(val, msg) {
+  unless (val > 0) { throw Exception(msg); }
+}
+```
+
+```dart
+// lib/models.dmacro
+importMacros("lib/macros/validators.dmacro");
+
+bool createOrder(String customerId, double amount) {
+  requireNonEmpty(customerId, "Customer ID required");
+  requirePositive(amount, "Amount must be positive");
+  return true;
+}
+```
+
+`importMacros` reads the specified `.dmacro` (or `.sexp`) file, runs it through the expander, and registers any `defmacro` calls as a side effect. No Dart output is produced from the import statement itself.
+
+For pub packages, use the `package:` URI form:
+
+```dart
+importMacros("package:myteam_macros/validators.dmacro");
+```
+
+dmacro resolves the path via `.dart_tool/package_config.json` (written by `dart pub get`).
+
 ---
 
 ### 8. OpenAPI `oneOf` → sealed class hierarchy
@@ -487,9 +590,14 @@ There is also an S-expression syntax (`.sexp`) for the full Lisp experience — 
 |---|---|---|
 | `defrecord Name { ... }` | Immutable class: fields, constructor, `copyWith`, deep `==`/`hashCode`, `toString`, **`fromJson`/`toJson`** with camelCase JSON keys | Functions can't generate class declarations |
 | `defrecord(snake_case) Name { ... }` | Same as `defrecord` but JSON keys are converted to snake_case (`orderId` → `"order_id"`) | Covers the common case where the API uses snake_case and Dart uses camelCase |
+| `@json_key("name") Type field;` | Per-field JSON key override — wins over camelCase and snake_case | N/A — field annotation |
 | `defunion Name { ... }` | Sealed class hierarchy | Same |
 | `defmacro name(params) { ... }` | User-defined template macro, registered for use in the same file | Functions run at call time with values; macros run at expand time with code |
-| `defFromJsonSchema("path")` | `defrecord` from a JSON Schema file; `$defs`/`definitions` blocks and `oneOf` are supported | Functions run at runtime; I/O at build time requires a macro |
+| `defmacro(declaration) name(params) { ... }` | User macro with output-type validation — errors at call time if output isn't a declaration | Functions have no way to validate the shape of their return value as code |
+| `defmacro(expression) name(params) { ... }` | User macro validated to produce an expression | Same |
+| `defmacro(statement) name(params) { ... }` | User macro validated to produce a statement | Same |
+| `importMacros("path")` | Load macro definitions from another `.dmacro` / `.sexp` file; supports `package:` URIs | Functions can't register macros at compile time |
+| `defFromJsonSchema("path")` | `defrecord` from a JSON Schema file; `$defs`/`definitions` blocks and `oneOf` are supported | Functions run at runtime; I/O during generation requires a macro |
 | `defFromOpenApi("path", "Name")` | `defrecord` (or `defunion` for `oneOf`) from an OpenAPI `components/schemas` entry; accepts `.json`, `.yaml`, or `.yml` | Same |
 | `defAllFromJsonSchema("dir/")` | One `defrecord` per `.json` file in a directory | Same |
 | `unless (cond) { ... }` | `if (!(cond)) { ... }` | Convenience only — could be a function but this reads better |
@@ -581,7 +689,10 @@ The `vscode-ext/` directory contains a VS Code extension that gives you:
 - Syntax highlighting for `.dmacro` and `.sexp` files
 - Compile on save (runs `dmacro compile` automatically)
 - Errors shown as red squiggles in the editor
-- Commands: **dmacro: Compile File** and **dmacro: Compile Workspace**
+- Commands:
+  - **dmacro: Compile File** — compile the active `.dmacro` or `.sexp` file
+  - **dmacro: Compile Workspace** — compile all sources in the workspace
+  - **dmacro: Expand Macro at Cursor** — run `dmacro trace` on the active file and show the full expansion tree in a side panel; useful for understanding what a macro generates without opening the `.dart` output file
 
 **Install steps:**
 
@@ -676,13 +787,15 @@ dmacro is not inside the compiler. It transforms `.dmacro` files into `.dart` fi
 ```
 bin/
   dmacro.dart             CLI: compile / watch / repl / trace / --check
+                          Also handles inline @@dmacro blocks in .dart files
 lib/src/
   core.dart               Node type, expand(), emit()
-  async_expand.dart       Async macro expander (enables compile-time I/O)
-  schema_macros.dart      defFromJsonSchema, defFromOpenApi, defAllFromJsonSchema
+  async_expand.dart       Async macro expander (enables generation-time I/O)
+  schema_macros.dart      defFromJsonSchema, defFromOpenApi, defAllFromJsonSchema,
+                          importMacros, defmacro_typed
   yaml_parser.dart        Built-in YAML parser (no external deps)
   builtins.dart           unless, when, swap!, assertThat, withRetry, defrecord, defunion, defmacro
-  dart_parser.dart        .dmacro parser (including defmacro declarations)
+  dart_parser.dart        .dmacro parser (defmacro declarations, typed macros)
   tokenizer.dart          .dmacro tokenizer
   reader.dart             S-expression reader
 example/

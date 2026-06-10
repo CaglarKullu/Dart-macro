@@ -40,6 +40,18 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
+  // 5.7 — Expand macro at cursor: run `dmacro trace` and show in a side panel.
+  context.subscriptions.push(
+    vscode.commands.registerCommand('dmacro.expandMacro', () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || !isDmacroFile(editor.document.fileName)) {
+        vscode.window.showWarningMessage('dmacro: open a .dmacro or .sexp file first');
+        return;
+      }
+      expandAtCursor(editor);
+    }),
+  );
+
   // 5.1b — "Jump to .dmacro source" code lens on generated .dart files
   context.subscriptions.push(
     vscode.languages.registerCodeLensProvider(
@@ -285,6 +297,43 @@ class DmacroCodeLensProvider implements vscode.CodeLensProvider {
     }
     return lenses;
   }
+}
+
+// ─── 5.7 — Expand macro at cursor ────────────────────────────────────────────
+
+/**
+ * Runs `dmacro trace` on the current file and opens the expansion output in a
+ * new read-only editor panel to the side. Useful for understanding what a macro
+ * expands to without looking at the generated .dart file.
+ */
+function expandAtCursor(editor: vscode.TextEditor): void {
+  const filePath = editor.document.fileName;
+  const workDir  = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? path.dirname(filePath);
+  const { cmd, args } = dmacroCmd(workDir);
+
+  updateStatusBar('dmacro: expanding…');
+
+  cp.execFile(cmd, [...args, 'trace', filePath], { cwd: workDir }, async (err, stdout, stderr) => {
+    if (err) {
+      const diag = parseDiagnostics(filePath, stderr || err.message);
+      diagnostics.set(vscode.Uri.file(filePath), diag);
+      updateStatusBar('✗ dmacro expand error');
+      return;
+    }
+
+    updateStatusBar('✓ dmacro expanded');
+
+    // Open the trace output in a new untitled document to the side.
+    const doc = await vscode.workspace.openTextDocument({
+      language: 'dart',
+      content: stdout,
+    });
+    await vscode.window.showTextDocument(doc, {
+      viewColumn: vscode.ViewColumn.Beside,
+      preview: true,
+      preserveFocus: true,
+    });
+  });
 }
 
 // ─── 5.3 — Diagnostics ────────────────────────────────────────────────────────
