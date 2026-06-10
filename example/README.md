@@ -1,6 +1,6 @@
 # Examples
 
-Each directory is a self-contained use case. Compile any `.dmacro` file with:
+Each directory is a self-contained use case that demonstrates what Lisp-style macros make possible in Dart. Compile any `.dmacro` file with:
 
 ```bash
 dart run bin/dmacro.dart compile <path/to/file.dmacro>
@@ -11,6 +11,8 @@ dart run bin/dmacro.dart compile <path/to/file.dmacro>
 ## [`ecommerce/`](ecommerce/)
 
 A realistic e-commerce domain model — products, orders, cart items, shipping addresses, and an order status state machine.
+
+**What to notice:** `defrecord` generates a complete immutable class with `copyWith`, deep `==`/`hashCode`, `toString`, `fromJson`, and `toJson` from a 5-line spec. `defunion` generates a sealed class hierarchy from a compact variant list. Neither `freezed` nor any annotation-based tool creates the class from scratch — they annotate one you already wrote.
 
 Demonstrates: `defrecord`, `defunion`, `unless`, `assertThat`
 
@@ -24,6 +26,8 @@ dart run bin/dmacro.dart compile example/ecommerce/models.dmacro
 
 Generate a Dart class for every JSON Schema in a directory — one macro call.
 
+**What to notice:** The macro reads the filesystem **at compile time** — no runtime I/O, no registered types, no annotations needed. This is impossible with `build_runner` (which requires annotated source files to exist first) and was explicitly ruled out for the official Dart macros (async I/O breaks incremental compilation).
+
 Demonstrates: `defAllFromJsonSchema`
 
 ```bash
@@ -34,9 +38,9 @@ dart run bin/dmacro.dart compile example/api_from_schema/models.dmacro
 
 ## [`openapi_demo/`](openapi_demo/)
 
-Generate types directly from an OpenAPI 3.0 spec by schema name.
-Accepts both `.json` and `.yaml` / `.yml` specs — no external YAML library required.
-`oneOf` schemas are automatically mapped to sealed `defunion` hierarchies.
+Generate types directly from an OpenAPI 3.0 spec by schema name. Accepts both `.json` and `.yaml` / `.yml` specs — no external YAML library required. `oneOf` schemas are automatically mapped to sealed `defunion` hierarchies.
+
+**What to notice:** Your OpenAPI spec is the source of truth. The Dart types don't exist until the macro runs — there's nothing to annotate, nothing to scaffold. Add this step to CI and your Dart types track your spec automatically.
 
 Demonstrates: `defFromOpenApi`
 
@@ -50,6 +54,8 @@ dart run bin/dmacro.dart compile example/openapi_demo/models.dmacro
 
 Generate a single class from a JSON Schema file.
 
+**What to notice:** One line of macro source generates ~40 lines of production-quality Dart — constructor, value equality, serialization, `copyWith`. The output imports nothing and has no runtime dependencies.
+
 Demonstrates: `defFromJsonSchema`
 
 ```bash
@@ -60,7 +66,9 @@ dart run bin/dmacro.dart compile example/schema_demo/models.dmacro
 
 ## [`payment.dmacro`](payment.dmacro) / [`payment.sexp`](payment.sexp)
 
-The same payment domain model written in both syntaxes — Dart-like (`.dmacro`) and S-expression (`.sexp`). Good for comparing the two styles.
+The same payment domain model written in both syntaxes — Dart-like (`.dmacro`) and S-expression (`.sexp`). Good for comparing the two styles and seeing that both produce identical output.
+
+The `.sexp` file is raw Lisp syntax: `(defrecord Payment ...)`. The `.dmacro` file is the same semantics in Dart clothing. Under the hood, both produce identical `List<Node>` ASTs — the expander and emitter are shared.
 
 ---
 

@@ -1,9 +1,144 @@
 # dmacro
 
-Compile-time macros for Dart. Write a short declaration — get a complete, typed, immutable class back. Read your API spec at build time and generate Dart types automatically. No `build_runner`, no annotations, no extra packages.
+Compile-time macros for Dart, built on the oldest idea in programming: **code is data**.
+
+Write a short declaration — get a complete, typed, immutable class back. Read your API spec at build time and generate Dart types automatically. No `build_runner`, no annotations, no extra packages.
 
 > The Dart team [cancelled language-level macros in January 2025](https://dart.dev/language/macros).  
 > dmacro ships today, built as a plain preprocessor — no compiler integration required.
+
+---
+
+## The Lisp idea
+
+dmacro is a **Lisp macro system** for Dart. That single sentence is the whole design.
+
+In Lisp, code and data share the same representation: nested lists. The expression `(if (> x 0) "positive")` is literally the list `['if', ['>', 'x', 0], '"positive"']`. A macro is just a Dart function that receives that list and returns a transformed list. No special syntax. No compiler hooks. Just functions operating on data.
+
+```
+source text  →  List<Node>  →  macro(List<Node>) → List<Node>  →  Dart source
+                 (code as data)    (transformation)
+```
+
+`Node` is `dynamic` — an atom (`String`, `int`, `double`, `bool`, `null`) or a `List<Node>`. A macro is `(List<Node>) → Node`. That's the entire model.
+
+This matters because a macro sees the **structure** of the code, not just its value. When `assertThat(amount > 0)` expands, the macro receives the list `['>', 'amount', 0]` — it can read the operator, the operands, everything. A function would only receive `false`.
+
+---
+
+## Why Lisp macros, not C macros
+
+C macros (`#define`) work on raw text: they do token substitution before the compiler sees anything. This sounds powerful but is fundamentally limited:
+
+| | **C-style `#define`** | **Lisp-style (dmacro)** |
+|---|---|---|
+| Operates on | Raw tokens / text | Parsed AST (nested lists) |
+| Can inspect argument structure | No | Yes |
+| Hygienic (no name collisions) | No — name collisions are your problem | Yes — `gensym` generates unique names |
+| Can loop, branch, recurse | No | Yes — it's just Dart code |
+| Can call I/O at expand time | No | Yes — `async` macros allowed |
+| Error messages point to source | No | Yes — origin tracking built in |
+
+A C macro for `unless` looks like:
+
+```c
+#define unless(cond, body) if (!(cond)) { body }
+```
+
+It works for the happy path and silently breaks the moment `body` contains a comma or a variable named `cond`. There's no hygiene, no structure, no safety.
+
+A Lisp macro for `unless` is:
+
+```dart
+defmacro('unless', (args) => $if($not(args[0]), args[1]));
+```
+
+It receives the actual AST nodes for the condition and body, can inspect them, transform them, wrap them — and `gensym` ensures any generated variable names never collide with the caller's scope.
+
+The real power gap opens with macros that **generate code from external data** — something text substitution cannot do at all. `defFromJsonSchema` reads a JSON file during compilation and emits a complete Dart class. No `#define` can do that. No function can do that. A Lisp macro can.
+
+---
+
+## The wow factor — what only dmacro can do
+
+These are capabilities that exist nowhere else in the Dart ecosystem.
+
+### 1. Compile-time I/O — generate types from live data sources
+
+```dart
+// models.dmacro — this line runs at compile time, not runtime
+defFromJsonSchema("schemas/payment.json");
+defFromOpenApi("api/openapi.yaml", "User");
+defAllFromJsonSchema("schemas/");
+```
+
+dmacro reads the file, parses it, and **generates the Dart class** during compilation. Your schema is the single source of truth. Update the spec, recompile, done.
+
+No other Dart tool does this. `build_runner` + `json_serializable` requires annotations on an existing class — you still write the class. `freezed` generates from a class you wrote. The cancelled official macros explicitly [could not do I/O](https://dart.dev/language/macros) because async execution inside the compiler breaks incremental rebuilds. dmacro sidesteps the entire problem by being a preprocessor: it has no incrementality obligation, so macros are free to `await` anything.
+
+### 2. Error messages that contain the source expression
+
+```dart
+assertThat(amount > 0);
+// Throws: AssertionError("Expected: (amount > 0), got false")
+//                                  ^^^^^^^^^^^^^^
+//                        the actual source code, not just "false"
+```
+
+A function receives the **value** `false`. It can never know what expression produced it. The macro receives the **AST** `['>', 'amount', 0]` and can embed a string representation in the error. The expression in the error message is not a convention or a string you type — it's derived automatically from the code you wrote.
+
+### 3. Inject variables into the caller's scope
+
+```dart
+withRetry(3, postJson(endpoint, payload));
+```
+
+Expands to a `for` loop with a try/catch and a generated `_attempt` counter injected directly into scope. The retry count is available inside the body. A higher-order function can't do this — it receives a callable, not the ability to introduce variables into the caller's lexical scope.
+
+```dart
+swap!(a, b);
+```
+
+Expands to three statements using a generated temp variable. A function would need `(a, b) => (b, a)` and a destructuring assignment — and Dart doesn't have that. The macro injects the temp into scope directly.
+
+### 4. Generate entire classes from a one-line spec
+
+```dart
+defrecord Product {
+  String  id;
+  String  name;
+  double  price;
+  int     stock;
+  String? imageUrl;
+}
+```
+
+Generates a complete, immutable, JSON-serializable value class — constructor, `copyWith`, deep `==`/`hashCode`, `toString`, `fromJson`, `toJson` — ~60 lines of Dart from 7. This is not annotation-driven. There is no existing class to annotate. The macro **creates the class**. `macro_kit` and annotation-based tools can only append to a class you already wrote; dmacro produces the whole thing.
+
+### 5. User-extensible macros, in-source, no build tooling
+
+```dart
+// Define once, anywhere in your .dmacro file
+defmacro log(msg) {
+  print("[LOG] " + msg);
+}
+
+defmacro guard(cond, err) {
+  unless (cond) {
+    throw Exception(err);
+  }
+}
+
+// Use below the definition
+bool createUser(String email, int age) {
+  guard(email.contains("@"), "Invalid email");
+  guard(age >= 18, "Must be 18+");
+  log("Creating user: " + email);
+  return true;
+}
+```
+
+You define new macros in the same file you use them. No Dart code, no package, no separate build step. `defmacro` is itself a macro — the system is self-describing. Macros compose: `guard` uses `unless`, which uses `if`.
 
 ---
 
@@ -37,7 +172,7 @@ class Payment {
 }
 ```
 
-A complete, **JSON-serializable, value-equal** model. No annotations. No generated `*.g.dart` files to commit. No `build_runner watch` process. No `package:json_serializable` or `package:freezed` — the output imports nothing. The schema is the single source of truth — update it, recompile, done.
+A complete, **JSON-serializable, value-equal** model. No annotations. No `*.g.dart` files. No `build_runner watch`. No `package:json_serializable` or `package:freezed` — the output imports nothing. The schema is the single source of truth — update it, recompile, done.
 
 ---
 
@@ -295,7 +430,7 @@ class Rectangle extends Shape { final double width; final double height; ... }
 
 ### 9. YAML OpenAPI specs
 
-`defFromOpenApi` now accepts `.yaml` and `.yml` files in addition to `.json` — no external dependencies:
+`defFromOpenApi` accepts `.yaml` and `.yml` files in addition to `.json` — no external dependencies:
 
 ```dart
 defFromOpenApi("api/openapi.yaml", "User");
@@ -447,16 +582,28 @@ cd vscode-ext && npm install
 ```
 source (.dmacro)
     ↓  tokenizer + parser
-List<Node>            ← code is data (nested lists, same as Lisp)
-    ↓  async expander    ← macros run here; I/O is allowed
+List<Node>            ← code is data (nested lists, the Lisp model)
+    ↓  async expander    ← macros run here; I/O is allowed; macros can be async
 List<Node>            ← fully expanded, no macros remain
     ↓  emitter
 Dart source (.dart)
 ```
 
-A `Node` is `dynamic` — either an atom (`String`, `int`, `double`, `bool`, `null`) or a `List<Node>`. A macro is a Dart function `(List<Node>) → Node`. This mirrors Lisp exactly.
+A `Node` is `dynamic` — either an atom (`String`, `int`, `double`, `bool`, `null`) or a `List<Node>`. A macro is `(List<Node>) → Node`. The Lisp notation `(unless (> x 0) body)` is the Dart value `['unless', ['>', 'x', 0], 'body']` — identical structure, both are just nested lists. Macros receive that structure, inspect it, transform it, and return new structure. The emitter then serializes the final AST to Dart source text.
 
-The **async expander** is why `defFromJsonSchema` works: macros run at compile time and can do file I/O. No other Dart code-generation tool allows this without a build daemon.
+The **async expander** is why `defFromJsonSchema` works: macros run at compile time and can `await` file I/O, HTTP requests, or anything else. No other Dart code-generation tool allows this without a persistent build daemon. The official Dart macros [explicitly ruled it out](https://dart.dev/language/macros) because async execution inside an incremental compiler is intractable. A preprocessor has no such constraint.
+
+### Why a preprocessor and not a compiler plugin
+
+The Dart team's macro effort died on this collision:
+
+```
+powerful compile-time execution  ⨯  fast incremental rebuild + hot reload
+```
+
+Macros that run arbitrary code make incremental compilation intractable, and hot reload needs millisecond recompiles. The two could not be reconciled inside the compiler.
+
+dmacro is not inside the compiler. It transforms `.dmacro` files into `.dart` files as a separate step, then steps aside. The compiler sees only plain `.dart` files. This costs one extra step (the generated `.dart` files are committed, just like with `build_runner`) but buys the entire capability: arbitrary code at expansion time, including I/O. That trade is worth it.
 
 ---
 
