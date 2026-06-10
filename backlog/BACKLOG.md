@@ -252,6 +252,92 @@ details. Remaining adoption gap: the VS Code extension is not yet on the marketp
 
 ---
 
+## Phase 8 — Senior Flutter dev gaps (2026-06 review)
+
+Issues identified in a senior Flutter developer evaluation. Prioritised by
+user-facing impact. Items marked [x] were addressed immediately; items marked
+[ ] require further design or external action.
+
+### 8.1 Generated file noise (DONE)
+
+- [x] Per-field `@dmacro-origin` comments made opt-in via `--field-origins` CLI flag.
+      Default compile now produces clean generated files with only one top-level
+      form origin comment per class. Per-field markers still available for precise
+      `dart analyze` error attribution when needed.
+- [x] `setEmitterFieldOrigins(bool)` / `getEmitterFieldOrigins()` API in `core.dart`
+- [x] `asyncCompileDartLikeWithOrigins` / `asyncCompileWithOrigins` accept
+      `{bool fieldOrigins = false}` named parameter
+- [x] Tests updated: default no per-field, `fieldOrigins: true` test added
+
+### 8.2 Snake_case JSON keys (DONE)
+
+- [x] `defrecord(snake_case) Name { ... }` syntax in `.dmacro` files.
+      Emits camelCase Dart field names with snake_case JSON keys
+      (`orderId` field → `"order_id"` key in fromJson/toJson).
+- [x] `_camelToSnake` helper in `core.dart`
+- [x] `defrecord_snake` macro registered in `builtins.dart`
+- [x] Parser extended: `_defrecord()` detects optional `(snake_case)` modifier
+- [x] `$fromJson` / `$toJson` in `nodes.dart` accept `{bool snakeCase = false}`
+- [x] `fromjson` / `tojson` emitter cases in `core.dart` apply snake conversion
+- [x] Tests: macro node output, .dmacro round-trip parse
+
+### 8.3 DateTime in examples (DONE)
+
+- [x] `example/ecommerce/models.dmacro`: `Order.createdAt` changed from
+      `String` to `DateTime`. Generated `fromJson` uses `DateTime.parse()`,
+      `toJson` uses `toIso8601String()`. Demonstrates that DateTime is a
+      first-class supported type.
+
+### 8.4 Flutter integration docs (DONE)
+
+- [x] README `## Workflow` section now includes:
+  - Side-by-side `flutter run` + `dmacro watch` workflow
+  - Note that generated classes work with Provider/Riverpod/Bloc unchanged
+  - Merge conflict guidance (resolve .dmacro, recompile, commit output)
+  - Honest installation note: not yet on pub.dev; use source or git dep
+
+### 8.5 pub.dev publish (OPEN)
+
+- [x] `dart pub publish --dry-run` passes
+- [ ] Smoke test: `dart pub global activate dmacro` in a fresh project
+- [ ] Actual `dart pub publish` to pub.dev
+      Note: blocked on decision to publish under personal account vs org account.
+      README now documents the current state honestly.
+
+### 8.6 Helper function deduplication (KNOWN TRADE-OFF, documented)
+
+Each generated `.dart` file contains its own private copies of `_dmUndefined`,
+`_dmEq`, `_dmHash` when those features are used. This is ~20 lines per file.
+
+Resolution: this is an intentional consequence of the zero-runtime-dependency
+design. A shared helper package would require a runtime dep. Private per-file
+copies are idiomatic for generated code (same approach as `freezed`'s
+`_$identity` and `_$ProductCopyWithImpl` per class). No action required.
+
+### 8.7 @json_key per-field key override (BACKLOG)
+
+Users need a way to specify custom JSON keys for individual fields when
+auto-conversion (camelCase or snake_case) doesn't match the API:
+
+```dart
+defrecord User {
+  @json_key("user_identifier")
+  String id;
+}
+```
+
+Requires: parser support for `@json_key(...)` field annotations, threading
+the key string through `Field` → `$fromJson`/`$toJson` → emitter.
+Design: add optional `String? jsonKey` to `Field` class; parse `@json_key(...)`
+before the type token in `_defrecord()`.
+
+- [ ] `Field` class gains `String? jsonKey`
+- [ ] `_defrecord()` parser detects `@json_key("name")` annotation before type
+- [ ] `$fromJson`/`$toJson` use `field.jsonKey ?? field.name` as the JSON key
+- [ ] `_fromJsonExpr` / `_toJsonExpr` unchanged (key is passed as the access string)
+
+---
+
 ## Cross-cutting (apply throughout)
 
 - [x] `dart analyze` clean across `lib/` (0 errors)

@@ -94,6 +94,14 @@ class DartLikeParser {
 
   Node _defrecord() {
     _expect(TK.ident, 'defrecord');
+    // Optional modifier: defrecord(snake_case) Name { ... }
+    var macroName = 'defrecord';
+    if (_check(TK.lparen)) {
+      _advance();
+      final modifier = _expect(TK.ident).value as String;
+      if (modifier == 'snake_case') macroName = 'defrecord_snake';
+      _expect(TK.rparen);
+    }
     final name = _expect(TK.ident).value as String;
     _expect(TK.lbrace);
     final fields = <List<dynamic>>[];
@@ -106,7 +114,7 @@ class DartLikeParser {
       fields.add([t, n, fieldLine]);
     }
     _expect(TK.rbrace);
-    return ['defrecord', name, ...fields];
+    return [macroName, name, ...fields];
   }
 
   Node _defunion() {

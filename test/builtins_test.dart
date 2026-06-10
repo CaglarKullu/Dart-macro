@@ -742,6 +742,43 @@ void main() {
       expect(out, isNot(contains('&& ;')));
       expect(out, contains('other is Empty'));
     });
+
+    test('defrecord_snake uses snake_case keys in fromJson/toJson', () {
+      final out = emit(expand([
+        'defrecord_snake',
+        'OrderLine',
+        ['String', 'orderId'],
+        ['double', 'unitPrice'],
+        ['String?', 'discountCode'],
+      ]));
+      // fromJson reads snake_case keys
+      expect(out, contains("json['order_id']"));
+      expect(out, contains("json['unit_price']"));
+      expect(out, contains("json['discount_code']"));
+      // toJson writes snake_case keys
+      expect(out, contains("'order_id':"));
+      expect(out, contains("'unit_price':"));
+      expect(out, contains("'discount_code':"));
+      // Dart field names are still camelCase
+      expect(out, contains('final String orderId'));
+      expect(out, contains('final double unitPrice'));
+    });
+
+    test('defrecord_snake parses from .dmacro source', () async {
+      const src = '''
+defrecord(snake_case) ApiUser {
+  String firstName;
+  String lastName;
+  int createdAt;
+}
+''';
+      final out = await asyncCompileDartLike(src);
+      expect(out, contains("json['first_name']"));
+      expect(out, contains("json['last_name']"));
+      expect(out, contains("json['created_at']"));
+      expect(out, contains("'first_name':"));
+      expect(out, contains('final String firstName'));
+    });
   });
 
   // ─── assert-that — more cases ────────────────────────────────────────────────

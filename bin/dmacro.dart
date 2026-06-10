@@ -60,13 +60,14 @@ void main(List<String> args) async {
 Future<void> _compileCmd(List<String> args) async {
   if (args.isEmpty) {
     stderr.writeln(
-        'Usage: dmacro compile <file|dir> [-o output] [--check] [--no-format]');
+        'Usage: dmacro compile <file|dir> [-o output] [--check] [--no-format] [--field-origins]');
     exit(1);
   }
 
   String? outputPath;
   bool checkMode = false;
   bool doFormat = true;
+  bool fieldOrigins = false;
 
   final positional = <String>[];
   for (var i = 0; i < args.length; i++) {
@@ -76,6 +77,8 @@ Future<void> _compileCmd(List<String> args) async {
       checkMode = true;
     } else if (args[i] == '--no-format') {
       doFormat = false;
+    } else if (args[i] == '--field-origins') {
+      fieldOrigins = true;
     } else {
       positional.add(args[i]);
     }
@@ -85,10 +88,14 @@ Future<void> _compileCmd(List<String> args) async {
   final entity = FileSystemEntity.typeSync(target);
 
   if (entity == FileSystemEntityType.directory) {
-    await _compileDir(target, checkMode: checkMode, doFormat: doFormat);
+    await _compileDir(target,
+        checkMode: checkMode, doFormat: doFormat, fieldOrigins: fieldOrigins);
   } else if (entity == FileSystemEntityType.file) {
     final stale = await _compileSingle(target,
-        outputPath: outputPath, checkMode: checkMode, doFormat: doFormat);
+        outputPath: outputPath,
+        checkMode: checkMode,
+        doFormat: doFormat,
+        fieldOrigins: fieldOrigins);
     if (checkMode && stale) {
       stderr.writeln('STALE');
       exit(1);
@@ -100,7 +107,9 @@ Future<void> _compileCmd(List<String> args) async {
 }
 
 Future<void> _compileDir(String dir,
-    {bool checkMode = false, bool doFormat = true}) async {
+    {bool checkMode = false,
+    bool doFormat = true,
+    bool fieldOrigins = false}) async {
   final sources = Directory(dir)
       .listSync(recursive: true)
       .whereType<File>()
@@ -116,7 +125,10 @@ Future<void> _compileDir(String dir,
   for (final file in sources) {
     final outPath = _outputPath(file.path);
     final wasStale = await _compileSingle(file.path,
-        outputPath: outPath, checkMode: checkMode, doFormat: doFormat);
+        outputPath: outPath,
+        checkMode: checkMode,
+        doFormat: doFormat,
+        fieldOrigins: fieldOrigins);
     if (wasStale) stale++;
   }
 
@@ -133,7 +145,10 @@ Future<void> _compileDir(String dir,
 /// Compiles one file. Returns true if the file was stale (only relevant in
 /// check mode).
 Future<bool> _compileSingle(String inputPath,
-    {String? outputPath, bool checkMode = false, bool doFormat = true}) async {
+    {String? outputPath,
+    bool checkMode = false,
+    bool doFormat = true,
+    bool fieldOrigins = false}) async {
   final source = await File(inputPath).readAsString();
   String dart;
 
@@ -141,8 +156,10 @@ Future<bool> _compileSingle(String inputPath,
     // Origin-tracking variants embed `// @dmacro-origin: file:line` markers so
     // post-compile analyzer errors can be mapped back to source positions.
     dart = inputPath.endsWith('.dmacro')
-        ? await asyncCompileDartLikeWithOrigins(source, inputPath)
-        : await asyncCompileWithOrigins(source, inputPath);
+        ? await asyncCompileDartLikeWithOrigins(source, inputPath,
+            fieldOrigins: fieldOrigins)
+        : await asyncCompileWithOrigins(source, inputPath,
+            fieldOrigins: fieldOrigins);
   } catch (e) {
     // MacroExpansionError already contains "file:line: message" — print as-is.
     // Other exceptions (ParseException, TokenizerException) need the input path

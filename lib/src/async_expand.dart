@@ -98,9 +98,12 @@ Future<String> asyncCompileDartLike(String source) async {
 ///
 /// Also sets the emitter source path so macros can embed per-element origin
 /// markers (e.g. per-field markers inside a `defrecord` generated class).
+/// Per-field markers are only emitted when [fieldOrigins] is true (off by
+/// default — enable with `--field-origins` on the CLI).
 /// Wraps expansion errors as [MacroExpansionError] with the source location.
 Future<String> asyncCompileDartLikeWithOrigins(
-    String source, String sourcePath) async {
+    String source, String sourcePath,
+    {bool fieldOrigins = false}) async {
   resetGensym();
   resetEnumRegistry();
   final tokens = Tokenizer(source).tokenize();
@@ -108,6 +111,7 @@ Future<String> asyncCompileDartLikeWithOrigins(
   final results = <String>[];
   for (final (form, line) in spanned) {
     setEmitterSourcePath(sourcePath);
+    setEmitterFieldOrigins(fieldOrigins);
     try {
       final emitted = emit(await asyncExpand(form));
       results.add('// @dmacro-origin: $sourcePath:$line\n$emitted');
@@ -117,6 +121,7 @@ Future<String> asyncCompileDartLikeWithOrigins(
       throw MacroExpansionError('$sourcePath:$line: $e');
     } finally {
       setEmitterSourcePath(null);
+      setEmitterFieldOrigins(false);
     }
   }
   return assembleOutput(results);
@@ -127,13 +132,16 @@ Future<String> asyncCompileDartLikeWithOrigins(
 ///
 /// Also sets the emitter source path and wraps expansion errors as
 /// [MacroExpansionError] with the source location.
-Future<String> asyncCompileWithOrigins(String source, String sourcePath) async {
+/// Per-field markers are only emitted when [fieldOrigins] is true.
+Future<String> asyncCompileWithOrigins(String source, String sourcePath,
+    {bool fieldOrigins = false}) async {
   resetGensym();
   resetEnumRegistry();
   final spanned = Reader(source).readAllSpanned();
   final results = <String>[];
   for (final (form, line) in spanned) {
     setEmitterSourcePath(sourcePath);
+    setEmitterFieldOrigins(fieldOrigins);
     try {
       final emitted = emit(await asyncExpand(form));
       results.add('// @dmacro-origin: $sourcePath:$line\n$emitted');
@@ -143,6 +151,7 @@ Future<String> asyncCompileWithOrigins(String source, String sourcePath) async {
       throw MacroExpansionError('$sourcePath:$line: $e');
     } finally {
       setEmitterSourcePath(null);
+      setEmitterFieldOrigins(false);
     }
   }
   return assembleOutput(results);

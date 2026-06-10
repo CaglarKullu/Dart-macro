@@ -485,7 +485,8 @@ There is also an S-expression syntax (`.sexp`) for the full Lisp experience — 
 
 | Macro | What it generates | Why a function can't do this |
 |---|---|---|
-| `defrecord Name { ... }` | Immutable class: fields, constructor, `copyWith`, deep `==`/`hashCode`, `toString`, **`fromJson`/`toJson`** | Functions can't generate class declarations |
+| `defrecord Name { ... }` | Immutable class: fields, constructor, `copyWith`, deep `==`/`hashCode`, `toString`, **`fromJson`/`toJson`** with camelCase JSON keys | Functions can't generate class declarations |
+| `defrecord(snake_case) Name { ... }` | Same as `defrecord` but JSON keys are converted to snake_case (`orderId` → `"order_id"`) | Covers the common case where the API uses snake_case and Dart uses camelCase |
 | `defunion Name { ... }` | Sealed class hierarchy | Same |
 | `defmacro name(params) { ... }` | User-defined template macro, registered for use in the same file | Functions run at call time with values; macros run at expand time with code |
 | `defFromJsonSchema("path")` | `defrecord` from a JSON Schema file; `$defs`/`definitions` blocks and `oneOf` are supported | Functions run at runtime; I/O at build time requires a macro |
@@ -510,6 +511,38 @@ models.dmacro  →    models.dart          →    models.dart
 
 The `.dart` file is the output — your Flutter/Dart app imports it as normal. The `.dmacro` file is the source. Commit both.
 
+### Flutter project integration
+
+In a Flutter project, run `dmacro watch` alongside `flutter run`. The VS Code extension does this automatically — it recompiles `.dmacro` files on save and triggers hot reload 500 ms later. Manually:
+
+```bash
+# Terminal 1 — Flutter dev server
+flutter run
+
+# Terminal 2 — dmacro watcher
+dart run bin/dmacro.dart watch lib/models/
+```
+
+Save a `.dmacro` file → dmacro regenerates the `.dart` → Flutter hot-reloads.
+
+The generated `.dart` files are plain Dart — they work with `Provider`, `Riverpod`, `Bloc`, and any other state management. No special integration required; they're just immutable value classes.
+
+**Merge conflicts in generated files:** treat them the same as `build_runner` output. Resolve the conflict in the `.dmacro` source file, run `dart run bin/dmacro.dart compile lib/models/` to regenerate, then commit the fresh output.
+
+### Installation
+
+```bash
+# From pub.dev (after publish — use dart pub global for CLI access):
+dart pub global activate dmacro
+
+# From source:
+git clone https://github.com/caglarkullu/dart-macro
+cd dart-macro && dart pub get
+dart run bin/dmacro.dart compile <file>
+```
+
+> **Note:** dmacro is not yet published to pub.dev. The pub.dev publish step is tracked in the backlog. Until then, install from source or pin a git dependency in `pubspec.yaml`.
+
 ### Watch mode (recompiles on every save)
 
 ```bash
@@ -529,6 +562,17 @@ dart run bin/dmacro.dart compile lib/ --check
 dart run bin/dmacro.dart trace models.dmacro
 # prints each macro expansion step — useful for debugging generated code
 ```
+
+### Field-level error attribution
+
+By default, `dart analyze` errors on generated code map to the `defrecord` declaration line. Add `--field-origins` to get per-field precision:
+
+```bash
+dart run bin/dmacro.dart compile models.dmacro --field-origins
+# embeds // @dmacro-origin: models.dmacro:5 before each generated field
+```
+
+This adds one comment per field in the generated file. Useful when you have type errors on specific fields; unnecessary noise otherwise.
 
 ### VS Code extension
 

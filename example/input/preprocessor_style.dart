@@ -3,22 +3,38 @@
 
 // @dmacro-origin: example/input/preprocessor_style.dmacro:12
 class Payment {
-  // @dmacro-origin: example/input/preprocessor_style.dmacro:13
   final double amount;
-  // @dmacro-origin: example/input/preprocessor_style.dmacro:14
   final String currency;
-  // @dmacro-origin: example/input/preprocessor_style.dmacro:15
   final String? reference;
   const Payment({required this.amount, required this.currency, this.reference});
-  Payment copyWith({double? amount, String? currency, Object? reference = _dmUndefined}) => Payment(amount: amount ?? this.amount, currency: currency ?? this.currency, reference: identical(reference, _dmUndefined) ? this.reference : reference as String?);
+  Payment copyWith(
+          {double? amount,
+          String? currency,
+          Object? reference = _dmUndefined}) =>
+      Payment(
+          amount: amount ?? this.amount,
+          currency: currency ?? this.currency,
+          reference: identical(reference, _dmUndefined)
+              ? this.reference
+              : reference as String?);
   @override
-  bool operator ==(Object other) => identical(this, other) || other is Payment && other.amount == amount && other.currency == currency && other.reference == reference;
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Payment &&
+          other.amount == amount &&
+          other.currency == currency &&
+          other.reference == reference;
   @override
   int get hashCode => Object.hashAll([amount, currency, reference]);
   @override
-  String toString() => 'Payment(amount: $amount, currency: $currency, reference: $reference)';
-  factory Payment.fromJson(Map<String, dynamic> json) => Payment(amount: (json['amount'] as num).toDouble(), currency: json['currency'] as String, reference: json['reference'] as String?);
-  Map<String, dynamic> toJson() => {'amount': amount, 'currency': currency, 'reference': reference};
+  String toString() =>
+      'Payment(amount: $amount, currency: $currency, reference: $reference)';
+  factory Payment.fromJson(Map<String, dynamic> json) => Payment(
+      amount: (json['amount'] as num).toDouble(),
+      currency: json['currency'] as String,
+      reference: json['reference'] as String?);
+  Map<String, dynamic> toJson() =>
+      {'amount': amount, 'currency': currency, 'reference': reference};
 }
 
 const Object _dmUndefined = Object();

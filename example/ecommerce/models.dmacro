@@ -44,7 +44,7 @@ defrecord Order {
   double          shippingCost;
   double          total;
   ShippingAddress shippingAddress;
-  String          createdAt;
+  DateTime        createdAt;
 }
 
 // ── State machine ──────────────────────────────────────────────────────────

@@ -49,6 +49,18 @@ void setEmitterSourcePath(String? path) => _emitterSourcePath = path;
 /// Returns the active source path, or null when not in a WithOrigins compile.
 String? getEmitterSourcePath() => _emitterSourcePath;
 
+// Per-field origin markers are opt-in — default false to avoid cluttering
+// generated files. Enable with `--field-origins` on the CLI or
+// `setEmitterFieldOrigins(true)` before an origin-tracking compile.
+bool _emitterFieldOrigins = false;
+
+/// Enables or disables per-field `@dmacro-origin` markers inside generated
+/// class bodies. Safe to call before/after each compilation unit.
+void setEmitterFieldOrigins(bool v) => _emitterFieldOrigins = v;
+
+/// Returns true when per-field origin markers are enabled for this compile.
+bool getEmitterFieldOrigins() => _emitterFieldOrigins;
+
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
 final _macros = <String, MacroFn>{};
@@ -380,20 +392,24 @@ String emit(Node node, [int indent = 0]) {
     case 'fromjson':
       final name = args[0] as String;
       final fields = args[1] as List<dynamic>;
+      final snakeCaseJson = args.length > 2 && args[2] == true;
       final assigns = fields.map((f) {
         final type = (f as List)[0] as String;
         final fname = f[1] as String;
-        return '$fname: ${_fromJsonExpr(type, "json['$fname']")}';
+        final key = snakeCaseJson ? _camelToSnake(fname) : fname;
+        return '$fname: ${_fromJsonExpr(type, "json['$key']")}';
       }).join(', ');
       return 'factory $name.fromJson(Map<String, dynamic> json) => '
           '$name($assigns);';
 
     case 'tojson':
       final fields = args[1] as List<dynamic>;
+      final snakeCaseJson = args.length > 2 && args[2] == true;
       final entries = fields.map((f) {
         final type = (f as List)[0] as String;
         final fname = f[1] as String;
-        return "'$fname': ${_toJsonExpr(type, fname)}";
+        final key = snakeCaseJson ? _camelToSnake(fname) : fname;
+        return "'$key': ${_toJsonExpr(type, fname)}";
       }).join(', ');
       return 'Map<String, dynamic> toJson() => {$entries};';
 
@@ -552,6 +568,12 @@ String _toJsonExpr(String type, String fname) {
   // Nested record type.
   return '$fname$q.toJson()';
 }
+
+/// Converts a camelCase identifier to snake_case, e.g. `orderId` → `order_id`.
+String _camelToSnake(String s) => s.replaceAllMapped(
+      RegExp(r'(?<=[a-z0-9])([A-Z])'),
+      (m) => '_${m.group(0)!.toLowerCase()}',
+    );
 
 /// Sentinel marking an omitted `copyWith` argument (distinct from `null`).
 const _dmUndefinedSrc = 'const Object _dmUndefined = Object();';

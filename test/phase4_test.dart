@@ -137,7 +137,8 @@ void main() {
   // ─── Per-field origin markers (statement-level attribution) ─────────────────
 
   group('per-field origin markers', () {
-    test('asyncCompileDartLikeWithOrigins embeds per-field @dmacro-origin',
+    test(
+        'asyncCompileDartLikeWithOrigins default: top-level origin, no per-field',
         () async {
       const src = '''
 defrecord Payment {
@@ -146,12 +147,26 @@ defrecord Payment {
 }
 ''';
       final out = await asyncCompileDartLikeWithOrigins(src, 'models.dmacro');
-      // The origin for the defrecord form
+      // Top-level form origin is always present
       expect(out, contains('// @dmacro-origin: models.dmacro:'));
-      // Per-field markers inside the class body (fields start at line 2 and 3)
+      // Per-field markers are OFF by default
+      expect(out, isNot(contains('// @dmacro-origin: models.dmacro:2')));
+      expect(out, isNot(contains('// @dmacro-origin: models.dmacro:3')));
+    });
+
+    test('fieldOrigins: true embeds per-field @dmacro-origin markers',
+        () async {
+      const src = '''
+defrecord Payment {
+  double amount;
+  String currency;
+}
+''';
+      final out = await asyncCompileDartLikeWithOrigins(src, 'models.dmacro',
+          fieldOrigins: true);
+      // Per-field markers present when explicitly enabled
       expect(out, contains('// @dmacro-origin: models.dmacro:2'));
       expect(out, contains('// @dmacro-origin: models.dmacro:3'));
-      // The markers appear before the generated field declarations
       final origin2 = out.indexOf('// @dmacro-origin: models.dmacro:2');
       final finalAmount = out.indexOf('final double amount;');
       expect(origin2, lessThan(finalAmount),

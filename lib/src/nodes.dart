@@ -120,16 +120,18 @@ Node $toString(String name, List<Field> fields) => [
 /// Enum definition: `enum Name { val1, val2, ... }` with fromJson/toJson.
 Node $defEnum(String name, List<String> values) => ['defenum', name, values];
 
-Node $fromJson(String name, List<Field> fields) => [
+Node $fromJson(String name, List<Field> fields, {bool snakeCase = false}) => [
       'fromjson',
       name,
-      fields.map((f) => [f.type, f.name]).toList()
+      fields.map((f) => [f.type, f.name]).toList(),
+      if (snakeCase) true,
     ];
 
-Node $toJson(List<Field> fields) => [
+Node $toJson(List<Field> fields, {bool snakeCase = false}) => [
       'tojson',
       null,
-      fields.map((f) => [f.type, f.name]).toList()
+      fields.map((f) => [f.type, f.name]).toList(),
+      if (snakeCase) true,
     ];
 
 // ─── Value helpers ────────────────────────────────────────────────────────────
