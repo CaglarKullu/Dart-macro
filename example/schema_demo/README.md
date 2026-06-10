@@ -40,19 +40,39 @@ dart run bin/dmacro.dart compile example/schema_demo/models.dmacro
 
 ## Output (`models.dart`)
 
+The macro produces a **complete, zero-dependency Dart class**:
+
 ```dart
 class Payment {
   final double amount;
   final String currency;
   final String? reference;
   final List<String>? tags;
-  const Payment({required this.amount, required this.currency, required this.reference, required this.tags});
+
+  const Payment({
+    required this.amount,
+    required this.currency,
+    required this.reference,
+    required this.tags,
+  });
+
   Payment copyWith({double? amount, String? currency, String? reference, List<String>? tags}) => ...;
-  @override bool operator ==(Object other) => ...;
-  @override int get hashCode => ...;
-  @override String toString() => ...;
+
+  @override
+  bool operator ==(Object other) => ...;
+
+  @override
+  int get hashCode => ...;
+
+  @override
+  String toString() => ...;
+
+  factory Payment.fromJson(Map<String, dynamic> json) => ...;
+  Map<String, dynamic> toJson() => ...;
 }
 ```
+
+Notice: no imports, no external dependencies, full `fromJson`/`toJson` with camelCase key mapping, deep value equality, and `copyWith`.
 
 ## Advanced schema features
 
@@ -62,6 +82,22 @@ class Payment {
 - **Inline `enum` properties** — a Dart `enum` is generated alongside the record, with `values.byName` / `.name` serialization
 - **`oneOf`** — generates a sealed `defunion` hierarchy
 - **`format: date-time` / `date`** — mapped to `DateTime` with ISO-8601 serialization
+- **`snake_case` JSON keys** — use `defrecord(snake_case)` in your macro source to emit `snake_case` JSON keys
+
+## Custom JSON key mapping
+
+If the schema doesn't perfectly match Dart conventions, override individual keys:
+
+```dart
+defrecord User {
+  @json_key("user_id")
+  String id;
+  
+  String email;
+}
+```
+
+The `@json_key` annotation wins over any auto-conversion (camelCase or snake_case).
 
 ## How this compares to build_runner
 
