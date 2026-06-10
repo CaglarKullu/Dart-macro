@@ -9,29 +9,31 @@ class Address {
   final String? state;
   final String? postcode;
   final String country;
-  const Address(
-      {required this.line1,
-      this.line2,
-      required this.city,
-      this.state,
-      this.postcode,
-      required this.country});
-  Address copyWith(
-          {String? line1,
-          Object? line2 = _dmUndefined,
-          String? city,
-          Object? state = _dmUndefined,
-          Object? postcode = _dmUndefined,
-          String? country}) =>
-      Address(
-          line1: line1 ?? this.line1,
-          line2: identical(line2, _dmUndefined) ? this.line2 : line2 as String?,
-          city: city ?? this.city,
-          state: identical(state, _dmUndefined) ? this.state : state as String?,
-          postcode: identical(postcode, _dmUndefined)
-              ? this.postcode
-              : postcode as String?,
-          country: country ?? this.country);
+  const Address({
+    required this.line1,
+    this.line2,
+    required this.city,
+    this.state,
+    this.postcode,
+    required this.country,
+  });
+  Address copyWith({
+    String? line1,
+    Object? line2 = _dmUndefined,
+    String? city,
+    Object? state = _dmUndefined,
+    Object? postcode = _dmUndefined,
+    String? country,
+  }) => Address(
+    line1: line1 ?? this.line1,
+    line2: identical(line2, _dmUndefined) ? this.line2 : line2 as String?,
+    city: city ?? this.city,
+    state: identical(state, _dmUndefined) ? this.state : state as String?,
+    postcode: identical(postcode, _dmUndefined)
+        ? this.postcode
+        : postcode as String?,
+    country: country ?? this.country,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -49,20 +51,21 @@ class Address {
   String toString() =>
       'Address(line1: $line1, line2: $line2, city: $city, state: $state, postcode: $postcode, country: $country)';
   factory Address.fromJson(Map<String, dynamic> json) => Address(
-      line1: json['line1'] as String,
-      line2: json['line2'] as String?,
-      city: json['city'] as String,
-      state: json['state'] as String?,
-      postcode: json['postcode'] as String?,
-      country: json['country'] as String);
+    line1: json['line1'] as String,
+    line2: json['line2'] as String?,
+    city: json['city'] as String,
+    state: json['state'] as String?,
+    postcode: json['postcode'] as String?,
+    country: json['country'] as String,
+  );
   Map<String, dynamic> toJson() => {
-        'line1': line1,
-        'line2': line2,
-        'city': city,
-        'state': state,
-        'postcode': postcode,
-        'country': country
-      };
+    'line1': line1,
+    'line2': line2,
+    'city': city,
+    'state': state,
+    'postcode': postcode,
+    'country': country,
+  };
 }
 
 class Notification {
@@ -73,31 +76,32 @@ class Notification {
   final String? body;
   final bool? isRead;
   final DateTime createdAt;
-  const Notification(
-      {required this.id,
-      required this.userId,
-      required this.type,
-      this.title,
-      this.body,
-      this.isRead,
-      required this.createdAt});
-  Notification copyWith(
-          {String? id,
-          String? userId,
-          String? type,
-          Object? title = _dmUndefined,
-          Object? body = _dmUndefined,
-          Object? isRead = _dmUndefined,
-          DateTime? createdAt}) =>
-      Notification(
-          id: id ?? this.id,
-          userId: userId ?? this.userId,
-          type: type ?? this.type,
-          title: identical(title, _dmUndefined) ? this.title : title as String?,
-          body: identical(body, _dmUndefined) ? this.body : body as String?,
-          isRead:
-              identical(isRead, _dmUndefined) ? this.isRead : isRead as bool?,
-          createdAt: createdAt ?? this.createdAt);
+  const Notification({
+    required this.id,
+    required this.userId,
+    required this.type,
+    this.title,
+    this.body,
+    this.isRead,
+    required this.createdAt,
+  });
+  Notification copyWith({
+    String? id,
+    String? userId,
+    String? type,
+    Object? title = _dmUndefined,
+    Object? body = _dmUndefined,
+    Object? isRead = _dmUndefined,
+    DateTime? createdAt,
+  }) => Notification(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    type: type ?? this.type,
+    title: identical(title, _dmUndefined) ? this.title : title as String?,
+    body: identical(body, _dmUndefined) ? this.body : body as String?,
+    isRead: identical(isRead, _dmUndefined) ? this.isRead : isRead as bool?,
+    createdAt: createdAt ?? this.createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -116,22 +120,23 @@ class Notification {
   String toString() =>
       'Notification(id: $id, userId: $userId, type: $type, title: $title, body: $body, isRead: $isRead, createdAt: $createdAt)';
   factory Notification.fromJson(Map<String, dynamic> json) => Notification(
-      id: json['id'] as String,
-      userId: json['userId'] as String,
-      type: json['type'] as String,
-      title: json['title'] as String?,
-      body: json['body'] as String?,
-      isRead: json['isRead'] as bool?,
-      createdAt: DateTime.parse(json['createdAt'] as String));
+    id: json['id'] as String,
+    userId: json['userId'] as String,
+    type: json['type'] as String,
+    title: json['title'] as String?,
+    body: json['body'] as String?,
+    isRead: json['isRead'] as bool?,
+    createdAt: DateTime.parse(json['createdAt'] as String),
+  );
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'userId': userId,
-        'type': type,
-        'title': title,
-        'body': body,
-        'isRead': isRead,
-        'createdAt': createdAt.toIso8601String()
-      };
+    'id': id,
+    'userId': userId,
+    'type': type,
+    'title': title,
+    'body': body,
+    'isRead': isRead,
+    'createdAt': createdAt.toIso8601String(),
+  };
 }
 
 class User {
@@ -141,33 +146,35 @@ class User {
   final String? avatarUrl;
   final bool? isVerified;
   final String createdAt;
-  const User(
-      {required this.id,
-      required this.email,
-      this.displayName,
-      this.avatarUrl,
-      this.isVerified,
-      required this.createdAt});
-  User copyWith(
-          {String? id,
-          String? email,
-          Object? displayName = _dmUndefined,
-          Object? avatarUrl = _dmUndefined,
-          Object? isVerified = _dmUndefined,
-          String? createdAt}) =>
-      User(
-          id: id ?? this.id,
-          email: email ?? this.email,
-          displayName: identical(displayName, _dmUndefined)
-              ? this.displayName
-              : displayName as String?,
-          avatarUrl: identical(avatarUrl, _dmUndefined)
-              ? this.avatarUrl
-              : avatarUrl as String?,
-          isVerified: identical(isVerified, _dmUndefined)
-              ? this.isVerified
-              : isVerified as bool?,
-          createdAt: createdAt ?? this.createdAt);
+  const User({
+    required this.id,
+    required this.email,
+    this.displayName,
+    this.avatarUrl,
+    this.isVerified,
+    required this.createdAt,
+  });
+  User copyWith({
+    String? id,
+    String? email,
+    Object? displayName = _dmUndefined,
+    Object? avatarUrl = _dmUndefined,
+    Object? isVerified = _dmUndefined,
+    String? createdAt,
+  }) => User(
+    id: id ?? this.id,
+    email: email ?? this.email,
+    displayName: identical(displayName, _dmUndefined)
+        ? this.displayName
+        : displayName as String?,
+    avatarUrl: identical(avatarUrl, _dmUndefined)
+        ? this.avatarUrl
+        : avatarUrl as String?,
+    isVerified: identical(isVerified, _dmUndefined)
+        ? this.isVerified
+        : isVerified as bool?,
+    createdAt: createdAt ?? this.createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -179,26 +186,33 @@ class User {
           other.isVerified == isVerified &&
           other.createdAt == createdAt;
   @override
-  int get hashCode => Object.hashAll(
-      [id, email, displayName, avatarUrl, isVerified, createdAt]);
+  int get hashCode => Object.hashAll([
+    id,
+    email,
+    displayName,
+    avatarUrl,
+    isVerified,
+    createdAt,
+  ]);
   @override
   String toString() =>
       'User(id: $id, email: $email, displayName: $displayName, avatarUrl: $avatarUrl, isVerified: $isVerified, createdAt: $createdAt)';
   factory User.fromJson(Map<String, dynamic> json) => User(
-      id: json['id'] as String,
-      email: json['email'] as String,
-      displayName: json['displayName'] as String?,
-      avatarUrl: json['avatarUrl'] as String?,
-      isVerified: json['isVerified'] as bool?,
-      createdAt: json['createdAt'] as String);
+    id: json['id'] as String,
+    email: json['email'] as String,
+    displayName: json['displayName'] as String?,
+    avatarUrl: json['avatarUrl'] as String?,
+    isVerified: json['isVerified'] as bool?,
+    createdAt: json['createdAt'] as String,
+  );
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'email': email,
-        'displayName': displayName,
-        'avatarUrl': avatarUrl,
-        'isVerified': isVerified,
-        'createdAt': createdAt
-      };
+    'id': id,
+    'email': email,
+    'displayName': displayName,
+    'avatarUrl': avatarUrl,
+    'isVerified': isVerified,
+    'createdAt': createdAt,
+  };
 }
 
 const Object _dmUndefined = Object();

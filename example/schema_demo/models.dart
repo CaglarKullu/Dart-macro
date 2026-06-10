@@ -7,25 +7,25 @@ class Payment {
   final String currency;
   final String? reference;
   final List<String>? tags;
-  const Payment(
-      {required this.amount,
-      required this.currency,
-      this.reference,
-      this.tags});
-  Payment copyWith(
-          {double? amount,
-          String? currency,
-          Object? reference = _dmUndefined,
-          Object? tags = _dmUndefined}) =>
-      Payment(
-          amount: amount ?? this.amount,
-          currency: currency ?? this.currency,
-          reference: identical(reference, _dmUndefined)
-              ? this.reference
-              : reference as String?,
-          tags: identical(tags, _dmUndefined)
-              ? this.tags
-              : tags as List<String>?);
+  const Payment({
+    required this.amount,
+    required this.currency,
+    this.reference,
+    this.tags,
+  });
+  Payment copyWith({
+    double? amount,
+    String? currency,
+    Object? reference = _dmUndefined,
+    Object? tags = _dmUndefined,
+  }) => Payment(
+    amount: amount ?? this.amount,
+    currency: currency ?? this.currency,
+    reference: identical(reference, _dmUndefined)
+        ? this.reference
+        : reference as String?,
+    tags: identical(tags, _dmUndefined) ? this.tags : tags as List<String>?,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -41,18 +41,19 @@ class Payment {
   String toString() =>
       'Payment(amount: $amount, currency: $currency, reference: $reference, tags: $tags)';
   factory Payment.fromJson(Map<String, dynamic> json) => Payment(
-      amount: (json['amount'] as num).toDouble(),
-      currency: json['currency'] as String,
-      reference: json['reference'] as String?,
-      tags: json['tags'] == null
-          ? null
-          : (json['tags'] as List).map((e) => e as String).toList());
+    amount: (json['amount'] as num).toDouble(),
+    currency: json['currency'] as String,
+    reference: json['reference'] as String?,
+    tags: json['tags'] == null
+        ? null
+        : (json['tags'] as List).map((e) => e as String).toList(),
+  );
   Map<String, dynamic> toJson() => {
-        'amount': amount,
-        'currency': currency,
-        'reference': reference,
-        'tags': tags
-      };
+    'amount': amount,
+    'currency': currency,
+    'reference': reference,
+    'tags': tags,
+  };
 }
 
 const Object _dmUndefined = Object();
@@ -90,7 +91,8 @@ int _dmHash(Object? v) {
   if (v is Set) return Object.hashAllUnordered(v.map(_dmHash));
   if (v is Map) {
     return Object.hashAllUnordered(
-        v.entries.map((e) => Object.hash(_dmHash(e.key), _dmHash(e.value))));
+      v.entries.map((e) => Object.hash(_dmHash(e.key), _dmHash(e.value))),
+    );
   }
   return v.hashCode;
 }

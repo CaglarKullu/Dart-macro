@@ -17,32 +17,34 @@ class Product {
   final String category;
   // @dmacro-origin: example/ecommerce/models.dmacro:18
   final String? imageUrl;
-  const Product(
-      {required this.id,
-      required this.name,
-      required this.description,
-      required this.price,
-      required this.stock,
-      required this.category,
-      this.imageUrl});
-  Product copyWith(
-          {String? id,
-          String? name,
-          String? description,
-          double? price,
-          int? stock,
-          String? category,
-          Object? imageUrl = _dmUndefined}) =>
-      Product(
-          id: id ?? this.id,
-          name: name ?? this.name,
-          description: description ?? this.description,
-          price: price ?? this.price,
-          stock: stock ?? this.stock,
-          category: category ?? this.category,
-          imageUrl: identical(imageUrl, _dmUndefined)
-              ? this.imageUrl
-              : imageUrl as String?);
+  const Product({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.price,
+    required this.stock,
+    required this.category,
+    this.imageUrl,
+  });
+  Product copyWith({
+    String? id,
+    String? name,
+    String? description,
+    double? price,
+    int? stock,
+    String? category,
+    Object? imageUrl = _dmUndefined,
+  }) => Product(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    description: description ?? this.description,
+    price: price ?? this.price,
+    stock: stock ?? this.stock,
+    category: category ?? this.category,
+    imageUrl: identical(imageUrl, _dmUndefined)
+        ? this.imageUrl
+        : imageUrl as String?,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -61,22 +63,23 @@ class Product {
   String toString() =>
       'Product(id: $id, name: $name, description: $description, price: $price, stock: $stock, category: $category, imageUrl: $imageUrl)';
   factory Product.fromJson(Map<String, dynamic> json) => Product(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      description: json['description'] as String,
-      price: (json['price'] as num).toDouble(),
-      stock: json['stock'] as int,
-      category: json['category'] as String,
-      imageUrl: json['imageUrl'] as String?);
+    id: json['id'] as String,
+    name: json['name'] as String,
+    description: json['description'] as String,
+    price: (json['price'] as num).toDouble(),
+    stock: json['stock'] as int,
+    category: json['category'] as String,
+    imageUrl: json['imageUrl'] as String?,
+  );
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'description': description,
-        'price': price,
-        'stock': stock,
-        'category': category,
-        'imageUrl': imageUrl
-      };
+    'id': id,
+    'name': name,
+    'description': description,
+    'price': price,
+    'stock': stock,
+    'category': category,
+    'imageUrl': imageUrl,
+  };
 }
 
 // @dmacro-origin: example/ecommerce/models.dmacro:21
@@ -89,21 +92,23 @@ class CartItem {
   final double unitPrice;
   // @dmacro-origin: example/ecommerce/models.dmacro:25
   final int quantity;
-  const CartItem(
-      {required this.productId,
-      required this.productName,
-      required this.unitPrice,
-      required this.quantity});
-  CartItem copyWith(
-          {String? productId,
-          String? productName,
-          double? unitPrice,
-          int? quantity}) =>
-      CartItem(
-          productId: productId ?? this.productId,
-          productName: productName ?? this.productName,
-          unitPrice: unitPrice ?? this.unitPrice,
-          quantity: quantity ?? this.quantity);
+  const CartItem({
+    required this.productId,
+    required this.productName,
+    required this.unitPrice,
+    required this.quantity,
+  });
+  CartItem copyWith({
+    String? productId,
+    String? productName,
+    double? unitPrice,
+    int? quantity,
+  }) => CartItem(
+    productId: productId ?? this.productId,
+    productName: productName ?? this.productName,
+    unitPrice: unitPrice ?? this.unitPrice,
+    quantity: quantity ?? this.quantity,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -119,16 +124,17 @@ class CartItem {
   String toString() =>
       'CartItem(productId: $productId, productName: $productName, unitPrice: $unitPrice, quantity: $quantity)';
   factory CartItem.fromJson(Map<String, dynamic> json) => CartItem(
-      productId: json['productId'] as String,
-      productName: json['productName'] as String,
-      unitPrice: (json['unitPrice'] as num).toDouble(),
-      quantity: json['quantity'] as int);
+    productId: json['productId'] as String,
+    productName: json['productName'] as String,
+    unitPrice: (json['unitPrice'] as num).toDouble(),
+    quantity: json['quantity'] as int,
+  );
   Map<String, dynamic> toJson() => {
-        'productId': productId,
-        'productName': productName,
-        'unitPrice': unitPrice,
-        'quantity': quantity
-      };
+    'productId': productId,
+    'productName': productName,
+    'unitPrice': unitPrice,
+    'quantity': quantity,
+  };
 }
 
 // @dmacro-origin: example/ecommerce/models.dmacro:30
@@ -145,27 +151,29 @@ class ShippingAddress {
   final String country;
   // @dmacro-origin: example/ecommerce/models.dmacro:36
   final String postcode;
-  const ShippingAddress(
-      {required this.fullName,
-      required this.line1,
-      this.line2,
-      required this.city,
-      required this.country,
-      required this.postcode});
-  ShippingAddress copyWith(
-          {String? fullName,
-          String? line1,
-          Object? line2 = _dmUndefined,
-          String? city,
-          String? country,
-          String? postcode}) =>
-      ShippingAddress(
-          fullName: fullName ?? this.fullName,
-          line1: line1 ?? this.line1,
-          line2: identical(line2, _dmUndefined) ? this.line2 : line2 as String?,
-          city: city ?? this.city,
-          country: country ?? this.country,
-          postcode: postcode ?? this.postcode);
+  const ShippingAddress({
+    required this.fullName,
+    required this.line1,
+    this.line2,
+    required this.city,
+    required this.country,
+    required this.postcode,
+  });
+  ShippingAddress copyWith({
+    String? fullName,
+    String? line1,
+    Object? line2 = _dmUndefined,
+    String? city,
+    String? country,
+    String? postcode,
+  }) => ShippingAddress(
+    fullName: fullName ?? this.fullName,
+    line1: line1 ?? this.line1,
+    line2: identical(line2, _dmUndefined) ? this.line2 : line2 as String?,
+    city: city ?? this.city,
+    country: country ?? this.country,
+    postcode: postcode ?? this.postcode,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -184,20 +192,21 @@ class ShippingAddress {
       'ShippingAddress(fullName: $fullName, line1: $line1, line2: $line2, city: $city, country: $country, postcode: $postcode)';
   factory ShippingAddress.fromJson(Map<String, dynamic> json) =>
       ShippingAddress(
-          fullName: json['fullName'] as String,
-          line1: json['line1'] as String,
-          line2: json['line2'] as String?,
-          city: json['city'] as String,
-          country: json['country'] as String,
-          postcode: json['postcode'] as String);
+        fullName: json['fullName'] as String,
+        line1: json['line1'] as String,
+        line2: json['line2'] as String?,
+        city: json['city'] as String,
+        country: json['country'] as String,
+        postcode: json['postcode'] as String,
+      );
   Map<String, dynamic> toJson() => {
-        'fullName': fullName,
-        'line1': line1,
-        'line2': line2,
-        'city': city,
-        'country': country,
-        'postcode': postcode
-      };
+    'fullName': fullName,
+    'line1': line1,
+    'line2': line2,
+    'city': city,
+    'country': country,
+    'postcode': postcode,
+  };
 }
 
 // @dmacro-origin: example/ecommerce/models.dmacro:39
@@ -218,33 +227,35 @@ class Order {
   final ShippingAddress shippingAddress;
   // @dmacro-origin: example/ecommerce/models.dmacro:47
   final String createdAt;
-  const Order(
-      {required this.id,
-      required this.customerId,
-      required this.items,
-      required this.subtotal,
-      required this.shippingCost,
-      required this.total,
-      required this.shippingAddress,
-      required this.createdAt});
-  Order copyWith(
-          {String? id,
-          String? customerId,
-          List<CartItem>? items,
-          double? subtotal,
-          double? shippingCost,
-          double? total,
-          ShippingAddress? shippingAddress,
-          String? createdAt}) =>
-      Order(
-          id: id ?? this.id,
-          customerId: customerId ?? this.customerId,
-          items: items ?? this.items,
-          subtotal: subtotal ?? this.subtotal,
-          shippingCost: shippingCost ?? this.shippingCost,
-          total: total ?? this.total,
-          shippingAddress: shippingAddress ?? this.shippingAddress,
-          createdAt: createdAt ?? this.createdAt);
+  const Order({
+    required this.id,
+    required this.customerId,
+    required this.items,
+    required this.subtotal,
+    required this.shippingCost,
+    required this.total,
+    required this.shippingAddress,
+    required this.createdAt,
+  });
+  Order copyWith({
+    String? id,
+    String? customerId,
+    List<CartItem>? items,
+    double? subtotal,
+    double? shippingCost,
+    double? total,
+    ShippingAddress? shippingAddress,
+    String? createdAt,
+  }) => Order(
+    id: id ?? this.id,
+    customerId: customerId ?? this.customerId,
+    items: items ?? this.items,
+    subtotal: subtotal ?? this.subtotal,
+    shippingCost: shippingCost ?? this.shippingCost,
+    total: total ?? this.total,
+    shippingAddress: shippingAddress ?? this.shippingAddress,
+    createdAt: createdAt ?? this.createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -259,40 +270,42 @@ class Order {
           other.createdAt == createdAt;
   @override
   int get hashCode => Object.hashAll([
-        id,
-        customerId,
-        _dmHash(items),
-        subtotal,
-        shippingCost,
-        total,
-        shippingAddress,
-        createdAt
-      ]);
+    id,
+    customerId,
+    _dmHash(items),
+    subtotal,
+    shippingCost,
+    total,
+    shippingAddress,
+    createdAt,
+  ]);
   @override
   String toString() =>
       'Order(id: $id, customerId: $customerId, items: $items, subtotal: $subtotal, shippingCost: $shippingCost, total: $total, shippingAddress: $shippingAddress, createdAt: $createdAt)';
   factory Order.fromJson(Map<String, dynamic> json) => Order(
-      id: json['id'] as String,
-      customerId: json['customerId'] as String,
-      items: (json['items'] as List)
-          .map((e) => CartItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      subtotal: (json['subtotal'] as num).toDouble(),
-      shippingCost: (json['shippingCost'] as num).toDouble(),
-      total: (json['total'] as num).toDouble(),
-      shippingAddress: ShippingAddress.fromJson(
-          json['shippingAddress'] as Map<String, dynamic>),
-      createdAt: json['createdAt'] as String);
+    id: json['id'] as String,
+    customerId: json['customerId'] as String,
+    items: (json['items'] as List)
+        .map((e) => CartItem.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    subtotal: (json['subtotal'] as num).toDouble(),
+    shippingCost: (json['shippingCost'] as num).toDouble(),
+    total: (json['total'] as num).toDouble(),
+    shippingAddress: ShippingAddress.fromJson(
+      json['shippingAddress'] as Map<String, dynamic>,
+    ),
+    createdAt: json['createdAt'] as String,
+  );
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'customerId': customerId,
-        'items': items.map((e) => e.toJson()).toList(),
-        'subtotal': subtotal,
-        'shippingCost': shippingCost,
-        'total': total,
-        'shippingAddress': shippingAddress.toJson(),
-        'createdAt': createdAt
-      };
+    'id': id,
+    'customerId': customerId,
+    'items': items.map((e) => e.toJson()).toList(),
+    'subtotal': subtotal,
+    'shippingCost': shippingCost,
+    'total': total,
+    'shippingAddress': shippingAddress.toJson(),
+    'createdAt': createdAt,
+  };
 }
 
 // @dmacro-origin: example/ecommerce/models.dmacro:54
@@ -330,16 +343,20 @@ class Shipped extends OrderStatus {
   final String trackingId;
   final String carrier;
   final String estimatedDelivery;
-  const Shipped(
-      {required this.trackingId,
-      required this.carrier,
-      required this.estimatedDelivery});
-  Shipped copyWith(
-          {String? trackingId, String? carrier, String? estimatedDelivery}) =>
-      Shipped(
-          trackingId: trackingId ?? this.trackingId,
-          carrier: carrier ?? this.carrier,
-          estimatedDelivery: estimatedDelivery ?? this.estimatedDelivery);
+  const Shipped({
+    required this.trackingId,
+    required this.carrier,
+    required this.estimatedDelivery,
+  });
+  Shipped copyWith({
+    String? trackingId,
+    String? carrier,
+    String? estimatedDelivery,
+  }) => Shipped(
+    trackingId: trackingId ?? this.trackingId,
+    carrier: carrier ?? this.carrier,
+    estimatedDelivery: estimatedDelivery ?? this.estimatedDelivery,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -374,8 +391,9 @@ class Cancelled extends OrderStatus {
   final String cancelledAt;
   const Cancelled({required this.reason, required this.cancelledAt});
   Cancelled copyWith({String? reason, String? cancelledAt}) => Cancelled(
-      reason: reason ?? this.reason,
-      cancelledAt: cancelledAt ?? this.cancelledAt);
+    reason: reason ?? this.reason,
+    cancelledAt: cancelledAt ?? this.cancelledAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -467,7 +485,8 @@ int _dmHash(Object? v) {
   if (v is Set) return Object.hashAllUnordered(v.map(_dmHash));
   if (v is Map) {
     return Object.hashAllUnordered(
-        v.entries.map((e) => Object.hash(_dmHash(e.key), _dmHash(e.value))));
+      v.entries.map((e) => Object.hash(_dmHash(e.key), _dmHash(e.value))),
+    );
   }
   return v.hashCode;
 }

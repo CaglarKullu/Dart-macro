@@ -10,16 +10,17 @@ class Payment {
   // @dmacro-origin: example/payment.dmacro:15
   final String? reference;
   const Payment({required this.amount, required this.currency, this.reference});
-  Payment copyWith(
-          {double? amount,
-          String? currency,
-          Object? reference = _dmUndefined}) =>
-      Payment(
-          amount: amount ?? this.amount,
-          currency: currency ?? this.currency,
-          reference: identical(reference, _dmUndefined)
-              ? this.reference
-              : reference as String?);
+  Payment copyWith({
+    double? amount,
+    String? currency,
+    Object? reference = _dmUndefined,
+  }) => Payment(
+    amount: amount ?? this.amount,
+    currency: currency ?? this.currency,
+    reference: identical(reference, _dmUndefined)
+        ? this.reference
+        : reference as String?,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -33,11 +34,15 @@ class Payment {
   String toString() =>
       'Payment(amount: $amount, currency: $currency, reference: $reference)';
   factory Payment.fromJson(Map<String, dynamic> json) => Payment(
-      amount: (json['amount'] as num).toDouble(),
-      currency: json['currency'] as String,
-      reference: json['reference'] as String?);
-  Map<String, dynamic> toJson() =>
-      {'amount': amount, 'currency': currency, 'reference': reference};
+    amount: (json['amount'] as num).toDouble(),
+    currency: json['currency'] as String,
+    reference: json['reference'] as String?,
+  );
+  Map<String, dynamic> toJson() => {
+    'amount': amount,
+    'currency': currency,
+    'reference': reference,
+  };
 }
 
 // @dmacro-origin: example/payment.dmacro:18
@@ -48,16 +53,20 @@ class TransferRequest {
   final String fromAccount;
   // @dmacro-origin: example/payment.dmacro:21
   final String toAccount;
-  const TransferRequest(
-      {required this.payment,
-      required this.fromAccount,
-      required this.toAccount});
-  TransferRequest copyWith(
-          {Payment? payment, String? fromAccount, String? toAccount}) =>
-      TransferRequest(
-          payment: payment ?? this.payment,
-          fromAccount: fromAccount ?? this.fromAccount,
-          toAccount: toAccount ?? this.toAccount);
+  const TransferRequest({
+    required this.payment,
+    required this.fromAccount,
+    required this.toAccount,
+  });
+  TransferRequest copyWith({
+    Payment? payment,
+    String? fromAccount,
+    String? toAccount,
+  }) => TransferRequest(
+    payment: payment ?? this.payment,
+    fromAccount: fromAccount ?? this.fromAccount,
+    toAccount: toAccount ?? this.toAccount,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -72,14 +81,15 @@ class TransferRequest {
       'TransferRequest(payment: $payment, fromAccount: $fromAccount, toAccount: $toAccount)';
   factory TransferRequest.fromJson(Map<String, dynamic> json) =>
       TransferRequest(
-          payment: Payment.fromJson(json['payment'] as Map<String, dynamic>),
-          fromAccount: json['fromAccount'] as String,
-          toAccount: json['toAccount'] as String);
+        payment: Payment.fromJson(json['payment'] as Map<String, dynamic>),
+        fromAccount: json['fromAccount'] as String,
+        toAccount: json['toAccount'] as String,
+      );
   Map<String, dynamic> toJson() => {
-        'payment': payment.toJson(),
-        'fromAccount': fromAccount,
-        'toAccount': toAccount
-      };
+    'payment': payment.toJson(),
+    'fromAccount': fromAccount,
+    'toAccount': toAccount,
+  };
 }
 
 // @dmacro-origin: example/payment.dmacro:24

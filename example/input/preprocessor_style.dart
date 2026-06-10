@@ -10,16 +10,17 @@ class Payment {
   // @dmacro-origin: example/input/preprocessor_style.dmacro:15
   final String? reference;
   const Payment({required this.amount, required this.currency, this.reference});
-  Payment copyWith(
-          {double? amount,
-          String? currency,
-          Object? reference = _dmUndefined}) =>
-      Payment(
-          amount: amount ?? this.amount,
-          currency: currency ?? this.currency,
-          reference: identical(reference, _dmUndefined)
-              ? this.reference
-              : reference as String?);
+  Payment copyWith({
+    double? amount,
+    String? currency,
+    Object? reference = _dmUndefined,
+  }) => Payment(
+    amount: amount ?? this.amount,
+    currency: currency ?? this.currency,
+    reference: identical(reference, _dmUndefined)
+        ? this.reference
+        : reference as String?,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -33,11 +34,15 @@ class Payment {
   String toString() =>
       'Payment(amount: $amount, currency: $currency, reference: $reference)';
   factory Payment.fromJson(Map<String, dynamic> json) => Payment(
-      amount: (json['amount'] as num).toDouble(),
-      currency: json['currency'] as String,
-      reference: json['reference'] as String?);
-  Map<String, dynamic> toJson() =>
-      {'amount': amount, 'currency': currency, 'reference': reference};
+    amount: (json['amount'] as num).toDouble(),
+    currency: json['currency'] as String,
+    reference: json['reference'] as String?,
+  );
+  Map<String, dynamic> toJson() => {
+    'amount': amount,
+    'currency': currency,
+    'reference': reference,
+  };
 }
 
 const Object _dmUndefined = Object();

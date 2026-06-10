@@ -7,8 +7,9 @@ class Category {
   final String name;
   const Category({this.id, required this.name});
   Category copyWith({Object? id = _dmUndefined, String? name}) => Category(
-      id: identical(id, _dmUndefined) ? this.id : id as int?,
-      name: name ?? this.name);
+    id: identical(id, _dmUndefined) ? this.id : id as int?,
+    name: name ?? this.name,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -29,18 +30,19 @@ class Pet {
   final String? tag;
   final Category? category;
   const Pet({required this.id, required this.name, this.tag, this.category});
-  Pet copyWith(
-          {int? id,
-          String? name,
-          Object? tag = _dmUndefined,
-          Object? category = _dmUndefined}) =>
-      Pet(
-          id: id ?? this.id,
-          name: name ?? this.name,
-          tag: identical(tag, _dmUndefined) ? this.tag : tag as String?,
-          category: identical(category, _dmUndefined)
-              ? this.category
-              : category as Category?);
+  Pet copyWith({
+    int? id,
+    String? name,
+    Object? tag = _dmUndefined,
+    Object? category = _dmUndefined,
+  }) => Pet(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    tag: identical(tag, _dmUndefined) ? this.tag : tag as String?,
+    category: identical(category, _dmUndefined)
+        ? this.category
+        : category as Category?,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -55,14 +57,19 @@ class Pet {
   String toString() =>
       'Pet(id: $id, name: $name, tag: $tag, category: $category)';
   factory Pet.fromJson(Map<String, dynamic> json) => Pet(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      tag: json['tag'] as String?,
-      category: json['category'] == null
-          ? null
-          : Category.fromJson(json['category'] as Map<String, dynamic>));
-  Map<String, dynamic> toJson() =>
-      {'id': id, 'name': name, 'tag': tag, 'category': category?.toJson()};
+    id: json['id'] as int,
+    name: json['name'] as String,
+    tag: json['tag'] as String?,
+    category: json['category'] == null
+        ? null
+        : Category.fromJson(json['category'] as Map<String, dynamic>),
+  );
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'tag': tag,
+    'category': category?.toJson(),
+  };
 }
 
 const Object _dmUndefined = Object();
