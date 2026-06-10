@@ -2,10 +2,9 @@
 
 **dmacro is a preprocessor for Dart.** You run `dmacro compile`, it reads `.dmacro` source files, expands macros, and writes plain `.dart` files. The Dart compiler then compiles those `.dart` files as normal — it never sees `.dmacro` files and never runs any macro code.
 
-Write a short spec — get a complete, typed, immutable class back. Point at your API schema — get Dart types generated automatically. No `build_runner`, no annotations, no extra packages.
+It is a **boilerplate reducer and code generator**, not a runtime system. Generated types are static Dart — they compile into your app binary and do not adapt to changes at runtime. If your API schema changes, you update the spec, re-run dmacro, and redeploy. Same cycle as any code generator.
 
-> The Dart team [cancelled language-level macros in January 2025](https://dart.dev/language/macros).  
-> dmacro ships today. Because it runs as a preprocessor — outside the compiler — it can do things the official macros could not, including reading files and making network calls during generation.
+The practical value: less ceremony than `build_runner` + `freezed` for common patterns, and the ability to generate types directly from an OpenAPI or JSON Schema file without writing an annotated class first.
 
 ---
 
@@ -23,10 +22,9 @@ Write a short spec — get a complete, typed, immutable class back. Point at you
    - [Trace expansions](#trace-macro-expansions)
    - [Field-level error attribution](#field-level-error-attribution)
    - [VS Code extension](#vs-code-extension)
-6. [Why macros?](#why-macros)
+6. [How it compares to build_runner](#how-it-compares-to-build_runner)
 7. [How it works](#how-it-works)
-8. [Comparison](#comparison)
-9. [Project structure](#project-structure)
+8. [Project structure](#project-structure)
 
 ---
 
@@ -44,21 +42,6 @@ No configuration files. No global installs. Any machine with the Dart SDK.
 ---
 
 ## What you get
-
-### Generate types from a schema — one line
-
-```dart
-// models.dmacro
-defFromJsonSchema("schemas/payment.json");
-defFromOpenApi("api/openapi.yaml", "User");
-defAllFromJsonSchema("schemas/");   // one class per .json file in the folder
-```
-
-Each line reads the spec **when you run `dmacro compile`** and generates a complete immutable class with `fromJson`/`toJson`, `copyWith`, deep `==`/`hashCode`, and `toString`. Update the spec, rerun dmacro — done. No annotations. No `.g.dart` files.
-
-→ See [`example/openapi_demo/`](example/openapi_demo/) and [`example/api_from_schema/`](example/api_from_schema/)
-
----
 
 ### Replace 60 lines of boilerplate with 7
 
@@ -106,9 +89,30 @@ defrecord Product {
 }
 ```
 
-Same output. One fifth the lines. No `freezed`. No code generation packages.
+Same output. One fifth the lines. No `freezed`. No annotation class to write first.
 
 → See [`example/ecommerce/models.dmacro`](example/ecommerce/models.dmacro)
+
+---
+
+### Generate types from a schema file — no annotation class needed
+
+With `build_runner` + `json_serializable`, you write a Dart class, add annotations, then run the generator to fill in `fromJson`/`toJson`. The class must exist first.
+
+With dmacro, the spec is the source — no Dart class required upfront:
+
+```dart
+// models.dmacro — read your spec at generation time, generate the class
+defFromJsonSchema("schemas/payment.json");
+defFromOpenApi("api/openapi.yaml", "User");
+defAllFromJsonSchema("schemas/");   // one class per .json file in the folder
+```
+
+When you run `dmacro compile`, it reads the spec and writes a complete `.dart` class. The generated types are **static** — they compile into your app binary. If the API schema changes after deployment, the app uses the old types, exactly like any code generator. You update the spec, re-run dmacro, and redeploy.
+
+The advantage over build_runner here is workflow: no annotation boilerplate, no class to scaffold first. The spec is the single source of truth during development.
+
+→ See [`example/openapi_demo/`](example/openapi_demo/) and [`example/api_from_schema/`](example/api_from_schema/)
 
 ---
 
@@ -128,25 +132,13 @@ Generates a sealed abstract class with five concrete subtypes, each a full immut
 
 ---
 
-### Error messages that contain the source expression
-
-```dart
-assertThat(amount > 0);
-// Throws: AssertionError("Expected: (amount > 0), got false")
-//                                  ↑ actual source — not just "false"
-```
-
-A function only receives `false`. The macro receives the AST `['>', 'amount', 0]` and embeds the source expression in the error automatically.
-
----
-
 ### Retry logic that preserves control flow
 
 ```dart
 withRetry(3, postJson(endpoint, payload));
 ```
 
-Expands to an inline `for` loop with `try/catch`. Because the body is inlined (not wrapped in a callback), `return` exits the outer function and `break` exits an outer loop — exactly as you'd expect. A higher-order `withRetry(n, () { ... })` breaks both.
+Expands to an inline `for` loop with `try/catch`. Because the body is inlined rather than wrapped in a callback, `return` exits the outer function and `break` exits an outer loop. A higher-order `withRetry(n, () { ... })` wraps the body in a closure — `return` and `break` no longer reach the outer scope. The macro avoids that problem by generating the loop inline.
 
 ---
 
@@ -163,7 +155,7 @@ bool createUser(String email, int age) {
 }
 ```
 
-Define new macros directly in the `.dmacro` file you're working on. No separate Dart code, no package, no build step. Macros compose: `guard` calls `unless`, which calls `if`.
+Define new macros directly in the `.dmacro` file you're working on. No separate Dart package, no generator registration, no build step. Macros compose: `guard` calls `unless`, which calls `if`.
 
 ---
 
@@ -190,8 +182,7 @@ defrecord(snake_case) Order {
   double totalAmount;
 }
 
-// @json_key overrides the JSON key for a single field,
-// taking priority over both camelCase and snake_case defaults:
+// @json_key overrides the JSON key for a single field:
 defrecord ExternalEvent {
   @json_key("evt_ts")
   int timestamp;
@@ -226,22 +217,22 @@ There is also an S-expression syntax (`.sexp`) for the full Lisp experience — 
 
 ## Built-in macros
 
-| Macro | What it generates | Why a function can't do this |
-|---|---|---|
-| `defrecord Name { ... }` | Immutable class with fields, constructor, `copyWith`, deep `==`/`hashCode`, `toString`, `fromJson`, `toJson` (camelCase keys) | Functions can't generate class declarations |
-| `defrecord(snake_case) Name { ... }` | Same but JSON keys are snake_case (`orderId` → `"order_id"`) | Covers APIs that use snake_case while Dart uses camelCase |
-| `@json_key("name") Type field;` | Overrides the JSON key for one field — wins over camelCase and snake_case | Field annotation inside `defrecord` or `defrecord(snake_case)` |
-| `defenum Name { v1, v2 }` | Dart enum with `fromJson`/`toJson` via `.byName`/`.name` | — |
-| `defunion Name { ... }` | Sealed class hierarchy | Same as defrecord |
-| `defmacro name(params) { ... }` | User-defined template macro | Functions run at call time with values; macros run at expand time with code |
-| `defFromJsonSchema("path")` | `defrecord` from a JSON Schema file; supports `$defs`, `definitions`, `oneOf` | Reads the file during the dmacro generation step; build_runner can't do this |
-| `defFromOpenApi("path", "Name")` | `defrecord` or `defunion` from an OpenAPI `components/schemas` entry; `.json`, `.yaml`, `.yml` | Same |
-| `defAllFromJsonSchema("dir/")` | One `defrecord` per `.json` file in a directory | Same |
-| `unless (cond) { ... }` | `if (!(cond)) { ... }` | — |
-| `when (cond) { ... }` | `if (cond) { ... }` | — |
-| `assertThat(expr)` | `if (!expr) throw AssertionError("Expected: <source>")` | Functions receive `false`, not the expression that produced it |
-| `swap!(a, b)` | `final _tmp = a; a = b; b = _tmp;` | Functions receive values, not variable names |
-| `withRetry(n, expr)` | Inline `for` loop with `try/catch` | Inlined body — `return`/`break` work normally; a callback can't do this |
+| Macro | What it generates |
+|---|---|
+| `defrecord Name { ... }` | Immutable class with fields, constructor, `copyWith`, deep `==`/`hashCode`, `toString`, `fromJson`, `toJson` (camelCase keys) |
+| `defrecord(snake_case) Name { ... }` | Same but JSON keys are snake_case (`orderId` → `"order_id"`) |
+| `@json_key("name") Type field;` | Overrides the JSON key for one field — wins over camelCase and snake_case |
+| `defenum Name { v1, v2 }` | Dart enum with `fromJson`/`toJson` via `.byName`/`.name` |
+| `defunion Name { ... }` | Sealed class hierarchy |
+| `defmacro name(params) { ... }` | User-defined template macro, usable anywhere below its definition |
+| `defFromJsonSchema("path")` | `defrecord` from a JSON Schema file; supports `$defs`, `definitions`, `oneOf` |
+| `defFromOpenApi("path", "Name")` | `defrecord` or `defunion` from an OpenAPI `components/schemas` entry; `.json`, `.yaml`, `.yml` |
+| `defAllFromJsonSchema("dir/")` | One `defrecord` per `.json` file in a directory |
+| `unless (cond) { ... }` | `if (!(cond)) { ... }` |
+| `when (cond) { ... }` | `if (cond) { ... }` |
+| `assertThat(expr)` | `if (!expr) throw AssertionError("Expected: <source-text>")` — message includes the source expression |
+| `swap!(a, b)` | `final _tmp = a; a = b; b = _tmp;` |
+| `withRetry(n, expr)` | Inline `for` loop with `try/catch` — `return`/`break` work normally because the body is inlined, not a callback |
 
 ---
 
@@ -285,7 +276,7 @@ dart run bin/dmacro.dart watch lib/models/
 
 Save a `.dmacro` file → dmacro regenerates the `.dart` → Flutter hot-reloads.
 
-Generated files are plain Dart and work with `Provider`, `Riverpod`, `Bloc`, and any other state management — they're just immutable value classes.
+Generated files are plain Dart and work with `Provider`, `Riverpod`, `Bloc`, and any other state management.
 
 **Merge conflicts in generated files:** resolve the conflict in the `.dmacro` source, then `dart run bin/dmacro.dart compile lib/models/` to regenerate.
 
@@ -346,94 +337,44 @@ Then in VS Code: Extensions panel → `···` → **Install from VSIX…** → 
 
 ---
 
-## Why macros?
+## How it compares to build_runner
 
-### Macros vs. code generation
+Both dmacro and `build_runner` are code generators: they run on your development machine, produce `.dart` files, and those files compile into your app. Neither affects runtime behaviour.
 
-dmacro is a preprocessor: you run `dmacro compile`, it reads `.dmacro` files, expands macros, and writes `.dart` files. The Dart compiler then compiles those `.dart` files. The Dart compiler never sees `.dmacro` files and never runs any macros.
+The differences are in ceremony and workflow:
 
-In that sense dmacro is similar to `build_runner`: both generate `.dart` files before the Dart compiler runs. The differences are in what the generation step can do:
-
-| | `build_runner` / `freezed` | dmacro |
+| | `build_runner` + `freezed` | dmacro |
 |---|---|---|
-| What it reads | Dart source + annotations | Parsed AST of `.dmacro` source |
-| Can inspect code structure | No — annotations only | Yes — operators, operands, variable names |
-| Can generate entire declarations | Partially | Yes — `defrecord` creates the whole class |
-| Generation step can do async I/O | No | Yes — `defFromJsonSchema` reads files during expansion |
+| Write an annotated class first | Yes — class must exist | No — spec is the source |
+| Run a background daemon | Yes (`build_runner watch`) | No |
+| Extra packages required | Yes (`freezed`, `json_serializable`, etc.) | No |
+| Generate entire class from scratch | Yes (freezed does this too) | Yes |
+| Generate from external spec file | No — requires an annotated class | Yes — `defFromJsonSchema`, `defFromOpenApi` |
+| Fetch schema from a URL | No | Yes (at generation time, on your machine) |
+| User-defined transforms in-source | No — needs a new generator package | Yes — `defmacro` in the same file |
+| `return`/`break` in retry bodies | No — callback wraps in closure | Yes — `withRetry` inlines the body |
 
-The AST point is the key one:
-
-```dart
-// build_runner sees @MyAnnotation on a class declaration.
-// It cannot see what's *inside* method bodies.
-
-// dmacro parses the entire source into a nested list (AST) and runs
-// Dart functions over it. assertThat receives ['>', 'amount', 0] —
-// the actual operator and operands — not just the boolean result:
-assertThat(amount > 0);
-// → generates: if (!(amount > 0)) throw AssertionError("Expected: amount > 0")
-//              the source expression appears in the message automatically
-```
-
-The async I/O capability comes from the same architectural choice: because dmacro is a separate preprocessing step with no incrementality requirement, its expansion phase can freely `await` file reads, HTTP calls, or anything else. The [cancelled official Dart macros](https://dart.dev/language/macros) could not do this — async execution inside an incremental compiler breaks millisecond hot reloads.
-
-### Why Lisp macros, not C macros
-
-C macros (`#define`) do text substitution — they never see the parsed structure. They break on commas in arguments, have no hygiene (name collisions are your problem), and can't loop or branch.
-
-dmacro is a **Lisp macro system** for Dart. In Lisp, code and data share the same representation: nested lists. The expression `(if (> x 0) "positive")` *is* the list `['if', ['>', 'x', 0], '"positive"']`. A macro is a plain Dart function that receives that list and returns a transformed list.
-
-```
-source text  →  List<Node>  →  macro(List<Node>) → List<Node>  →  Dart source
-                (code as data)    (transformation)
-```
-
-`Node` is `dynamic` — an atom (`String`, `int`, `double`, `bool`, `null`) or a `List<Node>`. A macro is `(List<Node>) → Node`. That's the entire model.
-
-| | C `#define` | dmacro (Lisp-style) |
-|---|---|---|
-| Operates on | Raw tokens | Parsed AST |
-| Inspect argument structure | No | Yes |
-| Hygienic | No | Yes — `gensym` prevents name collisions |
-| Loop / branch / recurse | No | Yes — it's Dart code |
-| I/O during generation step | No | Yes — `async` macros allowed |
+**On schema fetching:** `defFromOpenApi("https://api.example.com/spec")` fetches the spec when you run `dmacro compile` on your machine. The generated class is static Dart — it compiles into the binary. If the API schema changes after you ship, the app uses the old types. You fetch again, regenerate, and redeploy. The advantage over build_runner is that you skip the manual annotation step, not that the app adapts at runtime.
 
 ---
 
 ## How it works
 
+dmacro is a Lisp-style macro system. Code is represented as data (nested lists), macros are plain Dart functions that transform that data, and the emitter serialises the result to Dart source.
+
 ```
 source (.dmacro)
     ↓  tokenizer + parser
-List<Node>            ← code is data (nested lists)
+List<Node>            ← code as data (nested lists)
     ↓  async expander    ← macros run here; await is allowed
-List<Node>            ← fully expanded, no macros remain
+List<Node>            ← fully expanded
     ↓  emitter
 Dart source (.dart)
 ```
 
-The **async expander** is why `defFromJsonSchema` works: macros can `await` file I/O, HTTP requests, or anything else during the expansion step. The official Dart macro system [could not support this](https://dart.dev/language/macros) — async execution inside an incremental compiler makes millisecond hot reloads intractable, so the two couldn't be reconciled.
+`Node` is `dynamic` — an atom (`String`, `int`, `double`, `bool`, `null`) or a `List<Node>`. A macro is `(List<Node>) → Node`. The expression `(if (> x 0) "pos")` is literally the list `['if', ['>', 'x', 0], '"pos"']` — code and data share the same representation.
 
-dmacro is not inside the compiler. It transforms `.dmacro` → `.dart` as a separate preprocessing step, then steps aside. The Dart compiler only ever sees the generated `.dart` files and never runs any dmacro code. This costs one extra step (generated files are committed, just like `build_runner` output) but buys the full capability: arbitrary code — including I/O — during expansion.
-
----
-
-## Comparison
-
-| | **dmacro** | freezed + build_runner | macro_kit | Official Dart macros |
-|---|---|---|---|---|
-| Ships today | ✅ | ✅ | ✅ | ❌ (cancelled Jan 2025) |
-| Zero dependencies | ✅ | ❌ | ❌ | — |
-| No build daemon | ✅ | ❌ (build_runner watch) | ❌ (WebSocket daemon) | — |
-| Generate entire class | ✅ | ✅ | ❌ (appends only) | ✅ |
-| `fromJson` / `toJson` built in | ✅ | ➖ (needs `json_serializable`) | ❌ | ✅ |
-| Deep equality (List/Set/Map) | ✅ | ✅ | ❌ | ✅ |
-| `copyWith` clears nullable fields | ✅ | ✅ | ❌ | ✅ |
-| Read external files at build time | ✅ | ❌ | ❌ | ❌ |
-| Expression-level transforms | ✅ | ❌ | ❌ | ✅ |
-| Inject variables into caller scope | ✅ | ❌ | ❌ | ❌ |
-| Dart-like syntax | ✅ (.dmacro) | ✅ | ✅ | ✅ |
-| Works in Flutter projects | ✅ | ✅ | ✅ | — |
+The expander allows `await`, which is why `defFromJsonSchema` can read files and URLs during the generation step. `build_runner` builders can read declared asset inputs but cannot make arbitrary network calls.
 
 ---
 
@@ -444,7 +385,7 @@ bin/
   dmacro.dart             CLI: compile / watch / repl / trace / --check
 lib/src/
   core.dart               Node type, expand(), emit()
-  async_expand.dart       Async macro expander (enables I/O during the generation step)
+  async_expand.dart       Async macro expander (I/O during generation)
   schema_macros.dart      defFromJsonSchema, defFromOpenApi, defAllFromJsonSchema
   yaml_parser.dart        Built-in YAML parser (no external deps)
   builtins.dart           unless, when, swap!, assertThat, withRetry, defrecord, defunion, defmacro
