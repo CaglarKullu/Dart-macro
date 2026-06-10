@@ -176,11 +176,11 @@ void main() {
   // ─── Demo: generate and write models.dart ────────────────────────────────────
 
   group('schema demo — generate models.dart', () {
-    test('generates and writes example/schema_demo/models.dart', () async {
+    test('generates correct output for schema_demo/schemas/payment.json',
+        () async {
       const src =
           'defFromJsonSchema("example/schema_demo/schemas/payment.json");';
       final dart = await asyncCompileDartLike(src);
-      File('example/schema_demo/models.dart').writeAsStringSync(dart);
       expect(dart, contains('class Payment'));
     });
   });
