@@ -1,4 +1,4 @@
-/// dmacro — compile-time macro preprocessor for Dart.
+/// dmacro — Lisp-style macro preprocessor for Dart.
 ///
 /// S-expression / Lisp-style macros:
 library dmacro;

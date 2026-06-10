@@ -1,7 +1,7 @@
 /// Async expander — like [expand] but macro functions may be [FutureOr].
 ///
 /// This is the keystone of Phase 2: macros can perform I/O (read files,
-/// fetch schemas, query databases) at compile time. The expander awaits
+/// fetch schemas, query databases) at generation time. The expander awaits
 /// each macro result in sequential order so gensym counters and I/O
 /// side-effects remain deterministic.
 ///

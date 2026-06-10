@@ -1,4 +1,4 @@
-/// Async macros that generate Dart types from JSON Schema files at compile time.
+/// Async macros that generate Dart types from JSON Schema files at generation time.
 ///
 /// This is the headline capability: I/O-based code generation with zero
 /// non-SDK dependencies and no build_runner required.

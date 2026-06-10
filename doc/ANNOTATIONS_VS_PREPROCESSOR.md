@@ -50,7 +50,7 @@ defrecord Payment {
 ```
 
 `dmacro compile` reads the source, expands macros (which may run arbitrary code,
-including compile-time I/O), and emits a complete `.dart` file.
+including generation-time I/O), and emits a complete `.dart` file.
 
 ---
 
@@ -67,13 +67,13 @@ including compile-time I/O), and emits a complete `.dart` file.
 | Sealed union types (`defunion`)               | ❌          | ✅           |
 | Generate a class from a **JSON Schema**       | ❌          | ✅           |
 | Generate from an **OpenAPI** spec             | ❌          | ✅           |
-| **Compile-time I/O** (read external files)    | ❌          | ✅           |
+| **Generation-time I/O** (read external files)  | ❌          | ✅           |
 | Expression macros (`unless`, `swap!`, …)      | ❌          | ✅           |
 | Two front-end syntaxes (`.dmacro` + `.sexp`)  | ❌          | ✅           |
 
 The gap is structural, not incidental. The annotation transformer can only
 **append members to a class that already exists** — it can never *create* a
-type. So the project's keystone feature (read a JSON schema at build time and
+type. So the project's keystone feature (read a JSON schema at generation time and
 synthesize the Dart type) is impossible in the annotation model by construction.
 The preprocessor regenerates whole files, so it has no such ceiling.
 
@@ -120,7 +120,7 @@ It wins on evolution/effectiveness (structurally more capable), on usability
 (analyzer-clean, no annotation boilerplate, no in-file generated blocks), and on
 complexity (one tested, documented system instead of two). The one genuine point
 in the annotation column — drop-in adoption for existing classes — does not
-outweigh losing the project's entire reason to exist (compile-time I/O), and is
+outweigh losing the project's entire reason to exist (generation-time I/O), and is
 undercut by the system shipping zero annotation classes.
 
 ### What was removed
@@ -139,5 +139,5 @@ nothing conceptual is lost.
 If the goal were *only* "add `copyWith`/`==` to my existing hand-written Dart
 classes with the least disruption," the annotation shape is the better fit — that
 is precisely the niche `freezed` and `json_serializable` own. This project aims
-higher (types from external specs, compile-time I/O), and that aim is only
+higher (types from external specs, generation-time I/O), and that aim is only
 reachable with the preprocessor.
