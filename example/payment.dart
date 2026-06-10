@@ -10,39 +10,15 @@ class Payment {
   // @dmacro-origin: example/payment.dmacro:15
   final String? reference;
   const Payment({required this.amount, required this.currency, this.reference});
-  Payment copyWith({
-    double? amount,
-    String? currency,
-    Object? reference = _dmUndefined,
-  }) => Payment(
-    amount: amount ?? this.amount,
-    currency: currency ?? this.currency,
-    reference: identical(reference, _dmUndefined)
-        ? this.reference
-        : reference as String?,
-  );
+  Payment copyWith({double? amount, String? currency, Object? reference = _dmUndefined}) => Payment(amount: amount ?? this.amount, currency: currency ?? this.currency, reference: identical(reference, _dmUndefined) ? this.reference : reference as String?);
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Payment &&
-          other.amount == amount &&
-          other.currency == currency &&
-          other.reference == reference;
+  bool operator ==(Object other) => identical(this, other) || other is Payment && other.amount == amount && other.currency == currency && other.reference == reference;
   @override
   int get hashCode => Object.hashAll([amount, currency, reference]);
   @override
-  String toString() =>
-      'Payment(amount: $amount, currency: $currency, reference: $reference)';
-  factory Payment.fromJson(Map<String, dynamic> json) => Payment(
-    amount: (json['amount'] as num).toDouble(),
-    currency: json['currency'] as String,
-    reference: json['reference'] as String?,
-  );
-  Map<String, dynamic> toJson() => {
-    'amount': amount,
-    'currency': currency,
-    'reference': reference,
-  };
+  String toString() => 'Payment(amount: $amount, currency: $currency, reference: $reference)';
+  factory Payment.fromJson(Map<String, dynamic> json) => Payment(amount: (json['amount'] as num).toDouble(), currency: json['currency'] as String, reference: json['reference'] as String?);
+  Map<String, dynamic> toJson() => {'amount': amount, 'currency': currency, 'reference': reference};
 }
 
 // @dmacro-origin: example/payment.dmacro:18
@@ -53,50 +29,22 @@ class TransferRequest {
   final String fromAccount;
   // @dmacro-origin: example/payment.dmacro:21
   final String toAccount;
-  const TransferRequest({
-    required this.payment,
-    required this.fromAccount,
-    required this.toAccount,
-  });
-  TransferRequest copyWith({
-    Payment? payment,
-    String? fromAccount,
-    String? toAccount,
-  }) => TransferRequest(
-    payment: payment ?? this.payment,
-    fromAccount: fromAccount ?? this.fromAccount,
-    toAccount: toAccount ?? this.toAccount,
-  );
+  const TransferRequest({required this.payment, required this.fromAccount, required this.toAccount});
+  TransferRequest copyWith({Payment? payment, String? fromAccount, String? toAccount}) => TransferRequest(payment: payment ?? this.payment, fromAccount: fromAccount ?? this.fromAccount, toAccount: toAccount ?? this.toAccount);
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is TransferRequest &&
-          other.payment == payment &&
-          other.fromAccount == fromAccount &&
-          other.toAccount == toAccount;
+  bool operator ==(Object other) => identical(this, other) || other is TransferRequest && other.payment == payment && other.fromAccount == fromAccount && other.toAccount == toAccount;
   @override
   int get hashCode => Object.hashAll([payment, fromAccount, toAccount]);
   @override
-  String toString() =>
-      'TransferRequest(payment: $payment, fromAccount: $fromAccount, toAccount: $toAccount)';
-  factory TransferRequest.fromJson(Map<String, dynamic> json) =>
-      TransferRequest(
-        payment: Payment.fromJson(json['payment'] as Map<String, dynamic>),
-        fromAccount: json['fromAccount'] as String,
-        toAccount: json['toAccount'] as String,
-      );
-  Map<String, dynamic> toJson() => {
-    'payment': payment.toJson(),
-    'fromAccount': fromAccount,
-    'toAccount': toAccount,
-  };
+  String toString() => 'TransferRequest(payment: $payment, fromAccount: $fromAccount, toAccount: $toAccount)';
+  factory TransferRequest.fromJson(Map<String, dynamic> json) => TransferRequest(payment: Payment.fromJson(json['payment'] as Map<String, dynamic>), fromAccount: json['fromAccount'] as String, toAccount: json['toAccount'] as String);
+  Map<String, dynamic> toJson() => {'payment': payment.toJson(), 'fromAccount': fromAccount, 'toAccount': toAccount};
 }
 
 // @dmacro-origin: example/payment.dmacro:24
 sealed class PaymentState {
   const PaymentState();
 }
-
 class Idle extends PaymentState {
   const Idle();
   Idle copyWith() => Idle();
@@ -107,7 +55,6 @@ class Idle extends PaymentState {
   @override
   String toString() => 'Idle()';
 }
-
 class Loading extends PaymentState {
   const Loading();
   Loading copyWith() => Loading();
@@ -118,28 +65,23 @@ class Loading extends PaymentState {
   @override
   String toString() => 'Loading()';
 }
-
 class Success extends PaymentState {
   final Payment payment;
   const Success({required this.payment});
-  Success copyWith({Payment? payment}) =>
-      Success(payment: payment ?? this.payment);
+  Success copyWith({Payment? payment}) => Success(payment: payment ?? this.payment);
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) || other is Success && other.payment == payment;
+  bool operator ==(Object other) => identical(this, other) || other is Success && other.payment == payment;
   @override
   int get hashCode => Object.hashAll([payment]);
   @override
   String toString() => 'Success(payment: $payment)';
 }
-
 class Failure extends PaymentState {
   final String error;
   const Failure({required this.error});
   Failure copyWith({String? error}) => Failure(error: error ?? this.error);
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) || other is Failure && other.error == error;
+  bool operator ==(Object other) => identical(this, other) || other is Failure && other.error == error;
   @override
   int get hashCode => Object.hashAll([error]);
   @override
