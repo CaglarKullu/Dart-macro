@@ -1,9 +1,11 @@
 # dmacro
 
-Compile-time macros for Dart. Write a short spec — get a complete, typed, immutable class back. Read your API schema at build time and generate Dart types automatically. No `build_runner`, no annotations, no extra packages.
+**dmacro is a preprocessor for Dart.** You run `dmacro compile`, it reads `.dmacro` source files, expands macros, and writes plain `.dart` files. The Dart compiler then compiles those `.dart` files as normal — it never sees `.dmacro` files and never runs any macro code.
+
+Write a short spec — get a complete, typed, immutable class back. Point at your API schema — get Dart types generated automatically. No `build_runner`, no annotations, no extra packages.
 
 > The Dart team [cancelled language-level macros in January 2025](https://dart.dev/language/macros).  
-> dmacro ships today, built as a plain preprocessor — no compiler integration required.
+> dmacro ships today. Because it runs as a preprocessor — outside the compiler — it can do things the official macros could not, including reading files and making network calls during generation.
 
 ---
 
