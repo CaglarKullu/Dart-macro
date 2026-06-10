@@ -185,8 +185,11 @@ git clone https://github.com/caglarkullu/dart-macro && cd dart-macro
 # 2. Install deps
 dart pub get
 
-# 3. Compile an example
+# 3a. Compile a .dmacro file → generates a .dart file
 dart run bin/dmacro.dart compile example/ecommerce/models.dmacro
+
+# 3b. Or expand inline blocks inside a regular .dart file
+dart run bin/dmacro.dart compile example/inline_demo.dart
 
 # 4. Or try the REPL
 dart run bin/dmacro.dart repl
@@ -503,7 +506,7 @@ dmacro resolves the path via `.dart_tool/package_config.json` (written by `dart 
 
 ---
 
-### 8. OpenAPI `oneOf` → sealed class hierarchy
+### 10. OpenAPI `oneOf` → sealed class hierarchy
 
 OpenAPI specs that use `oneOf` for polymorphic types are automatically mapped to a Dart sealed class:
 
@@ -531,7 +534,7 @@ class Rectangle extends Shape { final double width; final double height; ... }
 
 ---
 
-### 9. YAML OpenAPI specs
+### 11. YAML OpenAPI specs
 
 `defFromOpenApi` accepts `.yaml` and `.yml` files in addition to `.json` — no external dependencies:
 
@@ -596,7 +599,7 @@ There is also an S-expression syntax (`.sexp`) for the full Lisp experience — 
 | `defmacro(declaration) name(params) { ... }` | User macro with output-type validation — errors at call time if output isn't a declaration | Functions have no way to validate the shape of their return value as code |
 | `defmacro(expression) name(params) { ... }` | User macro validated to produce an expression | Same |
 | `defmacro(statement) name(params) { ... }` | User macro validated to produce a statement | Same |
-| `importMacros("path")` | Load macro definitions from another `.dmacro` / `.sexp` file; supports `package:` URIs | Functions can't register macros at compile time |
+| `importMacros("path")` | Load macro definitions from another `.dmacro` / `.sexp` file; supports `package:` URIs | Functions can't register macros at generation time |
 | `defFromJsonSchema("path")` | `defrecord` from a JSON Schema file; `$defs`/`definitions` blocks and `oneOf` are supported | Functions run at runtime; I/O during generation requires a macro |
 | `defFromOpenApi("path", "Name")` | `defrecord` (or `defunion` for `oneOf`) from an OpenAPI `components/schemas` entry; accepts `.json`, `.yaml`, or `.yml` | Same |
 | `defAllFromJsonSchema("dir/")` | One `defrecord` per `.json` file in a directory | Same |
@@ -610,14 +613,36 @@ There is also an S-expression syntax (`.sexp`) for the full Lisp experience — 
 
 ## Workflow
 
+There are two ways to use dmacro — pick whichever fits your file:
+
+**Separate file** — clean source/output split:
 ```
 you write           dmacro compiles           you commit
 ──────────          ──────────────            ──────────
-models.dmacro  →    models.dart          →    models.dart
-                    (full Dart class)          (not models.dmacro)
+models.dmacro  →    models.dart          →    both files
+                    (full Dart class)
 ```
+The `.dmacro` file is the source. The `.dart` file is the output. Commit both; never hand-edit the `.dart`.
 
-The `.dart` file is the output — your Flutter/Dart app imports it as normal. The `.dmacro` file is the source. Commit both.
+**Inline block** — macros inside an existing `.dart` file:
+```dart
+// lib/models.dart  (before)
+// @@dmacro
+defrecord Point { double x; double y; }
+// @@end
+```
+```bash
+dart run bin/dmacro.dart compile lib/models.dart
+```
+```dart
+// lib/models.dart  (after — macro source kept as comments, output injected below)
+// @@dmacro
+// defrecord Point { double x; double y; }
+// @@generated
+class Point { ... }
+// @@end
+```
+One file. Edit the `//`-prefixed source lines and re-run to regenerate. See [`example/inline_demo.dart`](example/inline_demo.dart) for a working example.
 
 ### Flutter project integration
 
@@ -803,7 +828,8 @@ example/
   api_from_schema/        Types from a directory of JSON Schemas
   openapi_demo/           Types from an OpenAPI spec (JSON + YAML)
   schema_demo/            Single defFromJsonSchema walkthrough
-  payment.dmacro          Core syntax reference
-  payment.sexp            S-expression syntax reference
+  inline_demo.dart        Inline @@dmacro blocks inside a regular .dart file
+  payment.dmacro          Core syntax reference (.dmacro style)
+  payment.sexp            Core syntax reference (S-expression style)
 vscode-ext/               VS Code extension source
 ```
