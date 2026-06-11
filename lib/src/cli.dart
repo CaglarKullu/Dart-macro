@@ -35,6 +35,17 @@ import 'dart:io';
 
 import 'builtins.dart';
 import 'core.dart' show MacroExpansionError;
+import 'dep_graph.dart' show depGraph;
+import 'gen_cache.dart' as gc
+    show
+        clearGenerationInputs,
+        computeFingerprint,
+        currentSourceFile,
+        generationInputFiles,
+        isCurrent,
+        storedGenerationInputs,
+        storedImports,
+        updateCache;
 import 'macro_loader.dart' show shutdownMacroWorkers;
 import 'schema_macros.dart';
 import 'async_expand.dart'
@@ -226,6 +237,26 @@ Future<bool> _compileSingle(String inputPath,
   // false staleness ("models.dmacro" vs "./models.dmacro").
   inputPath = _normalizePath(inputPath);
   final source = await File(inputPath).readAsString();
+  final absInputPath = File(inputPath).absolute.path;
+  final outFile = outputPath ?? _outputPath(inputPath);
+
+  // Per-file gen-cache state: track which extra files are read during expansion.
+  gc.clearGenerationInputs();
+  gc.currentSourceFile = absInputPath;
+  depGraph.clearSource(absInputPath);
+
+  // Skip recompilation when source and all generation-time inputs are unchanged.
+  // Use stored imports — the dep graph is in-memory only and resets each run.
+  if (!checkMode && File(outFile).existsSync()) {
+    final prevImports = gc.storedImports(absInputPath);
+    final prevGenInputs = gc.storedGenerationInputs(absInputPath);
+    final fp = gc.computeFingerprint(source, prevImports, prevGenInputs);
+    if (gc.isCurrent(absInputPath, fp)) {
+      stderr.writeln('↷ $inputPath (unchanged)');
+      return false;
+    }
+  }
+
   String dart;
 
   // Isolate this file's macro registrations (defmacro / importMacros /
@@ -265,7 +296,6 @@ Future<bool> _compileSingle(String inputPath,
       '// Do not edit — edit the source file instead.\n'
       '// ignore_for_file: type=lint\n\n';
   final output = header + dart;
-  final outFile = outputPath ?? _outputPath(inputPath);
 
   if (checkMode) {
     // Just check whether the on-disk file matches; don't write.
@@ -280,13 +310,20 @@ Future<bool> _compileSingle(String inputPath,
   if (outputPath != null) {
     await File(outFile).writeAsString(output);
     stderr.writeln('✓ $inputPath → $outFile');
-  } else if (outputPath == null && File(inputPath).parent.path.isNotEmpty) {
+  } else if (File(inputPath).parent.path.isNotEmpty) {
     // No explicit output — derive sibling .dart file and write it.
     await File(outFile).writeAsString(output);
     stderr.writeln('✓ $inputPath → $outFile');
   } else {
     print(output);
   }
+
+  // Persist fingerprint so subsequent runs can skip recompilation.
+  final newImports = depGraph.importsOf(absInputPath);
+  final newGenInputs = List<String>.from(gc.generationInputFiles);
+  final newFp = gc.computeFingerprint(source, newImports, newGenInputs);
+  gc.updateCache(absInputPath, newFp, newGenInputs, newImports);
+
   return false;
 }
 
@@ -472,6 +509,16 @@ Future<void> _watchCmd(List<String> args) async {
           final outFile = _outputPath(p);
           await _compileSingle(p, outputPath: outFile, doFormat: doFormat);
           if (withAnalyze) await _analyzeOutput(outFile, p);
+
+          // Cascade: recompile all files that import this macro file.
+          final absP = File(p).absolute.path;
+          for (final dep in depGraph.dependentsOf(absP)) {
+            if (dep.endsWith('.dmacro') || dep.endsWith('.sexp')) {
+              final depOut = _outputPath(dep);
+              await _compileSingle(dep, outputPath: depOut, doFormat: doFormat);
+              if (withAnalyze) await _analyzeOutput(depOut, dep);
+            }
+          }
         }
       } catch (e) {
         stderr.writeln('✗ $p: $e');

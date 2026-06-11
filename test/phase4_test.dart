@@ -40,8 +40,9 @@ void main() {
 
   group('located errors — parser', () {
     test('ParseException includes line/col', () {
+      // Unterminated brace triggers a located ParseException.
       try {
-        compileDartLike('void f() { 123 }');
+        compileDartLike('void f() {');
       } on ParseException catch (e) {
         expect(e.line, greaterThan(0));
         expect(e.col, greaterThan(0));
@@ -51,10 +52,10 @@ void main() {
     });
 
     test('ParseException.toString() includes location prefix', () {
+      // Unterminated multiline brace: error should reference the EOF position.
       try {
-        compileDartLike('void f() {\n  123\n}');
+        compileDartLike('void f() {\n  return 1;\n');
       } on ParseException catch (e) {
-        // Should contain "line:col: " prefix in message
         expect(e.toString(), contains('ParseException:'));
         return;
       }

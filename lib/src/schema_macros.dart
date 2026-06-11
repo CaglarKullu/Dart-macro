@@ -281,6 +281,11 @@ void registerSchemaMacros() {
 
   defAsyncMacro('useMacros', (args) async {
     final target = unquote(args[0] as String);
+    // Record dep-graph edge so watch mode recompiles this file when the
+    // macro library changes.
+    if (currentSourceFile.isNotEmpty) {
+      depGraph.recordDependency(currentSourceFile, resolveDepPath(target));
+    }
     await loadMacroLibrary(target);
     // No Dart output — the effect is the registered proxy macros.
     return '';

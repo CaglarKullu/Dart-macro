@@ -120,12 +120,28 @@ List<String> storedGenerationInputs(String sourceFile) {
   return raw.split('|').where((s) => s.isNotEmpty).toList();
 }
 
-/// Stores [fp] and the generation-input paths for [sourceFile].
+/// Returns the importMacros/useMacros paths stored from the previous
+/// compilation of [sourceFile]. The dep graph is in-memory only, so these
+/// persisted paths are used for fingerprint checks on subsequent CLI runs.
+List<String> storedImports(String sourceFile) {
+  final entry = _loadCache()[sourceFile];
+  if (entry == null) return const [];
+  final raw = entry['importedFiles'];
+  if (raw == null || raw.isEmpty) return const [];
+  return raw.split('|').where((s) => s.isNotEmpty).toList();
+}
+
+/// Stores [fp], generation-input paths, and importMacros paths for [sourceFile].
 void updateCache(
-    String sourceFile, String fp, List<String> generationInputPaths) {
+  String sourceFile,
+  String fp,
+  List<String> generationInputPaths, [
+  List<String> importedPaths = const [],
+]) {
   _loadCache()[sourceFile] = {
     'fingerprint': fp,
     'generationInputs': generationInputPaths.join('|'),
+    'importedFiles': importedPaths.join('|'),
   };
   _saveCache();
 }
