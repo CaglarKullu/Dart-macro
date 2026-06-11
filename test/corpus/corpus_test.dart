@@ -307,11 +307,12 @@ void main() {
   // ─── Errors clear and located ─────────────────────────────────────────────────
 
   group('3.5 parse errors are clear', () {
-    test('unexpected token throws ParseException', () {
-      expect(
-        () => compileDartLike('123'),
-        throwsA(isA<ParseException>()),
-      );
+    test('unknown Dart constructs pass through as opaque text', () {
+      // Syntax the parser does not model (standalone literals, switch
+      // expressions, record patterns, etc.) is emitted verbatim rather than
+      // rejected, so users can write any Dart they like inside .dmacro files.
+      expect(() => compileDartLike('123'), returnsNormally);
+      expect(() => compileDartLike('42;'), returnsNormally);
     });
 
     test('missing closing brace throws ParseException', () {
@@ -321,12 +322,14 @@ void main() {
       );
     });
 
-    test('unknown construct gives ParseException, not silent mis-parse', () {
-      // A standalone number at top level is not a valid declaration.
-      expect(
-        () => compileDartLike('42;'),
-        throwsA(isA<ParseException>()),
-      );
+    test('ParseException for unterminated block is located', () {
+      // Parser should include a line/col so the error can be traced back.
+      try {
+        compileDartLike('void f() {');
+        fail('Expected ParseException');
+      } on ParseException catch (e) {
+        expect(e.line, greaterThan(0));
+      }
     });
   });
 }

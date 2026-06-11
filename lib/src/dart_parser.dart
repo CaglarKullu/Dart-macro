@@ -264,7 +264,12 @@ class DartLikeParser {
     final stmts = <Node>[];
     while (!_check(TK.rbrace)) {
       if (_atEnd()) {
-        throw ParseException('Unexpected end of file — missing "}"');
+        final t = _peek();
+        throw ParseException(
+          'Unexpected end of file — missing "}"',
+          line: t.line,
+          col: t.col,
+        );
       }
       stmts.add(_statement());
     }
@@ -620,9 +625,14 @@ class DartLikeParser {
       buf.write(' ');
     }
     // Hit EOF with an unclosed brace — that's malformed input, not just syntax
-    // we don't model. Report the error clearly.
+    // we don't model. Report the error clearly with the EOF position.
     if (!terminated && depth > 0) {
-      throw ParseException('Unexpected end of file — missing closing "}"');
+      final t = _peek(); // EOF token carries the position of end-of-input
+      throw ParseException(
+        'Unexpected end of file — missing closing "}"',
+        line: t.line,
+        col: t.col,
+      );
     }
     return OpaqueNode(buf.toString().trimRight());
   }
