@@ -15,6 +15,12 @@ const _fixture = 'test/fixtures/use_macros_lib.dart';
 
 void main() {
   setUp(() {
+    // Start each test from a clean registry. shutdownMacroWorkers (tearDown)
+    // kills the isolates but leaves their proxy macros registered, so without
+    // this clear a proxy from a prior test would pollute the next test's
+    // baseline snapshot.
+    restoreMacros(
+        MacroSnapshot(<String, MacroFn>{}, <String, AsyncMacroFn>{}));
     registerBuiltins();
     registerSchemaMacros();
   });
@@ -65,6 +71,27 @@ defwidget Box { double size; }
 ''';
       final out = await asyncCompileDartLike(source);
       expect(out, contains('class Box {'));
+    });
+
+    test('proxies are reinstalled after a registry rollback (cross-file reuse)',
+        () async {
+      // Simulates two files in one build: file 1 uses the library, then the
+      // per-file rollback wipes its proxies; file 2 uses the same library and
+      // must get its proxies back from the cached worker (no respawn).
+      final file1 = 'useMacros("$_fixture");\ndefwidget One { int a; }\n';
+      final file2 = 'useMacros("$_fixture");\ndefwidget Two { int b; }\n';
+
+      final snapshot = snapshotMacros();
+      final out1 = await asyncCompileDartLike(file1);
+      restoreMacros(snapshot); // per-file isolation rolls proxies back
+      expect(asyncMacroNames(), isNot(contains('defwidget')),
+          reason: 'rollback should remove the useMacros proxy');
+
+      final out2 = await asyncCompileDartLike(file2);
+
+      expect(out1, contains('class One {'));
+      expect(out2, contains('class Two {'),
+          reason: 'cached worker must reinstall proxies on the second load');
     });
 
     test('a #fnName fragment selects an alternate registration function',

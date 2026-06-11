@@ -44,7 +44,9 @@ import 'async_expand.dart'
         asyncCompileDartLikeWithOrigins,
         asyncCompileDartLikeWithTrace,
         asyncCompileWithOrigins,
-        asyncCompileWithTrace;
+        asyncCompileWithTrace,
+        restoreMacros,
+        snapshotMacros;
 import 'dart:convert' show jsonDecode;
 
 /// Marker that starts an inline dmacro block in a .dart file.
@@ -226,6 +228,10 @@ Future<bool> _compileSingle(String inputPath,
   final source = await File(inputPath).readAsString();
   String dart;
 
+  // Isolate this file's macro registrations (defmacro / importMacros /
+  // useMacros) so they don't leak into the next file in a directory or watch
+  // build. Restored once expansion is done — macros aren't needed past here.
+  final macroSnapshot = snapshotMacros();
   try {
     // Origin-tracking variants embed `// @dmacro-origin: file:line` markers so
     // post-compile analyzer errors can be mapped back to source positions.
@@ -244,6 +250,8 @@ Future<bool> _compileSingle(String inputPath,
       stderr.writeln('$inputPath: ${_stripExceptionPrefix(e)}');
     }
     exit(1);
+  } finally {
+    restoreMacros(macroSnapshot);
   }
 
   if (doFormat) dart = _format(dart);
@@ -325,6 +333,9 @@ Future<bool> _compileDartInline(String dartPath,
   }
 
   String updated;
+  // Isolate this file's macro registrations so they don't leak into the next
+  // file in a directory or watch build (see _compileSingle).
+  final macroSnapshot = snapshotMacros();
   try {
     updated = await _processInlineBlocks(original, dartPath);
   } catch (e) {
@@ -334,6 +345,8 @@ Future<bool> _compileDartInline(String dartPath,
       stderr.writeln('$dartPath: ${_stripExceptionPrefix(e)}');
     }
     exit(1);
+  } finally {
+    restoreMacros(macroSnapshot);
   }
 
   // Normalize both sides under the same formatter so re-running an already-

@@ -98,6 +98,18 @@ MacroFn? getMacro(String name) => _macros[name];
 /// report which macros a loaded Dart library exposes (alongside async ones).
 Iterable<String> syncMacroNames() => _macros.keys;
 
+/// Captures the current sync-macro registry so it can be rolled back with
+/// [restoreSyncMacros]. Used to isolate per-file compilation: macros a source
+/// file registers (via `defmacro` / `importMacros`) must not leak into the
+/// next file in a directory or watch build.
+Map<String, MacroFn> snapshotSyncMacros() => Map.of(_macros);
+
+/// Restores the sync-macro registry to a [snapshotSyncMacros] result.
+void restoreSyncMacros(Map<String, MacroFn> snapshot) =>
+    _macros
+      ..clear()
+      ..addAll(snapshot);
+
 // ─── Enum registry ────────────────────────────────────────────────────────────
 
 final _enumNames = <String>{};

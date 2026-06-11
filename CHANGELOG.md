@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### New features
+
+- **`useMacros("…dart")`**: load Dart-function macros from a library with no
+  `tool/dmacro.dart` entry point. The library (exposing `registerMacros()`, or a
+  `#fnName` fragment) runs in a worker isolate at generation time; each macro it
+  exposes is registered as a proxy and composes with builtins and your other
+  macros. `dart run dmacro compile` is the only command needed.
+
+### Bug fixes
+
+- **Per-file macro isolation**: a macro defined in one source file (`defmacro`,
+  `importMacros`, or `useMacros`) no longer leaks into other files compiled in
+  the same directory or watch build. The macro registry is now snapshotted and
+  rolled back around each file, so output no longer depends on compile order.
+
 ## 0.3.0
 
 ### New features

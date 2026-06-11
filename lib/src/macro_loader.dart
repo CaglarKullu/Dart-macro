@@ -26,10 +26,17 @@ class _Worker {
   final SendPort requests;
   final ReceivePort replies;
   final File bootstrap;
+
+  /// Macro names this worker exposes, kept so proxies can be re-registered on a
+  /// cached load — per-file compilation rolls the registry back between files,
+  /// so a second `useMacros` of the same library must re-install its proxies.
+  final List<String> names;
+
   final _pending = <int, Completer<Node>>{};
   var _nextId = 0;
 
-  _Worker(this.isolate, this.requests, this.replies, this.bootstrap) {
+  _Worker(
+      this.isolate, this.requests, this.replies, this.bootstrap, this.names) {
     replies.listen((msg) {
       final m = msg as Map;
       final completer = _pending.remove(m['id']);
@@ -75,7 +82,10 @@ final _workers = <String, _Worker>{};
 /// path to a `.dart` file; an optional `#functionName` fragment names the
 /// registration function (default `registerMacros`).
 ///
-/// Idempotent: loading the same target twice in one run is a no-op.
+/// The isolate is spawned once per target and cached, but the proxies are
+/// (re)registered on every call — per-file compilation rolls the macro registry
+/// back between files, so a later `useMacros` of an already-spawned library
+/// must reinstall its proxies into the fresh registry.
 Future<void> loadMacroLibrary(String target) async {
   final hashIndex = target.indexOf('#');
   final uriPart = hashIndex == -1 ? target : target.substring(0, hashIndex);
@@ -83,7 +93,11 @@ Future<void> loadMacroLibrary(String target) async {
       hashIndex == -1 ? 'registerMacros' : target.substring(hashIndex + 1);
 
   final cacheKey = '$uriPart#$fnName';
-  if (_workers.containsKey(cacheKey)) return;
+  final cached = _workers[cacheKey];
+  if (cached != null) {
+    _registerProxies(cached);
+    return;
+  }
 
   final importUri = _toImportUri(uriPart);
 
@@ -128,10 +142,17 @@ void main(List<String> args, SendPort port) =>
     hs['port'] as SendPort,
     ReceivePort(),
     bootstrap,
+    (hs['names'] as List).cast<String>(),
   );
   _workers[cacheKey] = worker;
+  _registerProxies(worker);
+}
 
-  for (final name in (hs['names'] as List).cast<String>()) {
+/// Registers a proxy macro per name the [worker] exposes. Each proxy forwards a
+/// single call to the worker isolate. Safe to call repeatedly — registering the
+/// same name just reinstalls the same proxy.
+void _registerProxies(_Worker worker) {
+  for (final name in worker.names) {
     defAsyncMacro(name, (args) => worker.call(name, args));
   }
 }

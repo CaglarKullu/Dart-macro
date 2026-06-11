@@ -29,6 +29,29 @@ void defAsyncMacro(String name, AsyncMacroFn fn) => _asyncMacros[name] = fn;
 /// report which macros a loaded Dart library exposes.
 Iterable<String> asyncMacroNames() => _asyncMacros.keys;
 
+/// A point-in-time copy of both macro registries, taken by [snapshotMacros] and
+/// rolled back by [restoreMacros] to isolate per-file compilation.
+class MacroSnapshot {
+  final Map<String, MacroFn> sync;
+  final Map<String, AsyncMacroFn> async;
+  const MacroSnapshot(this.sync, this.async);
+}
+
+/// Captures both the sync and async macro registries so a single file's
+/// registrations (`defmacro`, `defAsyncMacro`, `importMacros`, `useMacros`) can
+/// be rolled back before the next file compiles. Without this, a macro defined
+/// in one file would leak into sibling files in a directory or watch build.
+MacroSnapshot snapshotMacros() =>
+    MacroSnapshot(snapshotSyncMacros(), Map.of(_asyncMacros));
+
+/// Rolls both registries back to a [snapshotMacros] result.
+void restoreMacros(MacroSnapshot snapshot) {
+  restoreSyncMacros(snapshot.sync);
+  _asyncMacros
+    ..clear()
+    ..addAll(snapshot.async);
+}
+
 /// Invokes the macro registered under [name] exactly once (no recursive
 /// expansion of its result) and returns its raw output. Async macros take
 /// priority over sync ones, matching [asyncExpand]'s dispatch. Throws
