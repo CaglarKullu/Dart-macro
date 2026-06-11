@@ -62,6 +62,17 @@ void withdraw(int amount) {
       expect(out, contains('throw ArgumentError("must be positive")'));
     });
 
+    test('shutdownMacroWorkers retracts the proxy macros it registered',
+        () async {
+      await asyncCompileDartLike('useMacros("$_fixture");\n');
+      expect(asyncMacroNames(), contains('defwidget'),
+          reason: 'loading should register a proxy');
+
+      shutdownMacroWorkers();
+      expect(asyncMacroNames(), isNot(contains('defwidget')),
+          reason: 'shutdown must not leave a proxy pointing at a dead isolate');
+    });
+
     test('loading the same library twice is a no-op (cached)', () async {
       final source = '''
 useMacros("$_fixture");

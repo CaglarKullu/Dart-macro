@@ -143,3 +143,39 @@ similar — generating Dart types from external sources of truth at build time.
 4. **Deterministic output.** Same input → byte-identical output (after `gensym` is
    seeded deterministically per compilation unit — see Phase 1).
 5. **Core has no third-party dependencies.** SDK only.
+6. **Per-file macro isolation.** A source file's macro registrations
+   (`defmacro`, `importMacros`, `useMacros`) must not leak into the next file in
+   a directory or watch build. The CLI snapshots and restores both macro
+   registries around each file (`snapshotMacros` / `restoreMacros`); builtins
+   and any macros registered through `runDmacro`'s `registerMacros` callback are
+   the baseline and survive the rollback.
+
+## Design decision: global registry, not a threaded `CompileContext`
+
+The macro registries (`_macros`, `_asyncMacros`), the gensym counter, and the
+enum registry are module-level state, mutated by `defmacro` / `defAsyncMacro`.
+The textbook alternative is a `CompileContext` object threaded explicitly
+through `expand` and every macro.
+
+We deliberately keep the global registry. The headline of the whole project is
+that a macro is *one function* registered with a one-liner:
+
+```dart
+defmacro('name', (args) => ...);
+```
+
+Threading a context would force that signature to become
+`defmacro(ctx, 'name', (ctx, args) => ...)` — every macro, including every line
+of the cookbook and every user macro, would carry plumbing that exists only to
+serve testability. That trade makes the product worse at the exact thing it
+sells.
+
+The real risk a context would have mitigated — state leaking between files — is
+instead handled at the one boundary where it matters: the CLI snapshots and
+restores the registries per file (invariant 6 above). The cost of the global
+approach is that the engine is not reentrant within a single process (you cannot
+run two independent compiles concurrently in one isolate). For a preprocessor
+invoked per process — and for `useMacros`, which already runs each loaded
+library in its own isolate — that limitation is acceptable. If concurrent
+in-process compilation ever becomes a requirement, revisit this; until then the
+simpler API wins.

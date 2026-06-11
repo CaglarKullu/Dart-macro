@@ -63,6 +63,11 @@ class _Worker {
   }
 
   void shutdown() {
+    // Retract this worker's proxy macros so none is left pointing at the dead
+    // isolate.
+    for (final name in names) {
+      undefAsyncMacro(name);
+    }
     requests.send('shutdown');
     replies.close();
     isolate.kill(priority: Isolate.immediate);

@@ -25,6 +25,11 @@ final _asyncMacros = <String, AsyncMacroFn>{};
 /// Async macros shadow same-named sync macros registered with [defmacro].
 void defAsyncMacro(String name, AsyncMacroFn fn) => _asyncMacros[name] = fn;
 
+/// Removes an async macro registration. Used to retract `useMacros` proxies
+/// when their worker isolate is shut down, so no proxy is left pointing at a
+/// dead isolate.
+void undefAsyncMacro(String name) => _asyncMacros.remove(name);
+
 /// Names of every async-registered macro. Used by the `useMacros` worker to
 /// report which macros a loaded Dart library exposes.
 Iterable<String> asyncMacroNames() => _asyncMacros.keys;
