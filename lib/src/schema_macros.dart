@@ -19,6 +19,8 @@ import 'async_expand.dart'
     show defAsyncMacro, asyncCompile, asyncCompileDartLike, asyncExpand;
 import 'builtins.dart' show substituteBindings;
 import 'core.dart';
+import 'dep_graph.dart' show depGraph, resolveDepPath;
+import 'gen_cache.dart' show currentSourceFile, recordGenerationInput;
 import 'macro_loader.dart' show loadMacroLibrary;
 import 'yaml_parser.dart';
 
@@ -63,6 +65,7 @@ void registerSchemaMacros() {
     // that might $ref them.
     _knownEnumNames.clear();
     for (final file in files) {
+      recordGenerationInput(file.absolute.path);
       final json =
           jsonDecode(await file.readAsString()) as Map<String, dynamic>;
       if (json['enum'] != null) {
@@ -101,6 +104,7 @@ void registerSchemaMacros() {
       );
     }
 
+    recordGenerationInput(file.absolute.path);
     final content = await file.readAsString();
     Map<String, dynamic> spec;
     try {
@@ -234,6 +238,12 @@ void registerSchemaMacros() {
         'importMacros: file not found: $importPath\n'
         '  (resolved from working directory: ${Directory.current.path})',
       );
+    }
+
+    // Record dep-graph edge so watch mode recompiles when the imported file changes.
+    final absImport = resolveDepPath(importPath);
+    if (currentSourceFile.isNotEmpty) {
+      depGraph.recordDependency(currentSourceFile, absImport);
     }
 
     // Parse and expand the imported file. Any defmacro calls inside register
@@ -423,6 +433,8 @@ Future<Node> _defrecordFromSchemaFile(
     );
   }
 
+  // Record the schema file as a generation-time input for caching.
+  recordGenerationInput(file.absolute.path);
   final json = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
   if (json['title'] == null) {
     final hint = json['oneOf'] != null
