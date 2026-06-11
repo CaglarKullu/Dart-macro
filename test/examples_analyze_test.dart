@@ -31,6 +31,13 @@ void main() {
 
   for (final src in sources) {
     test('emitted Dart is analyzer-clean: ${src.path}', () async {
+      // Files that need a custom entry-point macro registration declare it in
+      // their first line: "// requires-custom-entry-point". Skip those here —
+      // they are exercised by the macro_library example and user_macro_test.dart.
+      final firstLine = src.readAsLinesSync().firstOrNull ?? '';
+      if (firstLine.contains('requires-custom-entry-point')) {
+        return;
+      }
       final outPath = '${tmpDir.path}/out.dart';
 
       final compile = await Process.run(

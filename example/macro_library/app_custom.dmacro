@@ -1,0 +1,21 @@
+// requires-custom-entry-point — Pattern A + B combined:
+//   dart run example/macro_library/tool_dmacro_lib.dart compile app_custom.dmacro
+//
+// This file uses defwidget (registered by macros/team_macros.dart) and
+// Flutter types. It is excluded from the default analyze test because it
+// cannot compile with bin/dmacro.dart alone.
+
+importMacros("example/macro_library/shared_templates.dmacro");
+
+// Pattern A: Dart-function macro generates a full StatelessWidget subclass.
+defwidget SubmitButton {
+  String label;
+  VoidCallback onPressed;
+  bool? disabled;
+}
+
+// Pattern B: template macros handle the validation and tracing.
+void processOrder(String id, int qty) {
+  requireAll(id != "", qty > 0, qty < 1000);
+  logAll(id, qty);
+}

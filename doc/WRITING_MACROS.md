@@ -195,30 +195,87 @@ an index-out-of-range three frames deep.)
 
 ## Current limitations (honest list)
 
-- **Call syntax only.** `defwidget("MyButton", "String label")` works;
-  `defwidget MyButton { String label; }` block syntax is currently reserved
-  for built-ins (`defrecord`/`defunion`). Generalizing it is spec task 10.2b.
-- **String args keep their quotes** — hence `unquote`.
-- A `throw` expression *inside an argument list* doesn't survive parsing;
-  build the throw inside the macro instead (see `guarded`).
+- **String args keep their quotes** — `m("Foo")` arrives as `'"Foo"'`; strip
+  with `unquote(arg as String)`.
+- **`$map` substitution is whole-atom** — a binder named `v` replaces the
+  bare identifier `v` everywhere in the template, but is *not* expanded inside
+  string literals (`"value: v"` stays literal).
+- **Template binder capture** — if a binder name matches a param of an outer
+  template macro, the outer substitution runs first and captures it. Pick
+  distinct names.
+- **`throw` in argument position** — `m(throw Exception("x"))` emits bare
+  `throw;`. Build the throw node inside the macro instead (see `guarded`).
+- **`importMacros` loads `.dmacro`/`.sexp` source files only** — it cannot
+  dynamically execute a `.dart` file. Sharing Dart-function macros across
+  projects uses the entry-point import pattern described below, not
+  `importMacros`.
 
-## Sharing macros as a package
+## Sharing macros as a package (task 10.5)
 
-A macro library is just a pub package that depends on `dmacro` and exposes a
-register function:
+### Pattern A — Dart-function macros as a pub package
+
+Create a regular Dart package whose only job is to register macros:
+
+```
+team_macros/
+  pubspec.yaml
+  lib/
+    team_macros.dart   ← exports registerTeamMacros()
+    src/
+      widget_macro.dart
+      api_macro.dart
+```
+
+```yaml
+# team_macros/pubspec.yaml
+name: team_macros
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+dependencies:
+  dmacro:
+    git: https://github.com/caglarkullu/dart-macro
+```
 
 ```dart
-// package:team_macros/lib/team_macros.dart
+// team_macros/lib/team_macros.dart
 import 'package:dmacro/dmacro.dart';
 
+export 'src/widget_macro.dart';
+export 'src/api_macro.dart';
+
 void registerTeamMacros() {
-  defAsyncMacro('defwidget', (args) async { /* ... */ });
+  registerWidgetMacros();
+  registerApiMacros();
 }
 ```
 
-Consumers call it from their entry point:
+```dart
+// team_macros/lib/src/widget_macro.dart
+import 'package:dmacro/dmacro.dart';
+
+void registerWidgetMacros() {
+  defAsyncMacro('defwidget', (args) async {
+    final name = unquote(args[0] as String);
+    // ... generate StatelessWidget subclass
+    return 'class $name extends StatelessWidget { ... }';
+  });
+}
+```
+
+**Consumer project** — add the macro package as a dev dependency:
+
+```yaml
+# my_app/pubspec.yaml
+dev_dependencies:
+  dmacro:
+    git: https://github.com/caglarkullu/dart-macro
+  team_macros:
+    git: https://github.com/myorg/team_macros
+    # or path: ../team_macros   for a monorepo
+```
 
 ```dart
+// my_app/tool/dmacro.dart
 import 'package:dmacro/dmacro.dart';
 import 'package:team_macros/team_macros.dart';
 
@@ -226,5 +283,51 @@ void main(List<String> args) =>
     runDmacro(args, registerMacros: registerTeamMacros);
 ```
 
-Template-macro files (`.dmacro`) can also be shared and loaded with
-`importMacros("package:team_macros/validators.dmacro")`.
+```bash
+dart pub get
+dart run tool/dmacro.dart compile lib/widgets.dmacro
+```
+
+The built-in macros are already loaded by `runDmacro`; `registerTeamMacros`
+adds yours on top. The full CLI — `compile`, `watch`, `trace`, `--check`,
+REPL — works with your macros active.
+
+### Pattern B — template macros as a shared `.dmacro` file
+
+Template macros (Tier 1 and `$map`/Tier 2) live in `.dmacro` source files that
+any project can load at the top of its own `.dmacro` files:
+
+```
+team_macros/
+  lib/
+    validators.dmacro   ← defmacro definitions, no Dart needed
+```
+
+```dart
+// my_app/lib/models.dmacro
+importMacros("package:team_macros/validators.dmacro");
+
+defrecord User {
+  String email;
+  String name;
+}
+
+void create(String email) {
+  guard(email.contains("@"), "Invalid email");
+}
+```
+
+`importMacros` resolves `package:` URIs via `.dart_tool/package_config.json`
+(written by `dart pub get`), so no extra configuration is needed.
+
+### Which pattern to use
+
+| Macro type | How to share |
+|---|---|
+| Tier 1 / Tier 2 (template, `$map`) | Pattern B — `.dmacro` source file via `importMacros` |
+| Tier 3 (Dart function, async I/O) | Pattern A — pub package + entry-point import |
+| Mix of both | Pattern A entry point + Pattern B `importMacros` inside the templates |
+
+The two patterns compose: a consumer's `tool/dmacro.dart` imports a Tier-3
+macro package, and one of those macros can itself call `importMacros` to pull
+in a supplementary template file at generation time.

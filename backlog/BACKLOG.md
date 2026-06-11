@@ -453,12 +453,28 @@ from a user's own project. **Reuse the engine as-is; this is framing + one new l
 - [ ] Fixture: a broken macro yields an error whose first line names the macro and `file:line`
 
 ### 10.5 Distribution
-- [ ] Document the "macro library package" pattern (pub package depending on `dmacro`, exports `registerMacros()`)
-- [ ] `package:` resolution for Dart macro files (extend existing resolver)
-- [ ] Fixture: a second package provides a macro consumed by the first
+- [x] Document the "macro library package" pattern — `doc/WRITING_MACROS.md`
+      now has a full "Sharing macros as a package" section with both patterns:
+      Pattern A (Dart-function macros as a pub package, entry-point import)
+      and Pattern B (template macros via `importMacros`). Includes complete
+      `pubspec.yaml`, file layout, and a "which pattern to use" decision table.
+- [x] Updated limitations section — removed stale "block syntax only for builtins"
+      (fixed in 10.2b); added honest notes on `$map` atom-substitution limits,
+      binder capture, and the `importMacros`-doesn't-load-.dart-files constraint.
+- [x] Working example in `example/macro_library/` — both patterns demonstrated
+      end to end; run with `dart run example/macro_library/tool_dmacro_lib.dart
+      compile example/macro_library/app.dmacro`.
+- [ ] `package:` resolution for Dart macro files via `importMacros` — deferred.
+      Not feasible without dynamic code execution (dart:mirrors deprecated,
+      spawning an isolate is disproportionate). The entry-point import pattern
+      (Pattern A) fully covers this use case at zero engine cost.
 
 ### Phase 10 acceptance
-- [ ] End-to-end: user authors a Dart-function macro in their own project, lists it, compiles a source that uses it — **without touching `lib/`**
+- [x] End-to-end: user authors a Dart-function macro in their own project,
+      lists it, compiles a source that uses it — **without touching `lib/`**.
+      Demonstrated by `example/macro_library/` (entry point +
+      `macros/team_macros.dart` → `app.dmacro` → `app.dart`) and validated
+      by `test/user_macro_test.dart` (public API only, no src/ imports).
 
 ---
 

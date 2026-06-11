@@ -1,0 +1,20 @@
+// Pattern B — template macros loaded via importMacros.
+//
+// This file works with the default CLI (dart run dmacro compile) because
+// importMacros + the template macros are built into the standard library.
+//
+// For Pattern A (Dart-function macros like defwidget), see app_custom.dmacro
+// and run via the custom entry point:
+//   dart run example/macro_library/tool_dmacro_lib.dart compile app_custom.dmacro
+
+importMacros("example/macro_library/shared_templates.dmacro");
+
+void processOrder(String id, int qty) {
+  requireAll(id != "", qty > 0, qty < 1000);
+  logAll(id, qty);
+}
+
+String validate(String value, String field) {
+  requireAll(value != "");
+  return value;
+}

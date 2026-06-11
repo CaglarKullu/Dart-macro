@@ -1,0 +1,16 @@
+// Tier-1 and Tier-2 template macros — Pattern B distribution.
+//
+// Load in any .dmacro file with:
+//   importMacros("example/macro_library/shared_templates.dmacro");
+// or, if published as a pub package:
+//   importMacros("package:team_macros/shared_templates.dmacro");
+
+// requireAll(cond1, cond2, ...) — guards a list of conditions.
+defmacro requireAll(...conds) {
+  $map(conds, c) { unless(c) { throw ArgumentError("requirement failed"); } }
+}
+
+// logAll(val1, val2, ...) — prints each value (useful for debugging).
+defmacro logAll(...vals) {
+  $map(vals, v) { print(v); }
+}
