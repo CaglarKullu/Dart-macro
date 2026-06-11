@@ -357,6 +357,223 @@ but `useMacros` means you rarely need it.
 
 ---
 
+### 9. YAML OpenAPI specs
+
+`defFromOpenApi` accepts `.yaml` and `.yml` files in addition to `.json` — no external dependencies:
+
+```dart
+defFromOpenApi("api/openapi.yaml", "User");
+defFromOpenApi("api/openapi.yaml", "Order");
+```
+
+The built-in YAML parser handles block and flow mappings/sequences, quoted scalars, block scalars (`|`/`>`), and `#` comments — the full subset needed for real-world OpenAPI specs.
+
+---
+
+## Syntax
+
+dmacro files look like Dart. The `.dmacro` extension signals the preprocessor.
+
+```dart
+// models.dmacro
+
+defrecord User {
+  String  id;
+  String  email;
+  String? displayName;
+  bool    isVerified;
+}
+
+defunion AuthState {
+  Unauthenticated {}
+  Authenticating  {}
+  Authenticated   { User user; }
+  Error           { String message; }
+}
+
+bool validateEmail(String email) {
+  unless (email.contains("@")) {
+    throw Exception("Invalid email: $email");
+  }
+  return true;
+}
+```
+
+Compile it:
+
+```bash
+dart run bin/dmacro.dart compile models.dmacro
+# writes models.dart
+```
+
+There is also an S-expression syntax (`.sexp`) for the full Lisp experience — see [`example/payment.sexp`](example/payment.sexp).
+
+---
+
+## Built-in macros
+
+| Macro | What it generates | Why a function can't do this |
+|---|---|---|
+| `defrecord Name { ... }` | Immutable class: fields, constructor, `copyWith`, deep `==`/`hashCode`, `toString`, **`fromJson`/`toJson`** with camelCase JSON keys | Functions can't generate class declarations |
+| `defrecord(snake_case) Name { ... }` | Same as `defrecord` but JSON keys are converted to snake_case (`orderId` → `"order_id"`) | Covers the common case where the API uses snake_case and Dart uses camelCase |
+| `@json_key("name") Type field;` | Per-field JSON key override — wins over camelCase and snake_case | N/A — field annotation |
+| `defunion Name { ... }` | Sealed class hierarchy | Same |
+| `defmacro name(params) { ... }` | User-defined template macro, registered for use in the same file | Functions run at call time with values; macros run at expand time with code |
+| `defmacro(declaration) name(params) { ... }` | User macro with output-type validation — errors at call time if output isn't a declaration | Functions have no way to validate the shape of their return value as code |
+| `defmacro(expression) name(params) { ... }` | User macro validated to produce an expression | Same |
+| `defmacro(statement) name(params) { ... }` | User macro validated to produce a statement | Same |
+| `importMacros("path")` | Load macro definitions from another `.dmacro` / `.sexp` file; supports `package:` URIs | Functions can't register macros at compile time |
+| `defFromJsonSchema("path")` | `defrecord` from a JSON Schema file; `$defs`/`definitions` blocks and `oneOf` are supported | Functions run at runtime; I/O during generation requires a macro |
+| `defFromOpenApi("path", "Name")` | `defrecord` (or `defunion` for `oneOf`) from an OpenAPI `components/schemas` entry; accepts `.json`, `.yaml`, or `.yml` | Same |
+| `defAllFromJsonSchema("dir/")` | One `defrecord` per `.json` file in a directory | Same |
+| `unless (cond) { ... }` | `if (!(cond)) { ... }` | Convenience only — could be a function but this reads better |
+| `when (cond) { ... }` | `if (cond) { ... }` | Same |
+| `assertThat(expr)` | `if (!expr) throw AssertionError("Expected: <source>")` | Functions receive `false`, not the expression that produced it |
+| `swap!(a, b)` | `final _tmp = a; a = b; b = _tmp;` | Functions receive values, not variable names |
+| `withRetry(n, expr)` | Inline `for` loop with `try/catch` | Body is inlined, not a callback — `return`/`break` work normally; a higher-order function can't do this |
+
+---
+
+## Workflow
+
+```
+you write           dmacro compiles           you commit
+──────────          ──────────────            ──────────
+models.dmacro  →    models.dart          →    models.dart
+                    (full Dart class)          (not models.dmacro)
+```
+
+The `.dart` file is the output — your Flutter/Dart app imports it as normal. The `.dmacro` file is the source. Commit both.
+
+### Flutter project integration
+
+In a Flutter project, run `dmacro watch` alongside `flutter run`. The VS Code extension does this automatically — it recompiles `.dmacro` files on save and triggers hot reload 500 ms later. Manually:
+
+```bash
+# Terminal 1 — Flutter dev server
+flutter run
+
+# Terminal 2 — dmacro watcher
+dart run bin/dmacro.dart watch lib/models/
+```
+
+Save a `.dmacro` file → dmacro regenerates the `.dart` → Flutter hot-reloads.
+
+The generated `.dart` files are plain Dart — they work with `Provider`, `Riverpod`, `Bloc`, and any other state management. No special integration required; they're just immutable value classes.
+
+**Merge conflicts in generated files:** treat them the same as `build_runner` output. Resolve the conflict in the `.dmacro` source file, run `dart run bin/dmacro.dart compile lib/models/` to regenerate, then commit the fresh output.
+
+### Installation
+
+```bash
+# From pub.dev (after publish — use dart pub global for CLI access):
+dart pub global activate dmacro
+
+# From source:
+git clone https://github.com/caglarkullu/dart-macro
+cd dart-macro && dart pub get
+dart run bin/dmacro.dart compile <file>
+```
+
+> **Note:** dmacro is not yet published to pub.dev. The pub.dev publish step is tracked in the backlog. Until then, install from source or pin a git dependency in `pubspec.yaml`.
+
+### Watch mode (recompiles on every save)
+
+```bash
+dart run bin/dmacro.dart watch lib/
+```
+
+**Cascade recompile:** if you edit a shared macro library (e.g. `shared_templates.dmacro`), every `.dmacro` file that imports it via `importMacros` is automatically recompiled — no manual intervention needed.
+
+### Incremental builds (content-hash cache)
+
+dmacro tracks a FNV-1a fingerprint for each compiled file in `.dart_tool/dmacro/cache.json`. The fingerprint covers the source file, every `importMacros` target, and every external file read at generation time (JSON schemas, OpenAPI specs). Re-running compile on an unchanged file skips the work entirely:
+
+```bash
+$ dart run bin/dmacro.dart compile lib/models/
+✓ lib/models/user.dmacro → lib/models/user.dart
+
+$ dart run bin/dmacro.dart compile lib/models/
+↷ lib/models/user.dmacro (unchanged)   # skipped — fingerprint matches
+```
+
+This keeps repeated CI runs fast even when schema macros perform file I/O.
+
+### CI staleness check
+
+```bash
+dart run bin/dmacro.dart compile lib/ --check
+# exits non-zero if any .dart is out of date
+```
+
+### Trace macro expansions
+
+```bash
+dart run bin/dmacro.dart trace models.dmacro
+# prints each macro expansion step — useful for debugging generated code
+```
+
+### Field-level error attribution
+
+By default, `dart analyze` errors on generated code map to the `defrecord` declaration line. Add `--field-origins` to get per-field precision:
+
+```bash
+dart run bin/dmacro.dart compile models.dmacro --field-origins
+# embeds // @dmacro-origin: models.dmacro:5 before each generated field
+```
+
+This adds one comment per field in the generated file. Useful when you have type errors on specific fields; unnecessary noise otherwise.
+
+### VS Code extension
+
+The `vscode-ext/` directory contains a VS Code extension that gives you:
+
+- Syntax highlighting for `.dmacro` and `.sexp` files
+- Compile on save (runs `dmacro compile` automatically)
+- Errors shown as red squiggles in the editor
+- Commands:
+  - **dmacro: Compile File** — compile the active `.dmacro` or `.sexp` file
+  - **dmacro: Compile Workspace** — compile all sources in the workspace
+  - **dmacro: Expand Macro at Cursor** — run `dmacro trace` on the active file and show the full expansion tree in a side panel; useful for understanding what a macro generates without opening the `.dart` output file
+
+**Install steps:**
+
+1. Install [Node.js](https://nodejs.org) if you don't have it.
+
+2. Build the `.vsix` package:
+
+   ```bash
+   cd vscode-ext
+   npm install
+   npm run package        # produces dmacro-0.1.0.vsix
+   ```
+
+3. Install in VS Code:
+   - Open the Extensions panel (`Ctrl+Shift+X` / `Cmd+Shift+X`)
+   - Click the `···` menu at the top-right of the panel
+   - Choose **Install from VSIX…**
+   - Select `vscode-ext/dmacro-0.1.0.vsix`
+
+4. Reload VS Code when prompted.
+
+**Settings** (VS Code `settings.json`):
+
+| Setting | Default | Description |
+|---|---|---|
+| `dmacro.cliPath` | `""` | Absolute path to the `dmacro` CLI binary. Leave empty to use `dart run bin/dmacro.dart` |
+| `dmacro.formatOnCompile` | `true` | Run `dart format` on the generated `.dart` file after each compile |
+| `dmacro.analyzeOnCompile` | `true` | Run `dart analyze` after compile and surface errors as VS Code diagnostics |
+| `dmacro.hotReloadOnCompile` | `true` | Trigger Flutter hot reload 500 ms after a successful compile (requires an active debug session) |
+
+**Try it in development** (no build needed):
+
+```bash
+cd vscode-ext && npm install
+# open vscode-ext/ in VS Code, then press F5 — launches an Extension Development Host
+```
+
+---
+
 ## Comparison
 
 | | **dmacro** | freezed + build_runner | Official Dart macros |
@@ -379,7 +596,9 @@ but `useMacros` means you rarely need it.
 dmacro is a **preprocessor**: it runs before the Dart compiler and rewrites
 `.dmacro` source into plain `.dart`. Your source parses to nested lists, macros
 (plain Dart functions) transform those lists until none remain, and the emitter
-writes Dart back out.
+writes Dart back out. Dart syntax the parser does not model (switch expressions,
+record patterns, extension types, etc.) is wrapped in an `OpaqueNode` and emitted
+verbatim — so any valid Dart can coexist with macro calls inside `.dmacro` files.
 
 ```mermaid
 flowchart TB
@@ -429,12 +648,14 @@ See [`doc/ARCHITECTURE.md`](doc/ARCHITECTURE.md) and [`doc/WRITING_MACROS.md`](d
 lib/
   dmacro.dart           Public API — import this
   src/
-    core.dart           Node, expand(), emit()
+    core.dart           Node, expand(), emit(), OpaqueNode (verbatim passthrough)
     async_expand.dart   Async expander — the I/O capability
     builtins.dart       Standard library: unless, defrecord, defunion, $map, …
     schema_macros.dart  Standard library: defFromJsonSchema, useMacros, …
     macro_loader.dart   useMacros: load Dart macros in a worker isolate
     macro_worker.dart   worker-side harness for loaded macro libraries
+    dep_graph.dart      Reverse-dependency DAG — cascade recompile in watch mode
+    gen_cache.dart      FNV-1a content-hash cache — skip unchanged files
     cli.dart            runDmacro() — the full CLI as a library
 bin/
   dmacro.dart           3-line shim: calls runDmacro(args)
