@@ -1,0 +1,17 @@
+// Tier 1 + Tier 2 — template macros, shared via importMacros.
+//
+// Pull these into any .dmacro file with:
+//   importMacros("example/showcase/templates.dmacro");
+//
+// Compiled on its own this file emits no Dart — it only registers macros.
+
+// Tier 1 — a plain template macro. `notBlank(x, msg)` expands to a guard.
+defmacro notBlank(value, msg) {
+  unless (value.isNotEmpty) { throw ArgumentError(msg); }
+}
+
+// Tier 2 — a variadic template. `...conds` collects the call arguments and
+// $map repeats the guard body once per condition.
+defmacro requireAll(...conds) {
+  $map(conds, c) { unless (c) { throw ArgumentError("requirement failed"); } }
+}

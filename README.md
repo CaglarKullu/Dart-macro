@@ -374,19 +374,50 @@ but `useMacros` means you rarely need it.
 
 ---
 
-## How it works (for the curious)
+## How it works
 
-```
-source (.dmacro)
-    ↓  tokenizer + parser
-List<Node>           ← code as data (nested lists — the Lisp model)
-    ↓  async expander   ← your macros run here; await anything
-List<Node>           ← fully expanded
-    ↓  emitter
-Dart source (.dart)
+dmacro is a **preprocessor**: it runs before the Dart compiler and rewrites
+`.dmacro` source into plain `.dart`. Your source parses to nested lists, macros
+(plain Dart functions) transform those lists until none remain, and the emitter
+writes Dart back out.
+
+```mermaid
+flowchart TB
+    subgraph INPUTS ["Your project files"]
+        SRC["models.dmacro<br/>your source - code as data"]
+        TPL["templates.dmacro<br/>Tier 1 + 2 macros"]
+        LIB["my_macros.dart<br/>Tier 3 macros"]
+        SCHEMA[("schema.json<br/>any data source")]
+    end
+
+    SRC --> TOK["Tokenizer + Parser"]
+    TOK --> NODES["List of Node<br/>nested lists - the Lisp model"]
+    NODES --> EXP{{"Async Expander<br/>runs macros until none remain"}}
+
+    subgraph REG ["Macro registry"]
+        direction LR
+        B["Standard library<br/>defrecord, defunion, defenum<br/>unless, when, swap!, withRetry<br/>defFromJsonSchema"]
+        U["Your macros"]
+    end
+
+    TPL -- "importMacros" --> U
+    LIB -- "useMacros - worker isolate" --> U
+    REG -. "looked up by head symbol" .-> EXP
+    SCHEMA -- "read at generation time" --> EXP
+
+    EXP --> FULL["List of Node<br/>fully expanded - pure Dart structure"]
+    FULL --> EMIT["Emitter"]
+    EMIT --> OUT["models.dart<br/>plain, analyzer-clean Dart"]
+
+    style SRC fill:#2d6cdf,color:#fff
+    style OUT fill:#2e9e44,color:#fff
+    style EXP fill:#f0a500,color:#000
+    style SCHEMA fill:#dddddd,color:#000
 ```
 
-`Node` is `dynamic` — an atom or a `List<Node>`. A macro is `(List<Node>) → Node`. The emitter serializes the final tree to Dart source. The generated `.dart` file is committed alongside the `.dmacro` source — just like `build_runner` output, but without the daemon.
+`Node` is `dynamic` — an atom or a `List<Node>`. A macro is `(List<Node>) → Node`. Because the expander runs **outside** the compiler, a macro can `await` anything at generation time (files, HTTP, a database). The generated `.dart` is committed alongside the `.dmacro` source — like `build_runner` output, but with no daemon.
+
+**See it all in action:** [`example/showcase/`](example/showcase/) compiles one 88-line `.dmacro` — using every capability above — into 282 lines of analyzer-clean Dart.
 
 See [`doc/ARCHITECTURE.md`](doc/ARCHITECTURE.md) and [`doc/WRITING_MACROS.md`](doc/WRITING_MACROS.md) for the full story.
 
@@ -412,6 +443,7 @@ doc/
   ARCHITECTURE.md       Design decisions
   VISION.md             The north star
 example/
+  showcase/             Every capability in one project (start here)
   use_macros/           useMacros: a Dart macro library, no entry point
   ecommerce/            defrecord in practice
   openapi_demo/         Types from an OpenAPI spec

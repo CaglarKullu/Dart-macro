@@ -1,0 +1,88 @@
+// ════════════════════════════════════════════════════════════════════════
+//  dmacro showcase — every capability in one file.
+//  Compile:  dart run dmacro compile example/showcase/app.dmacro
+//  (from this repo:  dart run bin/dmacro.dart compile example/showcase/app.dmacro)
+// ════════════════════════════════════════════════════════════════════════
+
+// ── Load macros, no entry point ─────────────────────────────────────────────
+// Tier 3: Dart-function macros, run in a worker isolate at generation time.
+useMacros("example/showcase/macros/domain_macros.dart");
+// Tier 1 + Tier 2: template macros shared from another .dmacro file.
+importMacros("example/showcase/templates.dmacro");
+
+// ── Standard library: enums, records, unions ────────────────────────────────
+// defenum must precede any defrecord that references it.
+defenum Role { admin, editor, viewer }
+
+// defrecord → immutable value class: constructor, copyWith, ==, hashCode,
+// toString, fromJson/toJson. The Role field gets enum-aware serialization
+// because Role was registered above.
+defrecord Account {
+  String   id;
+  Role     role;
+  DateTime createdAt;
+}
+
+// defunion → sealed class hierarchy; use with Dart pattern matching.
+defunion AuthState {
+  SignedOut    {}
+  Authenticating {}
+  SignedIn     { Account account; }
+  Failed       { String error; }
+}
+
+// ── Async generation-time I/O — the differentiator ──────────────────────────
+// Reads schemas/user.json WHEN YOU COMPILE and emits a matching Dart class.
+// No build_runner, no *.g.dart, no runtime dependency.
+defFromJsonSchema("example/showcase/schemas/user.json");
+
+// ── Your own Tier-3 macro (from domain_macros.dart) ─────────────────────────
+// Block syntax: the macro receives ["CreateUserRequest", ["String","email"], …].
+defendpoint CreateUserRequest {
+  String  email;
+  String  fullName;
+  bool?   sendWelcome;
+}
+
+// ── Validation that reads like the language ─────────────────────────────────
+// notBlank (Tier 1), requireAll (Tier 2), assertRange (your Tier-3 sync macro),
+// and the built-ins unless / assertThat all expand to plain inline Dart.
+bool validateSignup(String email, String name, int age) {
+  notBlank(email, "email required");
+  notBlank(name, "name required");
+  requireAll(email != "", age >= 13, age < 120);
+  assertRange(age, 0, 150);
+  unless (email.contains("@")) {
+    throw FormatException("invalid email");
+  }
+  assertThat(name.length < 100);
+  return true;
+}
+
+// ── Macros that do what functions cannot ────────────────────────────────────
+// withRetry inlines a retry loop (so the call site keeps full control flow);
+// swap! injects a temporary into the caller's scope to exchange two variables.
+void deliver(String endpoint, Account account) {
+  print("POST $endpoint for ${account.id}");
+}
+
+void sendWithRetry(String endpoint, Account account) {
+  withRetry(3, deliver(endpoint, account));
+}
+
+void normaliseBounds(int lo, int hi) {
+  when (lo > hi) {
+    swap!(lo, hi);
+  }
+}
+
+// ── Plain Dart still works, untouched ───────────────────────────────────────
+String roleLabel(Role role) {
+  if (role == Role.admin) {
+    return "Administrator";
+  }
+  if (role == Role.editor) {
+    return "Editor";
+  }
+  return "Viewer";
+}

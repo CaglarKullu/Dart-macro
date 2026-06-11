@@ -1,0 +1,12 @@
+{
+  "title": "User",
+  "type": "object",
+  "properties": {
+    "id":        { "type": "string" },
+    "email":     { "type": "string" },
+    "fullName":  { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "tags":      { "type": "array", "items": { "type": "string" } }
+  },
+  "required": ["id", "email", "fullName", "createdAt"]
+}
