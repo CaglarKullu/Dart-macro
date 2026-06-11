@@ -94,6 +94,10 @@ bool isMacro(String name) => _macros.containsKey(name);
 /// Returns the macro function registered under [name], or null.
 MacroFn? getMacro(String name) => _macros[name];
 
+/// Names of every sync-registered macro. Used by the `useMacros` worker to
+/// report which macros a loaded Dart library exposes (alongside async ones).
+Iterable<String> syncMacroNames() => _macros.keys;
+
 // ─── Enum registry ────────────────────────────────────────────────────────────
 
 final _enumNames = <String>{};

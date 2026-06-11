@@ -35,6 +35,7 @@ import 'dart:io';
 
 import 'builtins.dart';
 import 'core.dart' show MacroExpansionError;
+import 'macro_loader.dart' show shutdownMacroWorkers;
 import 'schema_macros.dart';
 import 'async_expand.dart'
     show
@@ -79,19 +80,24 @@ Future<void> runDmacro(
     return;
   }
 
-  switch (args.first) {
-    case 'compile':
-      await _compileCmd(args.sublist(1));
-    case 'watch':
-      await _watchCmd(args.sublist(1));
-    case 'repl':
-      await _repl();
-    case 'trace':
-      await _traceCmd(args.sublist(1));
-    default:
-      stderr.writeln('Unknown command: ${args.first}');
-      _usage();
-      exit(1);
+  try {
+    switch (args.first) {
+      case 'compile':
+        await _compileCmd(args.sublist(1));
+      case 'watch':
+        await _watchCmd(args.sublist(1));
+      case 'repl':
+        await _repl();
+      case 'trace':
+        await _traceCmd(args.sublist(1));
+      default:
+        stderr.writeln('Unknown command: ${args.first}');
+        _usage();
+        exit(1);
+    }
+  } finally {
+    // Tear down any worker isolates spawned by useMacros so the process exits.
+    shutdownMacroWorkers();
   }
 }
 

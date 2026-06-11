@@ -49,4 +49,5 @@ export 'src/gensym.dart';
 export 'src/splice.dart' show $splice;
 export 'src/async_expand.dart';
 export 'src/schema_macros.dart';
+export 'src/macro_loader.dart' show loadMacroLibrary, shutdownMacroWorkers;
 export 'src/cli.dart' show runDmacro;

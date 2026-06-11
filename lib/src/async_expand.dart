@@ -25,6 +25,32 @@ final _asyncMacros = <String, AsyncMacroFn>{};
 /// Async macros shadow same-named sync macros registered with [defmacro].
 void defAsyncMacro(String name, AsyncMacroFn fn) => _asyncMacros[name] = fn;
 
+/// Names of every async-registered macro. Used by the `useMacros` worker to
+/// report which macros a loaded Dart library exposes.
+Iterable<String> asyncMacroNames() => _asyncMacros.keys;
+
+/// Invokes the macro registered under [name] exactly once (no recursive
+/// expansion of its result) and returns its raw output. Async macros take
+/// priority over sync ones, matching [asyncExpand]'s dispatch. Throws
+/// [MacroExpansionError] with the macro named if it is unknown or fails.
+///
+/// Used by the `useMacros` worker isolate: the parent's expander drives all
+/// recursion, so a worker only ever evaluates one macro call at a time.
+Future<Node> invokeMacroOnce(String name, List<Node> args) async {
+  final asyncFn = _asyncMacros[name];
+  final fn = asyncFn ?? getMacro(name);
+  if (fn == null) {
+    throw MacroExpansionError('macro "$name" is not registered in this worker');
+  }
+  try {
+    return await fn(args);
+  } on MacroExpansionError {
+    rethrow;
+  } catch (e) {
+    throw MacroExpansionError('macro "$name" failed: $e');
+  }
+}
+
 /// Recursively expands all macros in [node], awaiting async macro results.
 ///
 /// Children are expanded sequentially (not concurrently) to preserve

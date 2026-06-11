@@ -19,6 +19,7 @@ import 'async_expand.dart'
     show defAsyncMacro, asyncCompile, asyncCompileDartLike, asyncExpand;
 import 'builtins.dart' show substituteBindings;
 import 'core.dart';
+import 'macro_loader.dart' show loadMacroLibrary;
 import 'yaml_parser.dart';
 
 /// Registers schema-reading macros. Call this alongside [registerBuiltins].
@@ -250,6 +251,28 @@ void registerSchemaMacros() {
     }
 
     // Return empty string — no Dart output from an import statement.
+    return '';
+  });
+
+  // ─── useMacros ───────────────────────────────────────────────────────────────
+  //
+  // Loads Dart-function macros from a .dart library — no tool/dmacro.dart entry
+  // point required. The library runs in a worker isolate; this directive
+  // registers a proxy for each macro it exposes, so they are available to the
+  // rest of the file exactly like a builtin.
+  //
+  // The target library must expose `void registerMacros()` (override with a
+  // `#fnName` fragment) that calls defmacro / defAsyncMacro.
+  //
+  // Syntax:
+  //   useMacros("package:team_macros/macros.dart");
+  //   useMacros("tool/widget_macros.dart");
+  //   useMacros("package:team_macros/macros.dart#registerWidgets");
+
+  defAsyncMacro('useMacros', (args) async {
+    final target = unquote(args[0] as String);
+    await loadMacroLibrary(target);
+    // No Dart output — the effect is the registered proxy macros.
     return '';
   });
 }
