@@ -184,8 +184,11 @@ correctness bugs. Prioritised by user-facing impact.
       convention, noted in CHANGELOG, non-blocking) and 1 hint (see below)
 - [x] `docs/` → `doc/` rename completed; dry-run potential issue resolved
 - [x] Package renamed from `dart_macros` → `dmacro` (name was taken on pub.dev at 1.0.2)
-- [ ] Smoke test: `dart pub add dmacro` in a fresh project
-- [ ] Actual `dart pub publish`
+- [x] Smoke test: fresh project with a path dep on dmacro — `dart pub get` (zero
+      transitive deps), `dart run dmacro compile`, builtin (`defrecord`) +
+      `useMacros` user macro both expand, output analyzer-clean. Automated and
+      repeatable via `tool/smoke_test.dart`.
+- [ ] Actual `dart pub publish` (human action — `--dry-run` passes with 0 warnings)
 
 ### 7.2 Enum generation (design archived — schema path done, hand-authored gap open)
 
@@ -298,9 +301,10 @@ user-facing impact. Items marked [x] were addressed immediately; items marked
 
 ### 8.5 pub.dev publish (OPEN)
 
-- [x] `dart pub publish --dry-run` passes
-- [ ] Smoke test: `dart pub global activate dmacro` in a fresh project
-- [ ] Actual `dart pub publish` to pub.dev
+- [x] `dart pub publish --dry-run` passes (0 warnings as of useMacros + isolation work)
+- [x] Smoke test: fresh project, path dep, `dart run dmacro compile` end-to-end
+      (`tool/smoke_test.dart`)
+- [ ] Actual `dart pub publish` to pub.dev (human action)
       Note: blocked on decision to publish under personal account vs org account.
       README now documents the current state honestly.
 
