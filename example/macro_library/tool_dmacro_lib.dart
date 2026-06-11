@@ -8,6 +8,7 @@
 /// Run with:
 ///   dart run example/macro_library/tool_dmacro_lib.dart compile \
 ///     example/macro_library/app.dmacro
+library;
 
 import 'package:dmacro/dmacro.dart';
 

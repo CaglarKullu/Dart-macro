@@ -6,6 +6,7 @@
 ///   dev_dependencies:
 ///     team_macros:
 ///       git: https://github.com/myorg/team_macros
+library;
 
 import 'package:dmacro/dmacro.dart';
 
