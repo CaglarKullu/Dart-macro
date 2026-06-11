@@ -121,6 +121,19 @@ void resetEnumRegistry() => _enumNames.clear();
 /// After expanding children, any [Splice] children are flattened (inlined)
 /// into the parent list. This allows macros to inject multiple statements.
 Node expand(Node node) {
+  // A macro may return a Splice (e.g. $map) whose nodes are unexpanded
+  // templates — expand each, flattening any nested Splice one level up.
+  if (node is Splice) {
+    final out = <Node>[];
+    for (final n in node.nodes.map(expand)) {
+      if (n is Splice) {
+        out.addAll(n.nodes);
+      } else {
+        out.add(n);
+      }
+    }
+    return Splice(out);
+  }
   if (node is! List || node.isEmpty) return node;
 
   final sym = node[0];
@@ -476,6 +489,16 @@ String emit(Node node, [int indent = 0]) {
       return '$sym($callArgs)';
   }
 }
+
+/// Emits a fully-expanded TOP-LEVEL form.
+///
+/// Unlike [emit], this accepts a [Splice]: a macro that returns one at the
+/// top level (e.g. `$map` over fields, or a Tier-3 macro generating several
+/// declarations) contributes multiple sibling forms. In any nested position
+/// [expand] flattens [Splice] into the parent, so [emit]'s guard still holds.
+String emitForm(Node node) => node is Splice
+    ? node.nodes.map((n) => emit(n)).join('\n\n')
+    : emit(node);
 
 /// Heads whose emitted form is a block or declaration. As a statement they
 /// carry their own braces and must NOT receive a trailing `;`.

@@ -153,9 +153,41 @@ The mechanism. Recommended design (decide explicitly before building):
 
 ### 10.3 Tier-2 decision gate
 
-- [ ] Spike `$map` over record fields in one template macro.
-- [ ] **DECISION:** ship Tier 2, or document "need iteration → use Tier 3" and skip.
-      Record the call here. Do not build Tier 2 on momentum if Tier 3 covers it.
+- [x] Spike `$map` over record fields in one template macro.
+- [x] **DECISION: ship Tier 2, minimal scope — `$map` + rest params only.**
+
+  What shipped (see `test/tier2_map_test.dart` for the contract):
+  - `$map(items, binder…, template)` — a builtin macro that expands the
+    template once per element and returns a `Splice`. One binder binds the
+    whole element; multiple binders destructure a list element positionally,
+    which fits block-syntax fields (`[type, name]` pairs from 10.2b) exactly.
+  - Rest params: `defmacro name(fixed, ...rest)` — `rest` binds the remaining
+    call args as a list (both .dmacro and sexp syntax). Without this, template
+    macros had no way to *receive* a list to map over.
+  - `emitForm` (core) — top-level forms may now expand to a `Splice`; each
+    node becomes a sibling form. Also benefits Tier-3 macros that want to
+    emit several top-level declarations without a `do` wrapper.
+  - Expander fix found by the spike: `expand`/`asyncExpand` returned a
+    macro-produced `Splice` without expanding its contents, so macro calls
+    inside spliced templates escaped unexpanded. Both expanders (and the
+    trace variant) now expand Splice contents and flatten nested splices —
+    which is what makes nested `$map` work.
+  - Tokenizer: `$` is now a valid identifier character (it is in real Dart),
+    so `$map` parses in .dmacro source.
+
+  What was deliberately NOT built (the rest of the original Tier-2 sketch):
+  - `$if`/`$cond` at expansion time — no demonstrated need; a template that
+    branches is usually a Tier-3 macro in disguise.
+  - `$field`/`$type`/`$name` accessors — destructuring binders
+    (`$map(fields, t, n)`) cover the same ground with less vocabulary.
+
+  Known limits (documented in WRITING_MACROS.md): substitution is whole-atom,
+  so binders are not visible inside string literals; binder names that shadow
+  an enclosing template's params get captured (pick distinct names); the
+  `name(args) { block }` call form parses in statement position and via the
+  generic block syntax, not as a bare top-level call.
+
+  Anything beyond "repeat this template per element" still routes to Tier 3.
 
 ### 10.4 Macro-author error messages (what makes authoring tolerable)
 

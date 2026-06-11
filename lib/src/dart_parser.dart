@@ -198,6 +198,16 @@ class DartLikeParser {
     _expect(TK.lparen);
     final params = <String>[];
     while (!_check(TK.rparen)) {
+      // Rest param: ...rest — must be last. Captures all remaining call
+      // arguments as a single list, for iteration with $map.
+      // (`...` arrives as TK.cascade `..` followed by TK.dot `.`.)
+      if (_check(TK.cascade) && _peek2().kind == TK.dot) {
+        _advance(); // consume ..
+        _advance(); // consume .
+        final restName = _expect(TK.ident).value as String;
+        params.add('...$restName');
+        break;
+      }
       params.add(_expect(TK.ident).value as String);
       if (!_check(TK.rparen)) _match(TK.comma);
     }
@@ -669,5 +679,5 @@ String compileDartLike(String source) {
   resetEnumRegistry();
   final tokens = Tokenizer(source).tokenize();
   final forms = DartLikeParser(tokens).parseProgram();
-  return assembleOutput(forms.map((f) => emit(expand(f))));
+  return assembleOutput(forms.map((f) => emitForm(expand(f))));
 }

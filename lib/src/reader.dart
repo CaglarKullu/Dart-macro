@@ -199,5 +199,5 @@ class Reader {
 String compile(String source) {
   resetGensym();
   final forms = Reader(source).readAll();
-  return assembleOutput(forms.map((f) => emit(expand(f))));
+  return assembleOutput(forms.map((f) => emitForm(expand(f))));
 }

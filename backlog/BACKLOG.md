@@ -433,8 +433,17 @@ from a user's own project. **Reuse the engine as-is; this is framing + one new l
 - [ ] Parser finding (from validation): `throw expr` in argument position emits bare `throw;` — fold into parser-hardening follow-ups
 
 ### 10.3 Tier-2 decision gate
-- [ ] Spike `$map` over record fields
-- [ ] DECISION: ship Tier 2 (computed templates) or route iteration needs to Tier 3 — record here
+- [x] Spike `$map` over record fields
+- [x] DECISION: **shipped Tier 2, minimal scope** — `$map` builtin (with
+      destructuring binders) + `...rest` params for template macros, in both
+      .dmacro and sexp syntax. `emitForm` added so top-level forms may expand
+      to a `Splice` (multiple sibling forms). Expander bug found and fixed en
+      route: macro-produced `Splice` contents were never expanded, so macro
+      calls inside spliced nodes escaped raw. `$if`/`$cond`/field accessors
+      from the original sketch deliberately NOT built — destructuring covers
+      accessors, and expansion-time branching routes to Tier 3. Full decision
+      record in `specs/phase-10-macro-authoring.md` § 10.3; contract in
+      `test/tier2_map_test.dart` (14 tests); guide in `doc/WRITING_MACROS.md`.
 
 ### 10.4 Macro-author error attribution
 - [ ] Tag emitted subtrees with the producing macro's name (reuse origin plumbing)

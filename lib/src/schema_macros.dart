@@ -190,7 +190,7 @@ void registerSchemaMacros() {
       final bindings = Map.fromIterables(params, callArgs);
       final substituted = substituteBindings(body, bindings);
       final expanded = await asyncExpand(substituted);
-      final emitted = emit(expanded);
+      final emitted = emitForm(expanded);
       _validateMacroOutput(name, outputType, emitted);
       return expanded;
     });

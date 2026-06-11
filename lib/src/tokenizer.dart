@@ -323,9 +323,12 @@ class Tokenizer {
       c.codeUnitAt(0) >= 48 && c.codeUnitAt(0) <= 57;
   static bool _isAlpha(String c) {
     final code = c.codeUnitAt(0);
+    // `$` is a valid identifier character in Dart; dmacro additionally uses
+    // it for template-level forms like `$map`.
     return (code >= 65 && code <= 90) ||
         (code >= 97 && code <= 122) ||
-        c == '_';
+        c == '_' ||
+        c == r'$';
   }
 
   static bool _isAlphaNum(String c) => _isAlpha(c) || _isDigit(c);

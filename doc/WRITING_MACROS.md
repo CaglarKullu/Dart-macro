@@ -66,14 +66,63 @@ bool createUser(String email) {
 }
 ```
 
-Call-site arguments substitute for parameter names. No loops, no branching on
-structure — if you need those, go to Tier 3.
+Call-site arguments substitute for parameter names. For iteration, see Tier 2
+(`$map`); for anything else — branching on structure, I/O, string building —
+go to Tier 3.
+
+## Tier 2 — `$map`: templates that iterate
+
+A template macro can repeat a piece of itself once per argument. Two parts:
+
+**Rest params** — a trailing `...rest` parameter collects all remaining call
+arguments into a list:
+
+```dart
+defmacro logAll(...vals) {
+  $map(vals, v) { print(v); }
+}
+
+void main() {
+  logAll(user, request, response);
+  // → print(user); print(request); print(response);
+}
+```
+
+**`$map(items, binder…, template)`** — expands the template once per item and
+splices the results into wherever the macro was called. With *multiple*
+binders, each element is destructured positionally — which is exactly the
+shape block-syntax fields arrive in (`[type, name]` pairs):
+
+```dart
+defmacro defChecks(name, ...fields) {
+  $map(fields, t, n) {
+    validate(t, n);
+  }
+}
+
+defChecks Config {
+  String host;
+  int port;
+}
+// → validate(String, host); validate(int, port);
+```
+
+The template may call other macros (built-in or yours) — expansion keeps
+going. `$map` calls can nest; inner results flatten into the outer splice.
+
+Limits (by design — past these, use Tier 3):
+
+- Substitution is whole-atom: a binder named `v` is **not** visible inside
+  string literals (`"value: v"` stays literal).
+- Pick binder names that don't collide with the enclosing macro's params —
+  outer substitution runs first and will capture them.
+- The template must be valid `.dmacro` statement syntax; you can't generate
+  arbitrary text. Generating whole classes from data is Tier-3 territory.
 
 ## Tier 3 — Dart-function macros (full power)
 
-> Tier 2 (computed templates) is a spec-level open question; today, anything a
-> template can't express is written as a Dart function. That's not a downgrade
-> — it's the same power the built-ins have.
+> Anything a template can't express is written as a Dart function. That's not
+> a downgrade — it's the same power the built-ins have.
 
 ### A sync macro: structure in, structure out
 

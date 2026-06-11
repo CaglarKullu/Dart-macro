@@ -30,6 +30,20 @@ void defAsyncMacro(String name, AsyncMacroFn fn) => _asyncMacros[name] = fn;
 /// Children are expanded sequentially (not concurrently) to preserve
 /// deterministic gensym ordering and I/O side-effect order.
 Future<Node> asyncExpand(Node node) async {
+  // A macro may return a Splice (e.g. $map) whose nodes are unexpanded
+  // templates — expand each, flattening any nested Splice one level up.
+  if (node is Splice) {
+    final out = <Node>[];
+    for (final n in node.nodes) {
+      final expanded = await asyncExpand(n);
+      if (expanded is Splice) {
+        out.addAll(expanded.nodes);
+      } else {
+        out.add(expanded);
+      }
+    }
+    return Splice(out);
+  }
   if (node is! List || node.isEmpty) return node;
 
   final head = node[0];
@@ -80,7 +94,7 @@ Future<String> asyncCompile(String source) async {
   final forms = Reader(source).readAll();
   final results = <String>[];
   for (final f in forms) {
-    results.add(emit(await asyncExpand(f)));
+    results.add(emitForm(await asyncExpand(f)));
   }
   return assembleOutput(results);
 }
@@ -94,7 +108,7 @@ Future<String> asyncCompileDartLike(String source) async {
   final forms = DartLikeParser(tokens).parseProgram();
   final results = <String>[];
   for (final f in forms) {
-    results.add(emit(await asyncExpand(f)));
+    results.add(emitForm(await asyncExpand(f)));
   }
   return assembleOutput(results);
 }
@@ -124,7 +138,7 @@ Future<String> asyncCompileDartLikeWithOrigins(String source, String sourcePath,
     setEmitterSourcePath(sourcePath);
     setEmitterFieldOrigins(fieldOrigins);
     try {
-      final emitted = emit(await asyncExpand(form));
+      final emitted = emitForm(await asyncExpand(form));
       results.add('// @dmacro-origin: $sourcePath:$line\n$emitted');
     } catch (e) {
       // Always prepend source location, whether or not asyncExpand already
@@ -155,7 +169,7 @@ Future<String> asyncCompileWithOrigins(String source, String sourcePath,
     setEmitterSourcePath(sourcePath);
     setEmitterFieldOrigins(fieldOrigins);
     try {
-      final emitted = emit(await asyncExpand(form));
+      final emitted = emitForm(await asyncExpand(form));
       results.add('// @dmacro-origin: $sourcePath:$line\n$emitted');
     } catch (e) {
       final msg = e is MacroExpansionError ? e.message : '$e';
@@ -173,6 +187,18 @@ Future<String> asyncCompileWithOrigins(String source, String sourcePath,
 /// Expands [node] like [asyncExpand] but writes each macro invocation to [sink].
 Future<Node> _asyncExpandWithTrace(
     Node node, StringSink sink, int depth, _TraceRef counter) async {
+  if (node is Splice) {
+    final out = <Node>[];
+    for (final n in node.nodes) {
+      final expanded = await _asyncExpandWithTrace(n, sink, depth, counter);
+      if (expanded is Splice) {
+        out.addAll(expanded.nodes);
+      } else {
+        out.add(expanded);
+      }
+    }
+    return Splice(out);
+  }
   if (node is! List || node.isEmpty) return node;
 
   final head = node[0];
@@ -235,7 +261,7 @@ Future<String> asyncCompileDartLikeWithTrace(
     sink.writeln('\n─── $sourcePath:$line ───');
     sink.writeln('    ${_abbrev(_nodeStr(form))}');
     final expanded = await _asyncExpandWithTrace(form, sink, 0, counter);
-    results.add(emit(expanded));
+    results.add(emitForm(expanded));
   }
   return assembleOutput(results);
 }
@@ -253,7 +279,7 @@ Future<String> asyncCompileWithTrace(
     sink.writeln('\n─── $sourcePath:$line ───');
     sink.writeln('    ${_abbrev(_nodeStr(form))}');
     final expanded = await _asyncExpandWithTrace(form, sink, 0, counter);
-    results.add(emit(expanded));
+    results.add(emitForm(expanded));
   }
   return assembleOutput(results);
 }

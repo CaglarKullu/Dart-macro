@@ -280,16 +280,81 @@ void _registerUserMacros() {
     }
     final params = (args[1] as List).cast<String>();
     final body = args.length == 3 ? args[2] : ['do', ...args.sublist(2)];
+    // A trailing `...rest` param captures all remaining call arguments as a
+    // list — iterate it with $map. Fixed params before it bind positionally.
+    final hasRest = params.isNotEmpty && params.last.startsWith('...');
+    final fixedCount = hasRest ? params.length - 1 : params.length;
     defmacro(name, (callArgs) {
-      if (callArgs.length != params.length) {
+      if (hasRest ? callArgs.length < fixedCount : callArgs.length != fixedCount) {
+        final expected = hasRest ? 'at least $fixedCount' : '$fixedCount';
         throw ArgumentError(
-          '$name: expected ${params.length} arg(s), got ${callArgs.length}',
+          '$name: expected $expected arg(s), got ${callArgs.length}',
         );
       }
-      final bindings = Map.fromIterables(params, callArgs);
+      final bindings = <String, Node>{
+        for (var i = 0; i < fixedCount; i++) params[i]: callArgs[i],
+        if (hasRest)
+          params.last.substring(3): List<Node>.from(callArgs.sublist(fixedCount)),
+      };
       return _substitute(body, bindings);
     });
     return '';
+  });
+
+  // ─── $map — Tier-2 template iteration ─────────────────────────────────────
+  //
+  //   $map(items, binder…, template)
+  //
+  // Expands `template` once per element of `items`, substituting the binders,
+  // and splices the results into the enclosing list. One binder binds the
+  // whole element; multiple binders destructure a list element positionally
+  // (e.g. block-syntax fields arrive as [type, name] pairs).
+  //
+  // In .dmacro the control-flow call form reads naturally:
+  //
+  //   defmacro logAll(...vals) {
+  //     $map(vals, v) { print(v); }
+  //   }
+  defmacro(r'$map', (args) {
+    if (args.length < 3) {
+      throw ArgumentError(
+        r'$map: expected ($map items binder... template), '
+        'got ${args.length} arg(s)',
+      );
+    }
+    final items = args[0];
+    final binders = args.sublist(1, args.length - 1);
+    final template = args.last;
+    if (items is! List) {
+      throw ArgumentError(
+        r'$map: first argument must be a list of items, got: ' '$items\n'
+        r'(inside a template macro, pass a `...rest` parameter)',
+      );
+    }
+    for (final b in binders) {
+      if (b is! String) {
+        throw ArgumentError(r'$map: binders must be identifiers, got: ' '$b');
+      }
+    }
+    final results = <Node>[];
+    for (final item in items) {
+      final bindings = <String, Node>{};
+      if (binders.length == 1) {
+        bindings[binders[0] as String] = item;
+      } else {
+        if (item is! List || item.length < binders.length) {
+          throw ArgumentError(
+            r'$map: cannot destructure ' '${binders.length} binder(s) '
+            'from element: $item',
+          );
+        }
+        for (var i = 0; i < binders.length; i++) {
+          bindings[binders[i] as String] = item[i];
+        }
+      }
+      results.add(_substitute(template, bindings));
+    }
+    return Splice(results);
   });
 }
 
