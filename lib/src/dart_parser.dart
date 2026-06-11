@@ -65,6 +65,15 @@ class DartLikeParser {
       if (_peek2().kind == TK.ident) return _defmacroDecl();
       if (_peek2().kind == TK.lparen) return _defmacroDecl();
     }
+    // Generic block macro: ident TypeName { field; ... }
+    // Any unrecognised identifier followed by a capitalised name and `{` is
+    // desugared into a macro call with structured field args, e.g.
+    //   defwidget MyButton { String label; Color? color; }
+    // → ['defwidget', 'MyButton', ['String', 'label'], ['Color?', 'color']]
+    // This lets user macros use the same ergonomic block syntax as defrecord.
+    if (_check(TK.ident) && _peek2().kind == TK.ident && _peek3().kind == TK.lbrace) {
+      return _userBlockMacro();
+    }
     // Top-level macro call: ident ( args... ) ;
     // Distinguished from a function declaration (type name ( ) { }) by looking
     // ahead: ident immediately followed by lparen → call, not declaration.
@@ -81,6 +90,26 @@ class DartLikeParser {
     _expect(TK.rparen);
     _expect(TK.semi);
     return [name, ...args];
+  }
+
+  /// Generic block-syntax macro: `macroName TypeName { Type field; ... }`
+  ///
+  /// Produces `[macroName, TypeName, [type, name], ...]`.
+  /// Each field is a two-element list `[typeString, nameString]` so macro
+  /// authors receive structured data instead of raw string tokens.
+  Node _userBlockMacro() {
+    final macroName = _advance().value as String;
+    final typeName = _advance().value as String;
+    _expect(TK.lbrace);
+    final fields = <List<String>>[];
+    while (!_check(TK.rbrace)) {
+      final t = _parseType();
+      final n = _expect(TK.ident).value as String;
+      _expect(TK.semi);
+      fields.add([t, n]);
+    }
+    _expect(TK.rbrace);
+    return [macroName, typeName, ...fields];
   }
 
   Node _defenum() {
@@ -592,6 +621,7 @@ class DartLikeParser {
 
   Token _peek() => _tokens[_pos];
   Token _peek2() => _tokens[_pos + 1 < _tokens.length ? _pos + 1 : _pos];
+  Token _peek3() => _tokens[_pos + 2 < _tokens.length ? _pos + 2 : _pos];
 
   Token _advance() {
     final t = _tokens[_pos];

@@ -349,4 +349,52 @@ void main() {
       expect(out.trim(), isEmpty);
     });
   });
+
+  // ─── generic block macro syntax (task 10.2b) ─────────────────────────────────
+
+  group('DartLikeParser — generic block macro', () {
+    test('parses ident TypeName { } into structured node', () {
+      const src = 'defwidget MyButton { String label; Color? color; }';
+      final tokens = Tokenizer(src).tokenize();
+      final forms = DartLikeParser(tokens).parseProgram();
+      expect(forms.length, 1);
+      final form = forms[0] as List;
+      expect(form[0], 'defwidget');
+      expect(form[1], 'MyButton');
+      expect(form[2], ['String', 'label']);
+      expect(form[3], ['Color?', 'color']);
+    });
+
+    test('empty block produces just macro-name and type-name', () {
+      const src = 'defempty Empty {}';
+      final tokens = Tokenizer(src).tokenize();
+      final forms = DartLikeParser(tokens).parseProgram();
+      final form = forms[0] as List;
+      expect(form, ['defempty', 'Empty']);
+    });
+
+    test('generic field type is parsed correctly', () {
+      const src = 'defmodel UserList { List<String> names; Map<String, int> scores; }';
+      final tokens = Tokenizer(src).tokenize();
+      final forms = DartLikeParser(tokens).parseProgram();
+      final form = forms[0] as List;
+      expect(form[2], ['List<String>', 'names']);
+      expect(form[3], ['Map<String, int>', 'scores']);
+    });
+
+    test('user block macro expands end-to-end via registered macro', () async {
+      defAsyncMacro('defwidget2', (args) async {
+        final name = args[0] as String;
+        final fields = args.skip(1).cast<List>().toList();
+        final decls = fields.map((f) => '  final ${f[0]} ${f[1]};').join('\n');
+        return 'class $name {\n$decls\n}';
+      });
+      final out = await asyncCompileDartLike(
+        'defwidget2 MyCard { String title; int count; }',
+      );
+      expect(out, contains('class MyCard'));
+      expect(out, contains('final String title;'));
+      expect(out, contains('final int count;'));
+    });
+  });
 }

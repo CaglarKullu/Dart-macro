@@ -428,7 +428,7 @@ from a user's own project. **Reuse the engine as-is; this is framing + one new l
 - [x] Document the user-owned entry point pattern (`tool/dmacro.dart` — NOT root `build.dart`, which Dart treats as a native-assets hook) in `doc/WRITING_MACROS.md`
 - [ ] (UX layer) `dmacro.yaml` lists user Dart macro files exposing `registerMacros()`; CLI bootstrap loads them before compiling
 - [ ] `importMacros("package:foo/bar.dart")` extended to load Dart macro files (reuse resolver)
-- [ ] **10.2b** Generic block syntax: `defwidget MyButton { … }` for user macros (parser currently hardcodes `defrecord`/`defunion` at `dart_parser.dart:58-59`; user macros are call-syntax only)
+- [x] **10.2b** Generic block syntax: `defwidget MyButton { … }` for user macros — `_userBlockMacro()` detects `ident TypeName {` at top level and produces `[macroName, TypeName, [type, name], …]`; field args are structured lists, not raw strings. Tested in `dart_parser_test.dart` and `user_macro_test.dart`.
 - [x] **10.2c** Export an `unquote` helper — done (see above; lives in `core.dart`, documented in WRITING_MACROS.md)
 - [ ] Parser finding (from validation): `throw expr` in argument position emits bare `throw;` — fold into parser-hardening follow-ups
 
