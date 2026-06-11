@@ -6,6 +6,8 @@
 /// fixture at test/fixtures/use_macros_lib.dart.
 library;
 
+import 'dart:io';
+
 import 'package:dmacro/dmacro.dart';
 import 'package:test/test.dart';
 
@@ -74,6 +76,73 @@ defmarker();
 ''';
       final out = await asyncCompileDartLike(source);
       expect(out, contains('const marker = true;'));
+    });
+
+    test('block syntax passes structured field args across the isolate',
+        () async {
+      // defwidget Name { T f; } parses to ['defwidget','Name',['T','f'],…];
+      // the nested field lists must survive encode/decode to the worker.
+      final source = '''
+useMacros("$_fixture");
+
+defwidget Card {
+  String title;
+  double? elevation;
+}
+''';
+      final out = await asyncCompileDartLike(source);
+      expect(out, contains('class Card {'));
+      expect(out, contains('final String title;'));
+      expect(out, contains('final double? elevation;'));
+    });
+
+    test('a worker macro returning a Splice expands as sibling forms', () async {
+      final source = '''
+useMacros("$_fixture");
+
+defpair("Alpha", "Beta");
+''';
+      final out = await asyncCompileDartLike(source);
+      expect(out, contains('class Alpha {}'));
+      expect(out, contains('class Beta {}'));
+    });
+
+    test('an async worker macro can do real I/O at generation time', () async {
+      final tmp = await File(
+              '${Directory.systemTemp.path}/dmacro_usemacros_${DateTime.now().microsecondsSinceEpoch}.txt')
+          .writeAsString('Loaded');
+      addTearDown(() => tmp.deleteSync());
+
+      final source = '''
+useMacros("$_fixture");
+
+defFromFile("${tmp.path}");
+''';
+      final out = await asyncCompileDartLike(source);
+      expect(out, contains('class Loaded {}'));
+    });
+
+    test('loads through the S-expression (.sexp) path too', () async {
+      final source = '''
+(useMacros "$_fixture")
+(defwidget "Gauge" (double value))
+''';
+      final out = await asyncCompile(source);
+      expect(out, contains('class Gauge {'));
+      expect(out, contains('final double value;'));
+    });
+
+    test('recompiling unchanged source is byte-identical (idempotent)',
+        () async {
+      final source = '''
+useMacros("$_fixture");
+
+defwidget Tag { String name; }
+''';
+      final first = await asyncCompileDartLike(source);
+      shutdownMacroWorkers(); // force a fresh worker for the second run
+      final second = await asyncCompileDartLike(source);
+      expect(second, equals(first));
     });
   });
 

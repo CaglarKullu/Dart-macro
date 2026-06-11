@@ -1,0 +1,14 @@
+// Load Dart-function macros from a plain library — no tool/dmacro.dart.
+useMacros("example/use_macros/model_macros.dart");
+
+// `defmodel` now expands like a builtin, generating an immutable value class.
+defmodel User {
+  String id;
+  String name;
+  int age;
+}
+
+defmodel Product {
+  String sku;
+  double price;
+}

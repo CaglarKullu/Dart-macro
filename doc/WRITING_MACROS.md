@@ -22,34 +22,49 @@ dev_dependencies:
     git: https://github.com/caglarkullu/dart-macro
 ```
 
-Built-in macros work immediately, no entry point needed:
+Built-in macros work immediately, and so do your own — one command for both:
 
 ```bash
 dart run dmacro compile lib/models.dmacro
 ```
 
-To add your own macros, create **one file** (use `tool/`, not a root
-`build.dart` — Dart treats a root `build.dart` as a native-assets hook):
+To add your own Dart-function macros, write a plain Dart library that exposes
+`void registerMacros()`, then load it from your `.dmacro` source with
+`useMacros` — right where you use it, no entry point:
 
 ```dart
-// tool/dmacro.dart
+// lib/my_macros.dart
 import 'package:dmacro/dmacro.dart';
 
-void main(List<String> args) => runDmacro(args, registerMacros: () {
-      // your macros go here
-    });
+void registerMacros() {
+  // your macros go here — defmacro / defAsyncMacro
+}
+```
+
+```dart
+// lib/widgets.dmacro
+useMacros("lib/my_macros.dart");      // or "package:my_macros/macros.dart"
+
+// ...your macros are now available here, like builtins
 ```
 
 ```bash
-dart run tool/dmacro.dart compile lib/widgets.dmacro   # full CLI, your macros loaded
-dart run tool/dmacro.dart compile lib/ --check         # CI staleness gate
-dart run tool/dmacro.dart watch lib/                   # recompile on save
+dart run dmacro compile lib/widgets.dmacro   # full CLI, your macros loaded
+dart run dmacro compile lib/ --check         # CI staleness gate
+dart run dmacro watch lib/                    # recompile on save
 ```
 
-`runDmacro` registers the standard library first, then calls your
-`registerMacros`, then dispatches the normal CLI — so your macros work in
-`compile`, `watch`, `trace`, `--check`, and the REPL alike. Registering a name
-that already exists overrides it, so you can even replace a built-in.
+`useMacros` runs the library in a worker isolate at generation time and
+registers each macro it exposes, so they compose with the standard library and
+each other transparently. Registering a name that already exists overrides it,
+so you can even replace a built-in.
+
+> **Prefer registering in code?** The classic entry-point pattern still works:
+> write `tool/dmacro.dart` with
+> `void main(args) => runDmacro(args, registerMacros: () { … });`
+> and run `dart run tool/dmacro.dart`. `useMacros` simply means you rarely need
+> it. (If you do use a root file, name it `tool/dmacro.dart`, not a root
+> `build.dart` — Dart treats a root `build.dart` as a native-assets hook.)
 
 ## Tier 1 — template macros (no Dart needed)
 
@@ -124,10 +139,15 @@ Limits (by design — past these, use Tier 3):
 > Anything a template can't express is written as a Dart function. That's not
 > a downgrade — it's the same power the built-ins have.
 
+A Tier-3 macro library is a plain Dart file with a `void registerMacros()`
+function. You load it with `useMacros("…")` from any `.dmacro` source. Examples
+below show the body of that function.
+
 ### A sync macro: structure in, structure out
 
 ```dart
-registerMacros: () {
+// lib/macros.dart  → load with useMacros("lib/macros.dart")
+void registerMacros() {
   // guarded(x > 0, "bad") → if (!(x > 0)) { throw Exception('bad'); }
   defmacro('guarded', (args) {
     return ['unless', args[0], ['throw', ['Exception', args[1]]]];
@@ -141,12 +161,13 @@ Key things to notice:
   You can inspect it, rewrite it, wrap it.
 - Returning a list that *contains another macro call* (`unless`) is fine — the
   expander keeps expanding until no macros remain. Your macros compose with
-  built-ins and with each other.
+  built-ins and with each other, **even across the `useMacros` isolate
+  boundary**: the worker returns raw structure and the parent keeps expanding.
 
 ### An async macro: I/O at generation time
 
 ```dart
-registerMacros: () {
+void registerMacros() {
   defAsyncMacro('defFromCsvHeader', (args) async {
     final path = unquote(args[0] as String);
     final header = (await File(path).readAsLines()).first;
@@ -205,15 +226,18 @@ an index-out-of-range three frames deep.)
   distinct names.
 - **`throw` in argument position** — `m(throw Exception("x"))` emits bare
   `throw;`. Build the throw node inside the macro instead (see `guarded`).
-- **`importMacros` loads `.dmacro`/`.sexp` source files only** — it cannot
-  dynamically execute a `.dart` file. Sharing Dart-function macros across
-  projects uses the entry-point import pattern described below, not
-  `importMacros`.
+- **Two directives, two file kinds** — `importMacros` loads template macros
+  from `.dmacro`/`.sexp` files; `useMacros` loads Dart-function macros from
+  `.dart` files. Use the one that matches the macro tier.
+- **`useMacros` reloads on a per-run basis** — a worker isolate is spawned once
+  per library and reused for the whole compile. In `watch` mode, editing a
+  loaded `.dart` macro library requires restarting the watcher (the source
+  `.dmacro` is still re-read on every save as usual).
 
-## Sharing template macros within a project
+## Sharing macros within a project
 
-Factor reusable Tier 1/Tier 2 macros into a shared `.dmacro` file and load
-them with `importMacros`:
+**Template macros (Tier 1/2)** — factor them into a shared `.dmacro` file and
+load with `importMacros`:
 
 ```dart
 // lib/macros/validators.dmacro
@@ -232,10 +256,28 @@ bool createUser(String email) {
 }
 ```
 
-`importMacros` also accepts `package:` URIs — it resolves them via
-`.dart_tool/package_config.json` (written by `dart pub get`).
+**Dart-function macros (Tier 3)** — factor them into a `.dart` library with a
+`registerMacros()` function and load with `useMacros`:
 
-Tier 3 (Dart-function) macros are shared differently: write them in your
-`tool/dmacro.dart` entry point, or import a helper `.dart` file from there.
-`importMacros` loads `.dmacro`/`.sexp` source files only — it cannot
-dynamically execute a Dart file.
+```dart
+// lib/macros/models.dart
+import 'package:dmacro/dmacro.dart';
+void registerMacros() {
+  defAsyncMacro('defmodel', (args) async => /* … */ '');
+}
+```
+
+```dart
+// lib/models.dmacro
+useMacros("lib/macros/models.dart");
+defmodel User { String id; String name; }
+```
+
+Both directives accept `package:` URIs, resolved via
+`.dart_tool/package_config.json` (written by `dart pub get`) — so a macro
+package shared across projects is loaded with a single line, no entry point:
+
+```dart
+useMacros("package:team_macros/macros.dart");
+importMacros("package:team_macros/templates.dmacro");
+```

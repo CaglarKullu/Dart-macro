@@ -6,6 +6,8 @@
 /// exercise the `#fnName` fragment.
 library;
 
+import 'dart:io';
+
 import 'package:dmacro/dmacro.dart';
 
 void registerMacros() {
@@ -39,6 +41,24 @@ void registerMacros() {
   // Always throws — exercises macro-author error attribution across the isolate.
   defAsyncMacro('boom', (args) async {
     throw StateError('kaboom');
+  });
+
+  // Returns a Splice of two top-level forms — proves Splice survives the codec
+  // and the parent expands/flattens each spliced node as a sibling.
+  defmacro('defpair', (args) {
+    final a = unquote(args[0] as String);
+    final b = unquote(args[1] as String);
+    return $splice([
+      'class $a {}',
+      'class $b {}',
+    ]);
+  });
+
+  // Reads a file at generation time — the async superpower, across the isolate.
+  defAsyncMacro('defFromFile', (args) async {
+    final path = unquote(args[0] as String);
+    final name = (await File(path).readAsString()).trim();
+    return 'class $name {}';
   });
 }
 

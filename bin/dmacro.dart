@@ -3,17 +3,10 @@
 /// In a consumer project:  dart run dmacro compile <file>
 /// In this repository:     dart run bin/dmacro.dart compile <file>
 ///
-/// To run the CLI with your own macros registered, write your own entry
-/// point instead — see `runDmacro` in `package:dmacro/dmacro.dart`:
-///
-/// ```dart
-/// // tool/dmacro.dart
-/// import 'package:dmacro/dmacro.dart';
-///
-/// void main(List<String> args) => runDmacro(args, registerMacros: () {
-///       defAsyncMacro('defwidget', (args) async => /* code → code */ '');
-///     });
-/// ```
+/// Your own macros don't need a custom entry point: load them from the
+/// `.dmacro` source with `useMacros("lib/my_macros.dart")` (a Dart library
+/// exposing `registerMacros()`) and this same CLI picks them up. If you'd
+/// rather register in code, see `runDmacro` in `package:dmacro/dmacro.dart`.
 library;
 
 import 'package:dmacro/dmacro.dart' show runDmacro;

@@ -1,28 +1,33 @@
 # dmacro
 
-**Write your own Dart code generators. One function. No build daemon. No compiler plugins.**
+**Write your own Dart code generators. One function. No build daemon. No compiler plugins. No entry point.**
 
 ```dart
-// tool/dmacro.dart — your entry point, your project
+// lib/widget_macros.dart — your macro, your project
 import 'package:dmacro/dmacro.dart';
 
-void main(List<String> args) => runDmacro(args, registerMacros: () {
-
+void registerMacros() {
   defAsyncMacro('defwidget', (args) async {
     final name = unquote(args[0] as String);
     final fields = args.skip(1).cast<List>().toList();
     // ... build whatever your team actually needs
     return 'class $name extends StatelessWidget { ... }';
   });
+}
+```
 
-});
+```dart
+// lib/widgets.dmacro — pull the macro in right where you use it
+useMacros("lib/widget_macros.dart");
+
+defwidget SubmitButton { String label; }
 ```
 
 ```bash
-dart run tool/dmacro.dart compile lib/widgets.dmacro
+dart run dmacro compile lib/widgets.dmacro
 ```
 
-That's the whole model. A macro is a Dart function. You register it, use it, and the engine calls it at generation time — before the compiler sees anything.
+That's the whole model. A macro is a Dart function. You load it next to where it's used with `useMacros`, and the engine calls it at generation time — before the compiler sees anything. No `tool/dmacro.dart`, no registration ceremony.
 
 ---
 
@@ -49,39 +54,39 @@ dev_dependencies:
     git: https://github.com/caglarkullu/dart-macro
 ```
 
-### Step 2 — create your entry point
+### Step 2 — write your macro as a plain Dart function
 
 ```dart
-// tool/dmacro.dart  ← NOT a root build.dart (Dart treats that as a native-assets hook)
+// lib/api_macros.dart  ← just a library: a registerMacros() that defines macros
 import 'package:dmacro/dmacro.dart';
 
-void main(List<String> args) => runDmacro(args, registerMacros: () {
-
+void registerMacros() {
   defAsyncMacro('defapi', (args) async {
     final endpoint = unquote(args[0] as String);
     // Read your OpenAPI spec, hit your API, parse your custom schema —
     // anything you can await works here.
     return 'class ${endpoint}Client { /* generated */ }';
   });
-
-});
+}
 ```
 
 ### Step 3 — use it
 
 ```dart
 // lib/api_clients.dmacro
+useMacros("lib/api_macros.dart");   // or "package:my_macros/api_macros.dart"
+
 defapi("users");
 defapi("orders");
 defapi("products");
 ```
 
 ```bash
-dart run tool/dmacro.dart compile lib/api_clients.dmacro
+dart run dmacro compile lib/api_clients.dmacro
 # → lib/api_clients.dart  (three generated client classes)
 ```
 
-The full CLI — `compile`, `watch`, `trace`, `--check` — is available through your entry point with your macros loaded. `runDmacro` calls the standard library first, then yours.
+The macro library is loaded in a worker isolate the moment `useMacros` runs, so it composes with the standard library and your other macros automatically. No entry point, no `runDmacro` wiring — `dart run dmacro` is the only command you need.
 
 ---
 
@@ -146,22 +151,31 @@ void transfer(int amount, int balance) {
 
 ### Tier 3 — Dart-function macros (full power)
 
-Registered in `tool/dmacro.dart`. Full Dart — loops, I/O, string building, anything:
+A plain Dart library, loaded with `useMacros`. Full Dart — loops, I/O, string building, anything:
 
 ```dart
-defAsyncMacro('defFromMySchema', (args) async {
-  final path = unquote(args[0] as String);
-  final schema = jsonDecode(await File(path).readAsString());
+// lib/schema_macros.dart
+void registerMacros() {
+  defAsyncMacro('defFromMySchema', (args) async {
+    final path = unquote(args[0] as String);
+    final schema = jsonDecode(await File(path).readAsString());
 
-  final fields = (schema['fields'] as List).map((f) =>
-    '  final ${f['type']} ${f['name']};'
-  ).join('\n');
+    final fields = (schema['fields'] as List).map((f) =>
+      '  final ${f['type']} ${f['name']};'
+    ).join('\n');
 
-  return 'class ${schema['name']} {\n$fields\n  // ...constructor, ==, toJson\n}';
-});
+    return 'class ${schema['name']} {\n$fields\n  // ...constructor, ==, toJson\n}';
+  });
+}
 ```
 
-The built-ins are Tier-3 macros. They are not privileged in any way — they use the same `defAsyncMacro` you do.
+```dart
+// lib/models.dmacro
+useMacros("lib/schema_macros.dart");
+defFromMySchema("schemas/user.json");
+```
+
+The built-ins are Tier-3 macros. They are not privileged in any way — they use the same `defAsyncMacro` you do, and `useMacros` loads yours right alongside them.
 
 ---
 
@@ -248,10 +262,11 @@ defAsyncMacro('defFromInternalApi', (args) async {
 
 ```dart
 // models.dmacro
+useMacros("lib/internal_api_macros.dart");
 defFromInternalApi("https://api.internal/schema/v2");
 ```
 
-CI runs `dart run tool/dmacro.dart compile lib/models.dmacro` — the types are always current.
+CI runs `dart run dmacro compile lib/models.dmacro` — the types are always current.
 
 ### Share macros across a project
 
@@ -283,18 +298,14 @@ bool createOrder(String customerId, double amount) {
 ### CLI
 
 ```bash
-dart run tool/dmacro.dart compile lib/models.dmacro    # compile one file
-dart run tool/dmacro.dart compile lib/                 # compile a directory
-dart run tool/dmacro.dart compile lib/ --check         # CI: exit non-zero if stale
-dart run tool/dmacro.dart watch lib/                   # recompile on save
-dart run tool/dmacro.dart trace lib/models.dmacro      # print each expansion step
+dart run dmacro compile lib/models.dmacro    # compile one file
+dart run dmacro compile lib/                 # compile a directory
+dart run dmacro compile lib/ --check         # CI: exit non-zero if stale
+dart run dmacro watch lib/                   # recompile on save
+dart run dmacro trace lib/models.dmacro      # print each expansion step
 ```
 
-Or use the built-in executable (no custom entry point needed for standard library macros):
-
-```bash
-dart run dmacro compile lib/models.dmacro
-```
+One command for everything. Your own Dart-function macros are pulled in by `useMacros("…")` inside the source file — no separate entry point to build or invoke.
 
 ### Inline blocks in `.dart` files
 
@@ -322,6 +333,8 @@ After `dmacro compile lib/models.dart`, the macro source is preserved as comment
 
 ### Macro API
 
+In your macro library (a Dart file with a `registerMacros()` function):
+
 ```dart
 defmacro('name', (args) { ... });           // sync, returns Node
 defAsyncMacro('name', (args) async { ... }); // async, can await I/O
@@ -330,7 +343,17 @@ gensym('tmp')                                // unique name per compile
 $splice([node1, node2])                      // splice multiple nodes into parent
 ```
 
-All exported from `package:dmacro/dmacro.dart`.
+In your `.dmacro` source, to load macros and templates:
+
+```dart
+useMacros("lib/my_macros.dart");                  // Dart-function macros (Tier 3)
+useMacros("package:team/macros.dart#registerX");  // a named registration function
+importMacros("lib/templates.dmacro");             // template macros (Tier 1/2)
+```
+
+All exported from `package:dmacro/dmacro.dart`. The `tool/dmacro.dart` +
+`runDmacro` entry point still works if you prefer registering macros in code,
+but `useMacros` means you rarely need it.
 
 ---
 
@@ -340,6 +363,7 @@ All exported from `package:dmacro/dmacro.dart`.
 |---|---|---|---|
 | Ships today | ✅ | ✅ | ❌ cancelled Jan 2025 |
 | Write your own generators | ✅ **the point** | ❌ fixed set | ✅ (was the plan) |
+| Load a generator with one line, no config | ✅ `useMacros("…")` | ❌ `build.yaml` wiring | — |
 | I/O at generation time | ✅ | ❌ | ❌ (broke hot reload) |
 | Zero runtime dependencies | ✅ | ❌ | — |
 | No build daemon | ✅ | ❌ | — |
@@ -377,7 +401,9 @@ lib/
     core.dart           Node, expand(), emit()
     async_expand.dart   Async expander — the I/O capability
     builtins.dart       Standard library: unless, defrecord, defunion, $map, …
-    schema_macros.dart  Standard library: defFromJsonSchema, defFromOpenApi, …
+    schema_macros.dart  Standard library: defFromJsonSchema, useMacros, …
+    macro_loader.dart   useMacros: load Dart macros in a worker isolate
+    macro_worker.dart   worker-side harness for loaded macro libraries
     cli.dart            runDmacro() — the full CLI as a library
 bin/
   dmacro.dart           3-line shim: calls runDmacro(args)
@@ -386,7 +412,7 @@ doc/
   ARCHITECTURE.md       Design decisions
   VISION.md             The north star
 example/
-  macro_library/        Pattern A + B distribution examples
+  use_macros/           useMacros: a Dart macro library, no entry point
   ecommerce/            defrecord in practice
   openapi_demo/         Types from an OpenAPI spec
 ```
