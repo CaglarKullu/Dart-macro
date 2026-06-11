@@ -233,15 +233,14 @@ void main() {
   // ─── errors ──────────────────────────────────────────────────────────────────
 
   group('DartLikeParser — errors', () {
-    test('throws ParseException on unexpected token', () {
-      // A standalone expression that is not a valid declaration
-      expect(
-        () {
-          final tokens = Tokenizer('123').tokenize();
-          DartLikeParser(tokens).parseProgram();
-        },
-        throwsA(isA<ParseException>()),
-      );
+    test('non-declaration literal passes through as OpaqueNode', () {
+      // A standalone integer literal is not a valid Dart top-level declaration,
+      // but the opaque fallback emits it verbatim rather than erroring here.
+      // The Dart analyzer will catch it downstream — that's the right place.
+      final tokens = Tokenizer('123;').tokenize();
+      final nodes = DartLikeParser(tokens).parseProgram();
+      expect(nodes, hasLength(1));
+      expect(nodes[0], isA<OpaqueNode>());
     });
 
     test('throws ParseException on missing closing brace', () {

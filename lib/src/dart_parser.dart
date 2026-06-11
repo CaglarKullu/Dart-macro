@@ -71,7 +71,17 @@ class DartLikeParser {
     if (_check(TK.ident) && _peek2().kind == TK.lparen) {
       return _topLevelCall();
     }
-    return _fnDecl();
+    // Try to parse as a structured Dart declaration (function, class, etc.).
+    // If the body contains syntax the parser doesn't model (switch expressions,
+    // record patterns, extension types…), fall back to opaque pass-through so
+    // the user's code is emitted verbatim rather than erroring.
+    final savedPos = _pos;
+    try {
+      return _fnDecl();
+    } on ParseException {
+      _pos = savedPos;
+      return _opaqueDeclaration();
+    }
   }
 
   Node _topLevelCall() {
@@ -253,6 +263,9 @@ class DartLikeParser {
     _expect(TK.lbrace);
     final stmts = <Node>[];
     while (!_check(TK.rbrace)) {
+      if (_atEnd()) {
+        throw ParseException('Unexpected end of file — missing "}"');
+      }
       stmts.add(_statement());
     }
     _expect(TK.rbrace);
@@ -362,9 +375,8 @@ class DartLikeParser {
       _expect(TK.semi);
       return expr;
     }
-    final bad = _peek();
-    throw ParseException('Unexpected token: $bad',
-        line: bad.line, col: bad.col);
+    // Statement type not modelled by the parser — emit verbatim rather than error.
+    return _opaqueStatement();
   }
 
   // ─── Expressions (operator precedence) ───────────────────────────────────────
@@ -570,6 +582,77 @@ class DartLikeParser {
     }
     throw ParseException('Unexpected token in expression: $t',
         line: t.line, col: t.col);
+  }
+
+  // ─── Opaque pass-through ─────────────────────────────────────────────────────
+
+  /// Converts a single [Token] to its string representation.
+  String _tokenText(Token t) {
+    if (t.kind == TK.eof) return '';
+    return (t.value ?? '').toString();
+  }
+
+  /// Scans tokens to the end of a top-level declaration, emitting them as an
+  /// [OpaqueNode]. Used when the parser encounters Dart syntax it doesn't model.
+  ///
+  /// A top-level form ends when a `}` closes the outermost open brace (for
+  /// class/function bodies) or when a `;` is seen at brace depth 0.
+  OpaqueNode _opaqueDeclaration() {
+    final buf = StringBuffer();
+    var depth = 0;
+    var terminated = false;
+    while (!_atEnd()) {
+      final t = _peek();
+      buf.write(_tokenText(t));
+      _advance();
+      if (t.kind == TK.lbrace) {
+        depth++;
+      } else if (t.kind == TK.rbrace) {
+        depth--;
+        if (depth <= 0) {
+          terminated = true;
+          break;
+        }
+      } else if (t.kind == TK.semi && depth == 0) {
+        terminated = true;
+        break;
+      }
+      buf.write(' ');
+    }
+    // Hit EOF with an unclosed brace — that's malformed input, not just syntax
+    // we don't model. Report the error clearly.
+    if (!terminated && depth > 0) {
+      throw ParseException('Unexpected end of file — missing closing "}"');
+    }
+    return OpaqueNode(buf.toString().trimRight());
+  }
+
+  /// Scans tokens to the end of a statement, emitting them as an [OpaqueNode].
+  ///
+  /// A statement ends at `;` at depth 0, or at a `}` that closes the last
+  /// open `{` (for block-style constructs like `switch { ... }`).
+  OpaqueNode _opaqueStatement() {
+    final buf = StringBuffer();
+    var depth = 0;
+    while (!_atEnd()) {
+      final t = _peek();
+      if (t.kind == TK.rbrace && depth == 0) break; // end of enclosing block
+      buf.write(_tokenText(t));
+      _advance();
+      if (t.kind == TK.lbrace || t.kind == TK.lbracket || t.kind == TK.lparen) {
+        depth++;
+      } else if (t.kind == TK.rbrace ||
+          t.kind == TK.rbracket ||
+          t.kind == TK.rparen) {
+        depth--;
+        if (depth < 0) { depth = 0; break; }
+        if (t.kind == TK.rbrace && depth == 0) break;
+      } else if (t.kind == TK.semi && depth == 0) {
+        break;
+      }
+      buf.write(' ');
+    }
+    return OpaqueNode(buf.toString().trimRight());
   }
 
   List<Node> _argList() {

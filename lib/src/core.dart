@@ -23,6 +23,19 @@ class Splice {
   const Splice(this.nodes);
 }
 
+/// A block of Dart source that the parser passed through without structurally
+/// parsing. [emit] outputs the text verbatim, and [expand] passes it through
+/// unchanged. This is the "opaque pass-through" node produced when the parser
+/// encounters Dart syntax it doesn't model (switch expressions, record patterns,
+/// extension types, etc.).
+class OpaqueNode {
+  final String text;
+  const OpaqueNode(this.text);
+
+  @override
+  String toString() => 'OpaqueNode(${text.length} chars)';
+}
+
 // ─── MacroExpansionError ─────────────────────────────────────────────────────
 
 /// Thrown when a macro expansion fails, with the source file and line baked in.
@@ -101,6 +114,21 @@ void resetEnumRegistry() => _enumNames.clear();
 /// After expanding children, any [Splice] children are flattened (inlined)
 /// into the parent list. This allows macros to inject multiple statements.
 Node expand(Node node) {
+  // OpaqueNode — verbatim Dart text, no macros to expand.
+  if (node is OpaqueNode) return node;
+  // A macro may return a Splice (e.g. $map) whose nodes are unexpanded
+  // templates — expand each, flattening any nested Splice one level up.
+  if (node is Splice) {
+    final out = <Node>[];
+    for (final n in node.nodes.map(expand)) {
+      if (n is Splice) {
+        out.addAll(n.nodes);
+      } else {
+        out.add(n);
+      }
+    }
+    return Splice(out);
+  }
   if (node is! List || node.isEmpty) return node;
 
   final sym = node[0];
@@ -137,6 +165,9 @@ String emit(Node node, [int indent = 0]) {
       'Ensure expand() is called before emit().',
     );
   }
+
+  // Opaque Dart that the parser passed through verbatim.
+  if (node is OpaqueNode) return node.text;
 
   if (node == null) return 'null';
   if (node is bool) return '$node';
