@@ -210,124 +210,32 @@ an index-out-of-range three frames deep.)
   projects uses the entry-point import pattern described below, not
   `importMacros`.
 
-## Sharing macros as a package (task 10.5)
+## Sharing template macros within a project
 
-### Pattern A — Dart-function macros as a pub package
-
-Create a regular Dart package whose only job is to register macros:
-
-```
-team_macros/
-  pubspec.yaml
-  lib/
-    team_macros.dart   ← exports registerTeamMacros()
-    src/
-      widget_macro.dart
-      api_macro.dart
-```
-
-```yaml
-# team_macros/pubspec.yaml
-name: team_macros
-environment:
-  sdk: ">=3.0.0 <4.0.0"
-dependencies:
-  dmacro:
-    git: https://github.com/caglarkullu/dart-macro
-```
+Factor reusable Tier 1/Tier 2 macros into a shared `.dmacro` file and load
+them with `importMacros`:
 
 ```dart
-// team_macros/lib/team_macros.dart
-import 'package:dmacro/dmacro.dart';
-
-export 'src/widget_macro.dart';
-export 'src/api_macro.dart';
-
-void registerTeamMacros() {
-  registerWidgetMacros();
-  registerApiMacros();
+// lib/macros/validators.dmacro
+defmacro requireNonEmpty(val, msg) {
+  unless (val.isNotEmpty) { throw Exception(msg); }
 }
 ```
 
 ```dart
-// team_macros/lib/src/widget_macro.dart
-import 'package:dmacro/dmacro.dart';
+// lib/models.dmacro
+importMacros("lib/macros/validators.dmacro");
 
-void registerWidgetMacros() {
-  defAsyncMacro('defwidget', (args) async {
-    final name = unquote(args[0] as String);
-    // ... generate StatelessWidget subclass
-    return 'class $name extends StatelessWidget { ... }';
-  });
+bool createUser(String email) {
+  requireNonEmpty(email, "email required");
+  return true;
 }
 ```
 
-**Consumer project** — add the macro package as a dev dependency:
+`importMacros` also accepts `package:` URIs — it resolves them via
+`.dart_tool/package_config.json` (written by `dart pub get`).
 
-```yaml
-# my_app/pubspec.yaml
-dev_dependencies:
-  dmacro:
-    git: https://github.com/caglarkullu/dart-macro
-  team_macros:
-    git: https://github.com/myorg/team_macros
-    # or path: ../team_macros   for a monorepo
-```
-
-```dart
-// my_app/tool/dmacro.dart
-import 'package:dmacro/dmacro.dart';
-import 'package:team_macros/team_macros.dart';
-
-void main(List<String> args) =>
-    runDmacro(args, registerMacros: registerTeamMacros);
-```
-
-```bash
-dart pub get
-dart run tool/dmacro.dart compile lib/widgets.dmacro
-```
-
-The built-in macros are already loaded by `runDmacro`; `registerTeamMacros`
-adds yours on top. The full CLI — `compile`, `watch`, `trace`, `--check`,
-REPL — works with your macros active.
-
-### Pattern B — template macros as a shared `.dmacro` file
-
-Template macros (Tier 1 and `$map`/Tier 2) live in `.dmacro` source files that
-any project can load at the top of its own `.dmacro` files:
-
-```
-team_macros/
-  lib/
-    validators.dmacro   ← defmacro definitions, no Dart needed
-```
-
-```dart
-// my_app/lib/models.dmacro
-importMacros("package:team_macros/validators.dmacro");
-
-defrecord User {
-  String email;
-  String name;
-}
-
-void create(String email) {
-  guard(email.contains("@"), "Invalid email");
-}
-```
-
-`importMacros` resolves `package:` URIs via `.dart_tool/package_config.json`
-(written by `dart pub get`), so no extra configuration is needed.
-
-### Which pattern to use
-
-| Macro type | How to share |
-|---|---|
-| Tier 1 / Tier 2 (template, `$map`) | Pattern B — `.dmacro` source file via `importMacros` |
-| Tier 3 (Dart function, async I/O) | Pattern A — pub package + entry-point import |
-| Mix of both | Pattern A entry point + Pattern B `importMacros` inside the templates |
-
-The two patterns compose: a consumer's `tool/dmacro.dart` imports a Tier-3
-macro package, and one of those macros can itself call `importMacros` to pull
-in a supplementary template file at generation time.
+Tier 3 (Dart-function) macros are shared differently: write them in your
+`tool/dmacro.dart` entry point, or import a helper `.dart` file from there.
+`importMacros` loads `.dmacro`/`.sexp` source files only — it cannot
+dynamically execute a Dart file.
