@@ -167,4 +167,66 @@ void main() {
       expect(out, contains("static const beta = 'beta';"));
     });
   });
+
+  group('macro-author error attribution (task 10.4)', () {
+    setUp(() {
+      registerBuiltins();
+      registerSchemaMacros();
+    });
+
+    test('async macro that throws names the macro in the error', () async {
+      defAsyncMacro('brokenAsync', (args) async {
+        throw StateError('something went wrong inside the macro');
+      });
+
+      expect(
+        () => asyncCompileDartLike('brokenAsync();'),
+        throwsA(
+          isA<MacroExpansionError>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('"brokenAsync"'), contains('something went wrong')),
+          ),
+        ),
+      );
+    });
+
+    test('sync macro that throws names the macro in the error', () async {
+      defmacro('brokenSync', (args) {
+        throw ArgumentError('bad arg count');
+      });
+
+      expect(
+        () => asyncCompileDartLike('brokenSync();'),
+        throwsA(
+          isA<MacroExpansionError>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('"brokenSync"'), contains('bad arg count')),
+          ),
+        ),
+      );
+    });
+
+    test('nested macro error preserves innermost attribution', () async {
+      // outer calls inner; inner throws; error should name inner, not outer.
+      defAsyncMacro('inner', (args) async {
+        throw StateError('inner exploded');
+      });
+      defAsyncMacro('outer', (args) async {
+        return ['inner'];
+      });
+
+      expect(
+        () => asyncCompileDartLike('outer();'),
+        throwsA(
+          isA<MacroExpansionError>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('"inner"'), contains('inner exploded')),
+          ),
+        ),
+      );
+    });
+  });
 }

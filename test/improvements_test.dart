@@ -10,6 +10,7 @@ import 'dart:io';
 import 'package:dmacro/src/async_expand.dart'
     show asyncCompileDartLike, asyncCompile;
 import 'package:dmacro/src/builtins.dart';
+import 'package:dmacro/src/core.dart' show MacroExpansionError;
 import 'package:dmacro/src/schema_macros.dart';
 import 'package:test/test.dart';
 
@@ -170,7 +171,7 @@ defmacro logIt(x) {
     test('throws on non-existent file', () async {
       await expectLater(
         asyncCompileDartLike('importMacros("nonexistent.dmacro");'),
-        throwsA(isA<StateError>().having(
+        throwsA(isA<MacroExpansionError>().having(
           (e) => e.message,
           'message',
           contains('file not found'),
@@ -186,7 +187,7 @@ defmacro logIt(x) {
         asyncCompileDartLike(
           'importMacros("${unsupported.path}");',
         ),
-        throwsA(isA<StateError>().having(
+        throwsA(isA<MacroExpansionError>().having(
           (e) => e.message,
           'message',
           contains('unsupported file type'),
@@ -233,7 +234,7 @@ defmacro(declaration) makeWrapper(x) {
       // Calling it should throw because print(x) is a statement, not a declaration.
       await expectLater(
         asyncCompileDartLike('badDecl(hello);'),
-        throwsA(isA<ArgumentError>().having(
+        throwsA(isA<MacroExpansionError>().having(
           (e) => e.message,
           'message',
           contains('defmacro(declaration)'),
@@ -253,7 +254,7 @@ defmacro(declaration) makeWrapper(x) {
     test('defmacro with unknown type throws at definition time', () async {
       await expectLater(
         asyncCompileDartLike('defmacro(foobar) invalid(x) { print(x); }'),
-        throwsA(isA<ArgumentError>().having(
+        throwsA(isA<MacroExpansionError>().having(
           (e) => e.message,
           'message',
           contains('unknown output type'),

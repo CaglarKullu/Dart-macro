@@ -1,7 +1,12 @@
-/// Built-in macro definitions.
+/// Built-in macro definitions — the dmacro standard library.
 ///
-/// These demonstrate what Lisp-style macros enable that is IMPOSSIBLE
-/// in Dart without this system — even with macro_kit or build_runner.
+/// These are examples of what you can write with the public API
+/// (`defmacro`, `defAsyncMacro` from `package:dmacro/dmacro.dart`).
+/// They use no internal engine APIs; you can write your own macros
+/// exactly the same way — no fork, no subclassing, no build_runner.
+///
+/// Think of this file as the cookbook page 1.  The full guide is at
+/// `doc/WRITING_MACROS.md`.
 ///
 /// Each macro is shown first with the raw-list API, then with the equivalent
 /// typed node API. Both produce identical output:

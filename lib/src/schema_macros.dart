@@ -1,4 +1,12 @@
-/// Async macros that generate Dart types from JSON Schema files at generation time.
+/// Schema macros — the dmacro standard library, async tier.
+///
+/// These are examples of async user macros: each uses `defAsyncMacro` from
+/// `package:dmacro/dmacro.dart` and no internal engine APIs.  You can write
+/// macros that read files, hit APIs, or do any async I/O the same way.
+///
+/// `defFromJsonSchema` and `defFromYamlSchema` are here to show what's
+/// possible, not to be a complete solution.  The full guide is at
+/// `doc/WRITING_MACROS.md`.
 ///
 /// This is the headline capability: I/O-based code generation with zero
 /// non-SDK dependencies and no build_runner required.

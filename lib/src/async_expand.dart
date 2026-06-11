@@ -39,11 +39,23 @@ Future<Node> asyncExpand(Node node) async {
     // Async macros take priority over sync ones.
     final asyncFn = _asyncMacros[head];
     if (asyncFn != null) {
-      return asyncExpand(await asyncFn(args));
+      try {
+        return asyncExpand(await asyncFn(args));
+      } on MacroExpansionError {
+        rethrow;
+      } catch (e) {
+        throw MacroExpansionError('macro "$head" failed: $e');
+      }
     }
     final syncFn = getMacro(head);
     if (syncFn != null) {
-      return asyncExpand(syncFn(args));
+      try {
+        return asyncExpand(syncFn(args));
+      } on MacroExpansionError {
+        rethrow;
+      } catch (e) {
+        throw MacroExpansionError('macro "$head" failed: $e');
+      }
     }
   }
 
@@ -114,10 +126,11 @@ Future<String> asyncCompileDartLikeWithOrigins(String source, String sourcePath,
     try {
       final emitted = emit(await asyncExpand(form));
       results.add('// @dmacro-origin: $sourcePath:$line\n$emitted');
-    } on MacroExpansionError {
-      rethrow;
     } catch (e) {
-      throw MacroExpansionError('$sourcePath:$line: $e');
+      // Always prepend source location, whether or not asyncExpand already
+      // wrapped the error with macro-name attribution.
+      final msg = e is MacroExpansionError ? e.message : '$e';
+      throw MacroExpansionError('$sourcePath:$line: $msg');
     } finally {
       setEmitterSourcePath(null);
       setEmitterFieldOrigins(false);
@@ -144,10 +157,9 @@ Future<String> asyncCompileWithOrigins(String source, String sourcePath,
     try {
       final emitted = emit(await asyncExpand(form));
       results.add('// @dmacro-origin: $sourcePath:$line\n$emitted');
-    } on MacroExpansionError {
-      rethrow;
     } catch (e) {
-      throw MacroExpansionError('$sourcePath:$line: $e');
+      final msg = e is MacroExpansionError ? e.message : '$e';
+      throw MacroExpansionError('$sourcePath:$line: $msg');
     } finally {
       setEmitterSourcePath(null);
       setEmitterFieldOrigins(false);

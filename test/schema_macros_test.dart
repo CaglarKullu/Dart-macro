@@ -115,11 +115,12 @@ void main() {
   // ─── Error handling ───────────────────────────────────────────────────────────
 
   group('defFromJsonSchema — errors', () {
-    test('missing file throws StateError with path in message', () async {
+    test('missing file throws MacroExpansionError with path in message',
+        () async {
       await expectLater(
         asyncExpand(['defFromJsonSchema', '"no/such/file.json"']),
         throwsA(
-          isA<StateError>().having(
+          isA<MacroExpansionError>().having(
             (e) => e.message,
             'message',
             contains('no/such/file.json'),
@@ -329,11 +330,11 @@ void main() {
       expect(a, equals(b));
     });
 
-    test('missing directory throws StateError with path', () async {
+    test('missing directory throws MacroExpansionError with path', () async {
       await expectLater(
         asyncExpand(['defAllFromJsonSchema', '"no/such/dir"']),
         throwsA(
-          isA<StateError>().having(
+          isA<MacroExpansionError>().having(
             (e) => e.message,
             'message',
             contains('no/such/dir'),
@@ -342,10 +343,10 @@ void main() {
       );
     });
 
-    test('empty directory throws StateError', () async {
+    test('empty directory throws MacroExpansionError', () async {
       await expectLater(
         asyncExpand(['defAllFromJsonSchema', '"${tmpDir.path}"']),
-        throwsA(isA<StateError>()),
+        throwsA(isA<MacroExpansionError>()),
       );
     });
   });
@@ -409,7 +410,7 @@ void main() {
       expect(out, contains('final int? id;'));
     });
 
-    test('missing file throws StateError with path', () async {
+    test('missing file throws MacroExpansionError with path', () async {
       await expectLater(
         asyncExpand([
           'defFromOpenApi',
@@ -417,7 +418,7 @@ void main() {
           '"Pet"',
         ]),
         throwsA(
-          isA<StateError>().having(
+          isA<MacroExpansionError>().having(
             (e) => e.message,
             'message',
             contains('no/such/spec.json'),
@@ -426,7 +427,7 @@ void main() {
       );
     });
 
-    test('unknown schema name throws StateError listing available schemas',
+    test('unknown schema name throws MacroExpansionError listing available',
         () async {
       await expectLater(
         asyncExpand([
@@ -435,7 +436,7 @@ void main() {
           '"NoSuchSchema"',
         ]),
         throwsA(
-          isA<StateError>().having(
+          isA<MacroExpansionError>().having(
             (e) => e.message,
             'message',
             allOf(contains('NoSuchSchema'), contains('Pet')),
@@ -444,7 +445,7 @@ void main() {
       );
     });
 
-    test('missing components/schemas throws StateError', () async {
+    test('missing components/schemas throws MacroExpansionError', () async {
       late Directory tmpDir;
       tmpDir = Directory.systemTemp.createTempSync('dmacro_openapi_test_');
       addTearDown(() => tmpDir.deleteSync(recursive: true));
@@ -458,7 +459,7 @@ void main() {
           '"${tmpDir.path}/empty.json"',
           '"Thing"',
         ]),
-        throwsA(isA<StateError>()),
+        throwsA(isA<MacroExpansionError>()),
       );
     });
 
