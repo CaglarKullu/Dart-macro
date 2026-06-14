@@ -434,7 +434,9 @@ from a user's own project. **Reuse the engine as-is; this is framing + one new l
 - [ ] `importMacros("package:foo/bar.dart")` extended to load Dart macro files (reuse resolver)
 - [x] **10.2b** Generic block syntax: `defwidget MyButton { … }` for user macros — `_userBlockMacro()` detects `ident TypeName {` at top level and produces `[macroName, TypeName, [type, name], …]`; field args are structured lists, not raw strings. Tested in `dart_parser_test.dart` and `user_macro_test.dart`.
 - [x] **10.2c** Export an `unquote` helper — done (see above; lives in `core.dart`, documented in WRITING_MACROS.md)
-- [ ] Parser finding (from validation): `throw expr` in argument position emits bare `throw;` — fold into parser-hardening follow-ups
+- [x] Parser finding: `throw expr` in expression position (ternary else, argument) — fixed in
+      `_primary()`: `throw` is now parsed as an expression node `['throw', val]`, matching
+      Dart's grammar. Previously 'throw' was returned as a bare identifier.
 
 ### 10.3 Tier-2 decision gate
 - [x] Spike `$map` over record fields
@@ -449,12 +451,18 @@ from a user's own project. **Reuse the engine as-is; this is framing + one new l
       record in `specs/phase-10-macro-authoring.md` § 10.3; contract in
       `test/tier2_map_test.dart` (14 tests); guide in `doc/WRITING_MACROS.md`.
 
-### 10.4 Macro-author error attribution
-- [ ] Tag emitted subtrees with the producing macro's name (reuse origin plumbing)
-- [ ] Emit/parse failures name the macro first: `macro "X" produced invalid Dart at …`
-- [ ] `defMacro` wrapper catches in-macro exceptions and reattributes with call-site origin
-- [ ] `trace` reworked for authors: per-step macro name + input args + output node, indented
-- [ ] Fixture: a broken macro yields an error whose first line names the macro and `file:line`
+### 10.4 Macro-author error attribution (DONE)
+- [x] `expand()` now wraps sync macro exceptions as `MacroExpansionError('macro "X" failed: …')`,
+      matching `asyncExpand()`. All macro errors carry the macro name regardless of sync/async.
+- [x] `asyncCompile*WithOrigins` catch block already prepends `file:line:` to the wrapped message,
+      so a broken macro always produces `file:line: macro "X" failed: …`
+- [x] Trace reworked: each step shows `[N] macroName  args…` (macro name visible at a glance);
+      errors write `✗ macro "X" failed: …` to the sink before re-throwing.
+- [x] `test/macro_error_test.dart`: 13 tests — sync wrap, async wrap, WithOrigins file:line prefix,
+      trace format, trace error output, nested indentation, throw-as-expression fix.
+- Note: "tag emitted subtrees" not implemented — the combination of `asyncExpand()` naming the
+  macro on exception + `WithOrigins` prepending `file:line` covers the practical use case without
+  requiring AST-level metadata propagation.
 
 ### 10.5 Distribution
 - [x] Document the "macro library package" pattern — `doc/WRITING_MACROS.md`
