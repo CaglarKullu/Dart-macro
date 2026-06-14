@@ -265,11 +265,23 @@ Future<Node> _asyncExpandWithTrace(
     if (asyncFn != null || syncFn != null) {
       counter.value++;
       final pad = '  ' * depth;
-      sink.writeln('$pad[${counter.value}] ${_abbrev(_nodeStr(node))}');
-      final raw = asyncFn != null ? await asyncFn(args) : syncFn!(args);
-      final result = await _asyncExpandWithTrace(raw, sink, depth + 1, counter);
-      sink.writeln('$pad        → ${_abbrev(_nodeStr(result))}');
-      return result;
+      // Show macro name, then space-separated args so authors can read inputs.
+      final argsStr = args.isEmpty
+          ? ''
+          : '  ${args.map((a) => _abbrev(_nodeStr(a), 60)).join(' ')}';
+      sink.writeln('$pad[${counter.value}] $head$argsStr');
+      try {
+        final raw = asyncFn != null ? await asyncFn(args) : syncFn!(args);
+        final result =
+            await _asyncExpandWithTrace(raw, sink, depth + 1, counter);
+        sink.writeln('$pad    → ${_abbrev(_nodeStr(result))}');
+        return result;
+      } on MacroExpansionError {
+        rethrow;
+      } catch (e) {
+        sink.writeln('$pad    ✗ macro "$head" failed: $e');
+        throw MacroExpansionError('macro "$head" failed: $e');
+      }
     }
   }
 

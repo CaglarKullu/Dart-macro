@@ -194,7 +194,8 @@ void main() {
           'b',
           ['use', 'a', 'b'],
         ]),
-        throwsA(isA<ArgumentError>().having(
+        // expand() wraps sync macro exceptions as MacroExpansionError
+        throwsA(isA<MacroExpansionError>().having(
           (e) => e.message,
           'message',
           contains('cannot destructure'),

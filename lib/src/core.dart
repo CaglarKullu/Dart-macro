@@ -173,7 +173,13 @@ Node expand(Node node) {
   if (sym is String && _macros.containsKey(sym)) {
     // Call macro with raw (unevaluated) args, then re-expand the result.
     // This is the key property: macros receive CODE, not VALUES.
-    return expand(_macros[sym]!(args));
+    try {
+      return expand(_macros[sym]!(args));
+    } on MacroExpansionError {
+      rethrow;
+    } catch (e) {
+      throw MacroExpansionError('macro "$sym" failed: $e');
+    }
   }
 
   // Not a macro — expand subforms recursively, then flatten any Splice.

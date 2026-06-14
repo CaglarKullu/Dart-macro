@@ -613,10 +613,15 @@ class DartLikeParser {
       _expect(TK.rbracket);
       return ['list', ...items];
     }
-    // await expr
+    // await expr / throw expr — both are valid as expressions in Dart
+    // (e.g. ternary else branch: condition ? x : throw Foo())
     if (t.kind == TK.ident && t.value == 'await') {
       _advance();
       return ['await', _expr()];
+    }
+    if (t.kind == TK.ident && t.value == 'throw') {
+      _advance();
+      return ['throw', _expr()];
     }
     if (t.kind == TK.string ||
         t.kind == TK.integer ||
